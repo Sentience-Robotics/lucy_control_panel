@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Card, Typography, Space, Button, Badge } from 'antd';
-import { DownOutlined, RightOutlined, ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
 import { JointControl } from './JointControl';
 
@@ -21,8 +21,6 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     onResetCategory,
     showDegrees
 }) => {
-    const [isExpanded, setIsExpanded] = useState(true);
-
     const categoryColor = useMemo(() => {
         switch (category) {
             case 'Head': return '#ff6b6b';
@@ -50,22 +48,32 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 marginBottom: 16,
                 backgroundColor: '#0a0a0a',
                 borderColor: '#333',
-                borderLeft: `2px solid ${categoryColor}`
+                borderLeft: `2px solid ${categoryColor}`,
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative'
             }}
-            bodyStyle={{ padding: 16 }}
+            bodyStyle={{
+                padding: 16,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative'
+            }}
         >
+            {/* ASCII Fill background for all categories - always visible */}
             <div
                 style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    cursor: 'pointer',
-                    marginBottom: isExpanded ? 12 : 0
+                    marginBottom: 12,
+                    position: 'relative',
+                    zIndex: 2
                 }}
-                onClick={() => setIsExpanded(!isExpanded)}
             >
             <Space>
-                {isExpanded ? <DownOutlined /> : <RightOutlined />}
                 <Title
                     level={5}
                     style={{
@@ -107,8 +115,16 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             </Button>
           </div>
 
-            {isExpanded && (
-                <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <div style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-start',
+                position: 'relative',
+                minHeight: '200px',
+                zIndex: 2
+            }}>
+                <Space direction="vertical" style={{ width: '100%', position: 'relative' }} size="small">
                     {joints.map((joint) => (
                     <JointControl
                         key={joint.name}
@@ -118,7 +134,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     />
                     ))}
                 </Space>
-            )}
+            </div>
         </Card>
     );
 });

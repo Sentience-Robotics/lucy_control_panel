@@ -1,5 +1,6 @@
-import React, { ReactNode } from 'react';
-import { Layout, Typography } from 'antd';
+import React from "react";
+import type { ReactNode } from "react";
+import { Layout, Typography } from "antd";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;

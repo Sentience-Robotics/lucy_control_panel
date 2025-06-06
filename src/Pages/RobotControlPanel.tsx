@@ -329,67 +329,58 @@ export const RobotControlPanel: React.FC = () => {
             </Col>
           </Row>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={rectIntersection}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
-                <div
-                  style={{
-                    columnCount: 'auto',
-                    columnWidth: '320px',
-                    columnGap: '12px',
-                    width: '100%'
-                  }}
-                >
-                  {categoryOrder.map(category => {
-                    if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
-                      return null;
-                    }
+          <DndContext
+            sensors={sensors}
+            collisionDetection={rectIntersection}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gridAutoRows: '1fr',
+                  gap: '12px',
+                  width: '100%',
+                  alignItems: 'stretch'
+                }}
+              >
+                {categoryOrder.map(category => {
+                  if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
+                    return null;
+                  }
 
-                    return (
-                      <div
-                        key={category}
-                        style={{
-                          breakInside: 'avoid',
-                          pageBreakInside: 'avoid',
-                          marginBottom: '8px',
-                          display: 'inline-block',
-                          width: '100%'
-                        }}
-                      >
-                        <DraggableCategory
-                          id={category}
-                          category={category}
-                          joints={categorizedJoints[category]}
-                          onJointValueChange={handleJointValueChange}
-                          onResetCategory={handleResetCategory}
-                          showDegrees={showDegrees}
-                        />
-                      </div>
-                    );
-                  })}
+                  return (
+                    <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      <DraggableCategory
+                        id={category}
+                        category={category}
+                        joints={categorizedJoints[category]}
+                        onJointValueChange={handleJointValueChange}
+                        onResetCategory={handleResetCategory}
+                        showDegrees={showDegrees}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </SortableContext>
+
+            <DragOverlay>
+              {activeId ? (
+                <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
+                  <JointCategory
+                    category={activeId}
+                    joints={categorizedJoints[activeId] || []}
+                    onJointValueChange={() => {}}
+                    onResetCategory={() => {}}
+                    showDegrees={showDegrees}
+                  />
                 </div>
-              </SortableContext>
-
-              <DragOverlay>
-                {activeId ? (
-                  <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
-                    <JointCategory
-                      category={activeId}
-                      joints={categorizedJoints[activeId] || []}
-                      onJointValueChange={() => {}}
-                      onResetCategory={() => {}}
-                      showDegrees={showDegrees}
-                    />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </Page>
   );
 };

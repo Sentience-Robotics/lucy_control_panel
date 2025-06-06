@@ -272,7 +272,7 @@ export const NotFound: React.FC = () => {
           >
             Don't worry, even the most advanced robots get lost sometimes.
             <br />
-            Lucy is probably just recalibrating her navigation systems.
+            Lucy is probably just recalibrating its navigation systems.
             <br />
             <span style={{ color: '#00ff41' }}>
               ► Press RETURN HOME to get back on track ◄

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid } from '@react-three/drei';
-import { Typography, Button, Space, Spin, Alert } from 'antd';
+import { Typography, Button, Spin, Alert } from 'antd';
 import { STLLoader } from 'three-stdlib';
 import * as THREE from 'three';
 import { RobotPathResolver } from '../Constants/robotConfig';
