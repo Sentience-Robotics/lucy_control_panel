@@ -96,7 +96,48 @@ export const Page: React.FC<PageProps> = ({
           border-radius: 0 !important;
         }
 
-        /* TUI Color Theme */
+        /* Clean Button Glow Effects */
+        .ant-btn {
+          transition: all 0.3s ease !important;
+          position: relative !important;
+        }
+
+        .ant-btn-primary {
+          background-color: #00ff41 !important;
+          border-color: #00ff41 !important;
+          box-shadow: 0 0 8px rgba(0, 255, 65, 0.3) !important;
+        }
+
+        .ant-btn-primary:hover {
+          background-color: #00ff41 !important;
+          border-color: #00ff41 !important;
+          box-shadow: 0 0 15px rgba(0, 255, 65, 0.6) !important;
+          transform: translateY(-1px) !important;
+        }
+
+        .ant-btn-primary:active {
+          transform: translateY(0) !important;
+          box-shadow: 0 0 8px rgba(0, 255, 65, 0.4) !important;
+        }
+
+        .ant-btn-default {
+          background-color: transparent !important;
+          border-color: #444 !important;
+          color: #fff !important;
+        }
+
+        .ant-btn-default:hover {
+          border-color: #00ff41 !important;
+          color: #00ff41 !important;
+          box-shadow: 0 0 12px rgba(0, 255, 65, 0.3) !important;
+          transform: translateY(-1px) !important;
+        }
+
+        .ant-btn-default:active {
+          transform: translateY(0) !important;
+        }
+
+        /* TUI Color Theme with Glow Effects */
         .ant-slider-track {
           background-color: #00ff41 !important;
         }
@@ -114,6 +155,17 @@ export const Page: React.FC<PageProps> = ({
           background-color: #1a1a1a !important;
           border-color: #444 !important;
           color: #fff !important;
+          transition: all 0.3s ease !important;
+        }
+
+        .ant-input-number:hover {
+          border-color: #00ff41 !important;
+          box-shadow: 0 0 15px rgba(0, 255, 65, 0.3) !important;
+        }
+
+        .ant-input-number:focus-within {
+          border-color: #00ff41 !important;
+          box-shadow: 0 0 20px rgba(0, 255, 65, 0.5) !important;
         }
 
         .ant-input-number-input {
@@ -123,15 +175,19 @@ export const Page: React.FC<PageProps> = ({
 
         .ant-input-number-handler-wrap {
           background-color: #333 !important;
+          transition: all 0.3s ease !important;
         }
 
         .ant-input-number-handler {
           border-color: #444 !important;
           color: #fff !important;
+          transition: all 0.2s ease !important;
         }
 
         .ant-input-number-handler:hover {
           color: #00ff41 !important;
+          background-color: rgba(0, 255, 65, 0.1) !important;
+          box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.2) !important;
         }
 
         /* Custom range slider styling */
@@ -228,13 +284,21 @@ export const Page: React.FC<PageProps> = ({
           padding: 20px;
         }
 
-        /* TUI Button Toggle Styles */
+        /* TUI Button Toggle Styles with Glow */
         .tui-toggle {
           display: inline-flex;
           border: 1px solid #444;
           background-color: #1a1a1a;
           font-family: 'monospace';
           font-size: 12px;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .tui-toggle:hover {
+          border-color: #00ff41;
+          box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
         }
 
         .tui-toggle-button {
@@ -246,17 +310,86 @@ export const Page: React.FC<PageProps> = ({
           font-size: 12px;
           font-weight: bold;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.3s ease;
+          position: relative;
+          z-index: 2;
+        }
+
+        .tui-toggle-button:hover {
+          color: #00ff41;
+          text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
         }
 
         .tui-toggle-button.active {
           background-color: #00ff41;
           color: #000;
+          box-shadow: 0 0 15px rgba(0, 255, 65, 0.6);
+          animation: buttonPulse 2s infinite;
         }
 
         .tui-toggle-divider {
           width: 1px;
           background-color: #444;
+        }
+
+        /* Animated Robot Status Icons */
+        @keyframes robotPulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 1;
+          }
+          50% {
+            transform: scale(1.1);
+            opacity: 0.8;
+          }
+        }
+
+        @keyframes robotSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        @keyframes connectionPulse {
+          0%, 100% {
+            box-shadow: 0 0 8px currentColor;
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+            transform: scale(1.2);
+          }
+        }
+
+        @keyframes dataFlow {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+
+        @keyframes buttonPulse {
+          0%, 100% {
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.6);
+          }
+          50% {
+            box-shadow: 0 0 25px rgba(0, 255, 65, 0.9), 0 0 35px rgba(0, 255, 65, 0.5);
+          }
+        }
+
+        .robot-status-connected {
+          animation: connectionPulse 2s infinite ease-in-out;
+        }
+
+        .robot-status-disconnected {
+          animation: robotPulse 1s infinite ease-in-out;
+          filter: brightness(0.7);
+        }
+
+        .robot-status-moving {
+          animation: robotSpin 1s linear infinite;
+        }
+
+        .robot-status-error {
+          animation: glitch 0.5s infinite;
+          filter: hue-rotate(180deg);
         }
       `}</style>
     </Layout>

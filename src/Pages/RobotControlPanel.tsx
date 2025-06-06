@@ -37,6 +37,8 @@ import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { Page } from '../Components/Page';
+import { RobotStatusIcon } from '../Components/RobotStatusIcon';
+import { DataFlowEffect } from '../Components/DataFlowEffect';
 
 const { Text } = Typography;
 
@@ -46,6 +48,8 @@ export const RobotControlPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDegrees, setShowDegrees] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [categoryOrder, setCategoryOrder] = useState<string[]>([
     'Head', 'Torso', 'Left Arm', 'Right Arm', 'Left Hand', 'Right Hand', 'Base'
   ]);
@@ -70,6 +74,7 @@ export const RobotControlPanel: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setHasError(false);
 
       // Fetch the URDF file from the public directory
       const response = await fetch(RobotPathResolver.getUrdfPath());
@@ -85,12 +90,17 @@ export const RobotControlPanel: React.FC = () => {
       setJoints(controlStates);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load robot configuration');
+      setHasError(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleJointValueChange = useCallback((name: string, value: number) => {
+    // Trigger movement animation
+    setIsMoving(true);
+    setTimeout(() => setIsMoving(false), 1000);
+
     setJoints(prevJoints =>
       prevJoints.map(joint =>
         joint.name === name
@@ -101,6 +111,10 @@ export const RobotControlPanel: React.FC = () => {
   }, []);
 
   const handleResetCategory = useCallback((category: string) => {
+    // Trigger movement animation
+    setIsMoving(true);
+    setTimeout(() => setIsMoving(false), 1500);
+
     setJoints(prevJoints =>
       prevJoints.map(joint => {
         if (joint.category === category) {
@@ -113,6 +127,10 @@ export const RobotControlPanel: React.FC = () => {
   }, []);
 
   const handleResetAll = useCallback(() => {
+    // Trigger movement animation
+    setIsMoving(true);
+    setTimeout(() => setIsMoving(false), 2000);
+
     setJoints(prevJoints =>
       prevJoints.map(joint => {
         const midValue = (joint.minValue + joint.maxValue) / 2;
@@ -212,15 +230,11 @@ export const RobotControlPanel: React.FC = () => {
           >
             ▲ LUCY CONTROL PANEL
           </Text>
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 0,
-              backgroundColor: isConnected ? '#00ff41' : '#ff4d4f',
-              boxShadow: `0 0 8px ${isConnected ? '#00ff41' : '#ff4d4f'}`,
-              animation: isConnected ? 'pulse 2s infinite' : 'none'
-            }}
+          <RobotStatusIcon
+            isConnected={isConnected}
+            isMoving={isMoving}
+            hasError={hasError}
+            size={20}
           />
         </Space>
       </div>
@@ -252,8 +266,10 @@ export const RobotControlPanel: React.FC = () => {
     <Page
       showHeader
       headerContent={headerContent}
-      contentStyle={{ padding: 12 }}
+      contentStyle={{ padding: 12, position: 'relative' }}
+      removeScrollbars={false}
     >
+      <DataFlowEffect isActive={isConnected && isMoving} speed={1.5} />
           <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
             <Col>
               <Space>
@@ -294,45 +310,17 @@ export const RobotControlPanel: React.FC = () => {
             <Col>
               <Space align="center">
                 <Text style={{ color: '#fff', fontFamily: 'monospace' }}>UNIT:</Text>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    border: '1px solid #444',
-                    backgroundColor: '#1a1a1a',
-                    fontFamily: 'monospace',
-                    fontSize: '12px'
-                  }}
-                >
+                <div className="tui-toggle">
                   <button
                     onClick={() => setShowDegrees(false)}
-                    style={{
-                      padding: '4px 12px',
-                      border: 'none',
-                      backgroundColor: !showDegrees ? '#00ff41' : 'transparent',
-                      color: !showDegrees ? '#000' : '#666',
-                      fontFamily: 'monospace',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
+                    className={`tui-toggle-button ${!showDegrees ? 'active' : ''}`}
                   >
                     RAD
                   </button>
-                  <div style={{ width: '1px', backgroundColor: '#444' }} />
+                  <div className="tui-toggle-divider" />
                   <button
                     onClick={() => setShowDegrees(true)}
-                    style={{
-                      padding: '4px 12px',
-                      border: 'none',
-                      backgroundColor: showDegrees ? '#00ff41' : 'transparent',
-                      color: showDegrees ? '#000' : '#666',
-                      fontFamily: 'monospace',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
+                    className={`tui-toggle-button ${showDegrees ? 'active' : ''}`}
                   >
                     DEG
                   </button>

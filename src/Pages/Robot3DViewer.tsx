@@ -194,90 +194,34 @@ export const Robot3DViewer: React.FC = () => {
     <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
         <Text style={{ color: '#fff', fontFamily: 'monospace' }}>WIREFRAME:</Text>
-        <div
-          style={{
-            display: 'inline-flex',
-            border: '1px solid #444',
-            backgroundColor: '#1a1a1a',
-            fontFamily: 'monospace',
-            fontSize: '12px'
-          }}
-        >
+        <div className="tui-toggle">
           <button
             onClick={() => setWireframe(false)}
-            style={{
-              padding: '4px 12px',
-              border: 'none',
-              backgroundColor: !wireframe ? '#00ff41' : 'transparent',
-              color: !wireframe ? '#000' : '#666',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
+            className={`tui-toggle-button ${!wireframe ? 'active' : ''}`}
           >
             OFF
           </button>
-          <div style={{ width: '1px', backgroundColor: '#444' }} />
+          <div className="tui-toggle-divider" />
           <button
             onClick={() => setWireframe(true)}
-            style={{
-              padding: '4px 12px',
-              border: 'none',
-              backgroundColor: wireframe ? '#00ff41' : 'transparent',
-              color: wireframe ? '#000' : '#666',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
+            className={`tui-toggle-button ${wireframe ? 'active' : ''}`}
           >
             ON
           </button>
         </div>
 
         <Text style={{ color: '#fff', fontFamily: 'monospace' }}>GRID:</Text>
-        <div
-          style={{
-            display: 'inline-flex',
-            border: '1px solid #444',
-            backgroundColor: '#1a1a1a',
-            fontFamily: 'monospace',
-            fontSize: '12px'
-          }}
-        >
+        <div className="tui-toggle">
           <button
             onClick={() => setShowGrid(false)}
-            style={{
-              padding: '4px 12px',
-              border: 'none',
-              backgroundColor: !showGrid ? '#00ff41' : 'transparent',
-              color: !showGrid ? '#000' : '#666',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
+            className={`tui-toggle-button ${!showGrid ? 'active' : ''}`}
           >
             OFF
           </button>
-          <div style={{ width: '1px', backgroundColor: '#444' }} />
+          <div className="tui-toggle-divider" />
           <button
             onClick={() => setShowGrid(true)}
-            style={{
-              padding: '4px 12px',
-              border: 'none',
-              backgroundColor: showGrid ? '#00ff41' : 'transparent',
-              color: showGrid ? '#000' : '#666',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
+            className={`tui-toggle-button ${showGrid ? 'active' : ''}`}
           >
             ON
           </button>
