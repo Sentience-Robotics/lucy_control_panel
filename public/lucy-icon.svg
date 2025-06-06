@@ -1,0 +1,50 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Glow filter for the cyberpunk effect -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Gradient for depth -->
+    <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00ff41;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00cc33;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Dark background circle -->
+  <circle cx="32" cy="32" r="30" fill="#0a0a0a" stroke="#333" stroke-width="2"/>
+
+  <!-- Main robot head/triangle shape -->
+  <polygon points="32,12 48,42 16,42"
+           fill="none"
+           stroke="url(#greenGradient)"
+           stroke-width="2.5"
+           filter="url(#glow)"/>
+
+  <!-- Robot eyes -->
+  <circle cx="26" cy="30" r="2.5" fill="#00ff41" filter="url(#glow)"/>
+  <circle cx="38" cy="30" r="2.5" fill="#00ff41" filter="url(#glow)"/>
+
+  <!-- Circuit lines -->
+  <line x1="32" y1="16" x2="32" y2="24" stroke="#00ff41" stroke-width="1.5" opacity="0.8"/>
+  <line x1="28" y1="20" x2="36" y2="20" stroke="#00ff41" stroke-width="1.5" opacity="0.8"/>
+
+  <!-- Control panel elements -->
+  <rect x="20" y="46" width="6" height="2" fill="#00ff41" opacity="0.6"/>
+  <rect x="28" y="46" width="8" height="2" fill="#00ff41" opacity="0.8"/>
+  <rect x="38" y="46" width="6" height="2" fill="#00ff41" opacity="0.6"/>
+
+  <!-- Corner brackets for tech look -->
+  <path d="M8,8 L8,16 M8,8 L16,8" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.4"/>
+  <path d="M56,8 L56,16 M56,8 L48,8" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.4"/>
+  <path d="M8,56 L8,48 M8,56 L16,56" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.4"/>
+  <path d="M56,56 L56,48 M56,56 L48,56" stroke="#00ff41" stroke-width="1.5" fill="none" opacity="0.4"/>
+
+  <!-- Center dot -->
+  <circle cx="32" cy="36" r="1" fill="#00ff41" filter="url(#glow)"/>
+</svg>
