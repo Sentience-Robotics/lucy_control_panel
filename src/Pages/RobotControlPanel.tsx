@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Layout,
   Typography,
   Space,
   Button,
@@ -37,9 +36,9 @@ import { RobotPathResolver } from '../Constants/robotConfig';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
+import { Page } from '../Components/Page';
 
-const { Header, Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const RobotControlPanel: React.FC = () => {
   const [joints, setJoints] = useState<JointControlState[]>([]);
@@ -172,101 +171,89 @@ export const RobotControlPanel: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-        <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Spin size="large" />
-          <Text style={{ color: '#fff', marginLeft: 16 }}>Loading robot configuration...</Text>
-        </Content>
-      </Layout>
+      <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Spin size="large" />
+        <Text style={{ color: '#fff', marginLeft: 16 }}>Loading robot configuration...</Text>
+      </Page>
     );
   }
 
   if (error) {
     return (
-      <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-        <Content style={{ padding: 24 }}>
-          <Alert
-            message="Error Loading Robot Configuration"
-            description={error}
-            type="error"
-            showIcon
-            action={
-              <Button size="small" onClick={loadUrdfData}>
-                Retry
-              </Button>
-            }
-          />
-        </Content>
-      </Layout>
+      <Page>
+        <Alert
+          message="Error Loading Robot Configuration"
+          description={error}
+          type="error"
+          showIcon
+          action={
+            <Button size="small" onClick={loadUrdfData}>
+              Retry
+            </Button>
+          }
+        />
+      </Page>
     );
   }
 
-  return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-      <Header
-        style={{
-          backgroundColor: '#0a0a0a',
-          borderBottom: '2px solid #333',
-          padding: '0 16px',
-          height: 'auto',
-          lineHeight: 'normal',
-          paddingTop: 8,
-          paddingBottom: 8
-        }}
-      >
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Space align="center">
-              <Title
-                level={3}
-                style={{
-                  margin: 0,
-                  color: '#00ff41',
-                  fontFamily: 'monospace',
-                  textShadow: '0 0 10px #00ff41',
-                  fontSize: '18px'
-                }}
-              >
-                ▲ LUCY CONTROL PANEL
-              </Title>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 0,
-                  backgroundColor: isConnected ? '#00ff41' : '#ff4d4f',
-                  boxShadow: `0 0 8px ${isConnected ? '#00ff41' : '#ff4d4f'}`,
-                  animation: isConnected ? 'pulse 2s infinite' : 'none'
-                }}
+  const headerContent = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <div>
+        <Space align="center">
+          <Text
+            style={{
+              margin: 0,
+              color: '#00ff41',
+              fontFamily: 'monospace',
+              textShadow: '0 0 10px #00ff41',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}
+          >
+            ▲ LUCY CONTROL PANEL
+          </Text>
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 0,
+              backgroundColor: isConnected ? '#00ff41' : '#ff4d4f',
+              boxShadow: `0 0 8px ${isConnected ? '#00ff41' : '#ff4d4f'}`,
+              animation: isConnected ? 'pulse 2s infinite' : 'none'
+            }}
+          />
+        </Space>
+      </div>
+
+      <div>
+        <Space>
+          <Row gutter={12}>
+            <Col>
+              <Statistic
+                title={<Text style={{ color: '#666', fontSize: '10px' }}>TOTAL JOINTS</Text>}
+                value={joints.length}
+                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
               />
-            </Space>
-          </Col>
+            </Col>
+            <Col>
+              <Statistic
+                title={<Text style={{ color: '#666', fontSize: '10px' }}>CATEGORIES</Text>}
+                value={Object.keys(categorizedJoints).length}
+                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
+              />
+            </Col>
+          </Row>
+        </Space>
+      </div>
+    </div>
+  );
 
-          <Col>
-            <Space>
-              <Row gutter={12}>
-                <Col>
-                  <Statistic
-                    title={<Text style={{ color: '#666', fontSize: '10px' }}>TOTAL JOINTS</Text>}
-                    value={joints.length}
-                    valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                  />
-                </Col>
-                <Col>
-                  <Statistic
-                    title={<Text style={{ color: '#666', fontSize: '10px' }}>CATEGORIES</Text>}
-                    value={Object.keys(categorizedJoints).length}
-                    valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                  />
-                </Col>
-              </Row>
-            </Space>
-          </Col>
-        </Row>
-      </Header>
-
-      <Layout>
-        <Content style={{ padding: 12, backgroundColor: '#000' }}>
+  return (
+    <Page
+      showHeader
+      headerContent={headerContent}
+      contentStyle={{ padding: 12 }}
+    >
           <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
             <Col>
               <Space>
@@ -415,78 +402,6 @@ export const RobotControlPanel: React.FC = () => {
               </DragOverlay>
             </DndContext>
           </div>
-        </Content>
-      </Layout>
-
-      <style>{`
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-
-        /* Remove all rounded corners for TUI look */
-        .ant-btn,
-        .ant-btn-primary,
-        .ant-btn-default,
-        .ant-switch,
-        .ant-slider,
-        .ant-slider-rail,
-        .ant-slider-track,
-        .ant-slider-handle,
-        .ant-input-number,
-        .ant-card,
-        .ant-alert,
-        .ant-spin-container,
-        .ant-layout-header,
-        .ant-layout-content,
-        .ant-col,
-        .ant-row {
-          border-radius: 0 !important;
-        }
-
-        .ant-slider-track {
-          background-color: #00ff41 !important;
-        }
-
-        .ant-slider-handle {
-          border-color: #00ff41 !important;
-        }
-
-        .ant-slider-handle:focus {
-          border-color: #00ff41 !important;
-          box-shadow: 0 0 0 5px rgba(0, 255, 65, 0.2) !important;
-        }
-
-        .ant-input-number {
-          background-color: #1a1a1a !important;
-          border-color: #444 !important;
-          color: #fff !important;
-        }
-
-        .ant-input-number-input {
-          background-color: transparent !important;
-          color: #fff !important;
-        }
-
-        .ant-input-number-handler-wrap {
-          background-color: #333 !important;
-        }
-
-        .ant-input-number-handler {
-          border-color: #444 !important;
-          color: #fff !important;
-        }
-
-        .ant-input-number-handler:hover {
-          color: #00ff41 !important;
-        }
-
-        /* Additional TUI styling - remove rounded corners from all elements */
-        * {
-          border-radius: 0 !important;
-        }
-      `}</style>
-    </Layout>
+        </Page>
   );
 };
