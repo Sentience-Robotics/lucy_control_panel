@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Layout,
   Typography,
   Space,
   Button,
@@ -37,9 +36,11 @@ import { RobotPathResolver } from '../Constants/robotConfig';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
+import { Page } from '../Components/Page';
+import { RobotStatusIcon } from '../Components/RobotStatusIcon';
+import { DataFlowEffect } from '../Components/DataFlowEffect';
 
-const { Header, Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export const RobotControlPanel: React.FC = () => {
   const [joints, setJoints] = useState<JointControlState[]>([]);
@@ -47,6 +48,8 @@ export const RobotControlPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showDegrees, setShowDegrees] = useState(true);
   const [isConnected, setIsConnected] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const [categoryOrder, setCategoryOrder] = useState<string[]>([
     'Head', 'Torso', 'Left Arm', 'Right Arm', 'Left Hand', 'Right Hand', 'Base'
   ]);
@@ -71,6 +74,7 @@ export const RobotControlPanel: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setHasError(false);
 
       // Fetch the URDF file from the public directory
       const response = await fetch(RobotPathResolver.getUrdfPath());
@@ -86,12 +90,17 @@ export const RobotControlPanel: React.FC = () => {
       setJoints(controlStates);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load robot configuration');
+      setHasError(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleJointValueChange = useCallback((name: string, value: number) => {
+    // Trigger movement animation
+    setIsMoving(true);
+    setTimeout(() => setIsMoving(false), 1000);
+
     setJoints(prevJoints =>
       prevJoints.map(joint =>
         joint.name === name
@@ -102,6 +111,10 @@ export const RobotControlPanel: React.FC = () => {
   }, []);
 
   const handleResetCategory = useCallback((category: string) => {
+    // Trigger movement animation
+    setIsMoving(true);
+    setTimeout(() => setIsMoving(false), 1500);
+
     setJoints(prevJoints =>
       prevJoints.map(joint => {
         if (joint.category === category) {
@@ -114,6 +127,10 @@ export const RobotControlPanel: React.FC = () => {
   }, []);
 
   const handleResetAll = useCallback(() => {
+    // Trigger movement animation
+    setIsMoving(true);
+    setTimeout(() => setIsMoving(false), 2000);
+
     setJoints(prevJoints =>
       prevJoints.map(joint => {
         const midValue = (joint.minValue + joint.maxValue) / 2;
@@ -172,101 +189,87 @@ export const RobotControlPanel: React.FC = () => {
 
   if (loading) {
     return (
-      <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-        <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <Spin size="large" />
-          <Text style={{ color: '#fff', marginLeft: 16 }}>Loading robot configuration...</Text>
-        </Content>
-      </Layout>
+      <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <Spin size="large" />
+        <Text style={{ color: '#fff', marginLeft: 16 }}>Loading robot configuration...</Text>
+      </Page>
     );
   }
 
   if (error) {
     return (
-      <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-        <Content style={{ padding: 24 }}>
-          <Alert
-            message="Error Loading Robot Configuration"
-            description={error}
-            type="error"
-            showIcon
-            action={
-              <Button size="small" onClick={loadUrdfData}>
-                Retry
-              </Button>
-            }
-          />
-        </Content>
-      </Layout>
+      <Page>
+        <Alert
+          message="Error Loading Robot Configuration"
+          description={error}
+          type="error"
+          showIcon
+          action={
+            <Button size="small" onClick={loadUrdfData}>
+              Retry
+            </Button>
+          }
+        />
+      </Page>
     );
   }
 
-  return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-      <Header
-        style={{
-          backgroundColor: '#0a0a0a',
-          borderBottom: '2px solid #333',
-          padding: '0 16px',
-          height: 'auto',
-          lineHeight: 'normal',
-          paddingTop: 8,
-          paddingBottom: 8
-        }}
-      >
-        <Row justify="space-between" align="middle">
-          <Col>
-            <Space align="center">
-              <Title
-                level={3}
-                style={{
-                  margin: 0,
-                  color: '#00ff41',
-                  fontFamily: 'monospace',
-                  textShadow: '0 0 10px #00ff41',
-                  fontSize: '18px'
-                }}
-              >
-                ▲ LUCY CONTROL PANEL
-              </Title>
-              <div
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 0,
-                  backgroundColor: isConnected ? '#00ff41' : '#ff4d4f',
-                  boxShadow: `0 0 8px ${isConnected ? '#00ff41' : '#ff4d4f'}`,
-                  animation: isConnected ? 'pulse 2s infinite' : 'none'
-                }}
+  const headerContent = (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <div>
+        <Space align="center">
+          <Text
+            style={{
+              margin: 0,
+              color: '#00ff41',
+              fontFamily: 'monospace',
+              textShadow: '0 0 10px #00ff41',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}
+          >
+            ▲ LUCY CONTROL PANEL
+          </Text>
+          <RobotStatusIcon
+            isConnected={isConnected}
+            isMoving={isMoving}
+            hasError={hasError}
+            size={20}
+          />
+        </Space>
+      </div>
+
+      <div>
+        <Space>
+          <Row gutter={12}>
+            <Col>
+              <Statistic
+                title={<Text style={{ color: '#666', fontSize: '10px' }}>TOTAL JOINTS</Text>}
+                value={joints.length}
+                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
               />
-            </Space>
-          </Col>
+            </Col>
+            <Col>
+              <Statistic
+                title={<Text style={{ color: '#666', fontSize: '10px' }}>CATEGORIES</Text>}
+                value={Object.keys(categorizedJoints).length}
+                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
+              />
+            </Col>
+          </Row>
+        </Space>
+      </div>
+    </div>
+  );
 
-          <Col>
-            <Space>
-              <Row gutter={12}>
-                <Col>
-                  <Statistic
-                    title={<Text style={{ color: '#666', fontSize: '10px' }}>TOTAL JOINTS</Text>}
-                    value={joints.length}
-                    valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                  />
-                </Col>
-                <Col>
-                  <Statistic
-                    title={<Text style={{ color: '#666', fontSize: '10px' }}>CATEGORIES</Text>}
-                    value={Object.keys(categorizedJoints).length}
-                    valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                  />
-                </Col>
-              </Row>
-            </Space>
-          </Col>
-        </Row>
-      </Header>
-
-      <Layout>
-        <Content style={{ padding: 12, backgroundColor: '#000' }}>
+  return (
+    <Page
+      showHeader
+      headerContent={headerContent}
+      contentStyle={{ padding: 12, position: 'relative' }}
+      removeScrollbars={false}
+    >
+      <DataFlowEffect isActive={isConnected && isMoving} speed={1.5} />
           <Row gutter={[8, 8]} style={{ marginBottom: 12 }}>
             <Col>
               <Space>
@@ -307,45 +310,17 @@ export const RobotControlPanel: React.FC = () => {
             <Col>
               <Space align="center">
                 <Text style={{ color: '#fff', fontFamily: 'monospace' }}>UNIT:</Text>
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    border: '1px solid #444',
-                    backgroundColor: '#1a1a1a',
-                    fontFamily: 'monospace',
-                    fontSize: '12px'
-                  }}
-                >
+                <div className="tui-toggle">
                   <button
                     onClick={() => setShowDegrees(false)}
-                    style={{
-                      padding: '4px 12px',
-                      border: 'none',
-                      backgroundColor: !showDegrees ? '#00ff41' : 'transparent',
-                      color: !showDegrees ? '#000' : '#666',
-                      fontFamily: 'monospace',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
+                    className={`tui-toggle-button ${!showDegrees ? 'active' : ''}`}
                   >
                     RAD
                   </button>
-                  <div style={{ width: '1px', backgroundColor: '#444' }} />
+                  <div className="tui-toggle-divider" />
                   <button
                     onClick={() => setShowDegrees(true)}
-                    style={{
-                      padding: '4px 12px',
-                      border: 'none',
-                      backgroundColor: showDegrees ? '#00ff41' : 'transparent',
-                      color: showDegrees ? '#000' : '#666',
-                      fontFamily: 'monospace',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
+                    className={`tui-toggle-button ${showDegrees ? 'active' : ''}`}
                   >
                     DEG
                   </button>
@@ -354,139 +329,58 @@ export const RobotControlPanel: React.FC = () => {
             </Col>
           </Row>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <DndContext
-              sensors={sensors}
-              collisionDetection={rectIntersection}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
-                <div
-                  style={{
-                    columnCount: 'auto',
-                    columnWidth: '320px',
-                    columnGap: '12px',
-                    width: '100%'
-                  }}
-                >
-                  {categoryOrder.map(category => {
-                    if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
-                      return null;
-                    }
+          <DndContext
+            sensors={sensors}
+            collisionDetection={rectIntersection}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gridAutoRows: '1fr',
+                  gap: '12px',
+                  width: '100%',
+                  alignItems: 'stretch'
+                }}
+              >
+                {categoryOrder.map(category => {
+                  if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
+                    return null;
+                  }
 
-                    return (
-                      <div
-                        key={category}
-                        style={{
-                          breakInside: 'avoid',
-                          pageBreakInside: 'avoid',
-                          marginBottom: '8px',
-                          display: 'inline-block',
-                          width: '100%'
-                        }}
-                      >
-                        <DraggableCategory
-                          id={category}
-                          category={category}
-                          joints={categorizedJoints[category]}
-                          onJointValueChange={handleJointValueChange}
-                          onResetCategory={handleResetCategory}
-                          showDegrees={showDegrees}
-                        />
-                      </div>
-                    );
-                  })}
+                  return (
+                    <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                      <DraggableCategory
+                        id={category}
+                        category={category}
+                        joints={categorizedJoints[category]}
+                        onJointValueChange={handleJointValueChange}
+                        onResetCategory={handleResetCategory}
+                        showDegrees={showDegrees}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </SortableContext>
+
+            <DragOverlay>
+              {activeId ? (
+                <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
+                  <JointCategory
+                    category={activeId}
+                    joints={categorizedJoints[activeId] || []}
+                    onJointValueChange={() => {}}
+                    onResetCategory={() => {}}
+                    showDegrees={showDegrees}
+                  />
                 </div>
-              </SortableContext>
-
-              <DragOverlay>
-                {activeId ? (
-                  <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
-                    <JointCategory
-                      category={activeId}
-                      joints={categorizedJoints[activeId] || []}
-                      onJointValueChange={() => {}}
-                      onResetCategory={() => {}}
-                      showDegrees={showDegrees}
-                    />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          </div>
-        </Content>
-      </Layout>
-
-      <style>{`
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-
-        /* Remove all rounded corners for TUI look */
-        .ant-btn,
-        .ant-btn-primary,
-        .ant-btn-default,
-        .ant-switch,
-        .ant-slider,
-        .ant-slider-rail,
-        .ant-slider-track,
-        .ant-slider-handle,
-        .ant-input-number,
-        .ant-card,
-        .ant-alert,
-        .ant-spin-container,
-        .ant-layout-header,
-        .ant-layout-content,
-        .ant-col,
-        .ant-row {
-          border-radius: 0 !important;
-        }
-
-        .ant-slider-track {
-          background-color: #00ff41 !important;
-        }
-
-        .ant-slider-handle {
-          border-color: #00ff41 !important;
-        }
-
-        .ant-slider-handle:focus {
-          border-color: #00ff41 !important;
-          box-shadow: 0 0 0 5px rgba(0, 255, 65, 0.2) !important;
-        }
-
-        .ant-input-number {
-          background-color: #1a1a1a !important;
-          border-color: #444 !important;
-          color: #fff !important;
-        }
-
-        .ant-input-number-input {
-          background-color: transparent !important;
-          color: #fff !important;
-        }
-
-        .ant-input-number-handler-wrap {
-          background-color: #333 !important;
-        }
-
-        .ant-input-number-handler {
-          border-color: #444 !important;
-          color: #fff !important;
-        }
-
-        .ant-input-number-handler:hover {
-          color: #00ff41 !important;
-        }
-
-        /* Additional TUI styling - remove rounded corners from all elements */
-        * {
-          border-radius: 0 !important;
-        }
-      `}</style>
-    </Layout>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </Page>
   );
 };

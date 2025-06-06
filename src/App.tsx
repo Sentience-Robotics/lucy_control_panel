@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { RobotControlPanel } from './Pages/RobotControlPanel';
 import { Robot3DViewer } from './Pages/Robot3DViewer';
 import { Navigation } from './Components/Navigation';
+import { NotFound } from './Pages/NotFound';
 
 function App() {
     return (
@@ -37,6 +38,7 @@ function App() {
                 <Routes>
                     <Route path="/" element={<RobotControlPanel />} />
                     <Route path="/3d-viewer" element={<Robot3DViewer />} />
+                    <Route path="*" element={<NotFound />} />
                 </Routes>
             </Router>
         </ConfigProvider>

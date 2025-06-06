@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid } from '@react-three/drei';
-import { Layout, Typography, Button, Space, Spin, Alert } from 'antd';
+import { Typography, Button, Spin, Alert } from 'antd';
 import { STLLoader } from 'three-stdlib';
 import * as THREE from 'three';
 import { RobotPathResolver } from '../Constants/robotConfig';
+import { Page } from '../Components/Page';
 
-const { Header, Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface MeshData {
     geometry: THREE.BufferGeometry;
@@ -165,158 +165,78 @@ export const Robot3DViewer: React.FC = () => {
 
     if (loading) {
         return (
-            <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-                <Content style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                    <Spin size="large" />
-                    <Text style={{ color: '#fff', marginLeft: 16 }}>Loading 3D robot model...</Text>
-                </Content>
-            </Layout>
+            <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <Spin size="large" />
+                <Text style={{ color: '#fff', marginLeft: 16 }}>Loading 3D robot model...</Text>
+            </Page>
         );
     }
 
     if (error) {
         return (
-            <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-                <Content style={{ padding: 24 }}>
-                    <Alert
-                        message="Error Loading 3D Model"
-                        description={error}
-                        type="error"
-                        showIcon
-                        action={
-                            <Button size="small" onClick={loadRobotModel}>
-                                Retry
-                            </Button>
-                        }
-                    />
-                </Content>
-            </Layout>
+            <Page>
+                <Alert
+                    message="Error Loading 3D Model"
+                    description={error}
+                    type="error"
+                    showIcon
+                    action={
+                        <Button size="small" onClick={loadRobotModel}>
+                            Retry
+                        </Button>
+                    }
+                />
+            </Page>
         );
     }
 
-  return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: '#000' }}>
-      <Header
-        style={{
-          backgroundColor: '#0a0a0a',
-          borderBottom: '2px solid #333',
-          padding: '0 24px',
-          height: 'auto',
-          lineHeight: 'normal',
-          paddingTop: 16,
-          paddingBottom: 16
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Title
-            level={2}
-            style={{
-              margin: 0,
-              color: '#00ff41',
-              fontFamily: 'monospace',
-              textShadow: '0 0 10px #00ff41'
-            }}
+  const headerContent = (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Text style={{ color: '#fff', fontFamily: 'monospace' }}>WIREFRAME:</Text>
+        <div className="tui-toggle">
+          <button
+            onClick={() => setWireframe(false)}
+            className={`tui-toggle-button ${!wireframe ? 'active' : ''}`}
           >
-            ▲ LUCY 3D VIEWER
-          </Title>
-
-          <Space>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <Text style={{ color: '#fff', fontFamily: 'monospace' }}>WIREFRAME:</Text>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  border: '1px solid #444',
-                  backgroundColor: '#1a1a1a',
-                  fontFamily: 'monospace',
-                  fontSize: '12px'
-                }}
-              >
-                <button
-                  onClick={() => setWireframe(false)}
-                  style={{
-                    padding: '4px 12px',
-                    border: 'none',
-                    backgroundColor: !wireframe ? '#00ff41' : 'transparent',
-                    color: !wireframe ? '#000' : '#666',
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  OFF
-                </button>
-                <div style={{ width: '1px', backgroundColor: '#444' }} />
-                <button
-                  onClick={() => setWireframe(true)}
-                  style={{
-                    padding: '4px 12px',
-                    border: 'none',
-                    backgroundColor: wireframe ? '#00ff41' : 'transparent',
-                    color: wireframe ? '#000' : '#666',
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  ON
-                </button>
-              </div>
-
-              <Text style={{ color: '#fff', fontFamily: 'monospace' }}>GRID:</Text>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  border: '1px solid #444',
-                  backgroundColor: '#1a1a1a',
-                  fontFamily: 'monospace',
-                  fontSize: '12px'
-                }}
-              >
-                <button
-                  onClick={() => setShowGrid(false)}
-                  style={{
-                    padding: '4px 12px',
-                    border: 'none',
-                    backgroundColor: !showGrid ? '#00ff41' : 'transparent',
-                    color: !showGrid ? '#000' : '#666',
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  OFF
-                </button>
-                <div style={{ width: '1px', backgroundColor: '#444' }} />
-                <button
-                  onClick={() => setShowGrid(true)}
-                  style={{
-                    padding: '4px 12px',
-                    border: 'none',
-                    backgroundColor: showGrid ? '#00ff41' : 'transparent',
-                    color: showGrid ? '#000' : '#666',
-                    fontFamily: 'monospace',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  ON
-                </button>
-              </div>
-            </div>
-          </Space>
+            OFF
+          </button>
+          <div className="tui-toggle-divider" />
+          <button
+            onClick={() => setWireframe(true)}
+            className={`tui-toggle-button ${wireframe ? 'active' : ''}`}
+          >
+            ON
+          </button>
         </div>
-      </Header>
 
-      <Content style={{ height: 'calc(100vh - 70px)', position: 'relative' }}>
+        <Text style={{ color: '#fff', fontFamily: 'monospace' }}>GRID:</Text>
+        <div className="tui-toggle">
+          <button
+            onClick={() => setShowGrid(false)}
+            className={`tui-toggle-button ${!showGrid ? 'active' : ''}`}
+          >
+            OFF
+          </button>
+          <div className="tui-toggle-divider" />
+          <button
+            onClick={() => setShowGrid(true)}
+            className={`tui-toggle-button ${showGrid ? 'active' : ''}`}
+          >
+            ON
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <Page
+      showHeader
+      title="LUCY 3D VIEWER"
+      headerContent={headerContent}
+      contentStyle={{ height: 'calc(100vh - 70px)', position: 'relative', padding: 0 }}
+    >
         <Canvas
           camera={{
             position: [5, 5, 5],
@@ -423,44 +343,6 @@ export const Robot3DViewer: React.FC = () => {
             }}
           />
         </div>
-      </Content>
-
-      <style>{`
-        /* TUI styling */
-        .ant-btn,
-        .ant-switch,
-        .ant-layout-header,
-        .ant-layout-content {
-          border-radius: 0 !important;
-        }
-
-        /* Custom slider styling */
-        input[type="range"] {
-          -webkit-appearance: none;
-          appearance: none;
-          background: #333;
-          cursor: pointer;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 16px;
-          width: 16px;
-          background: #00ff41;
-          cursor: pointer;
-          border: none;
-        }
-
-        input[type="range"]::-moz-range-thumb {
-          height: 16px;
-          width: 16px;
-          background: #00ff41;
-          cursor: pointer;
-          border: none;
-          border-radius: 0;
-        }
-      `}</style>
-    </Layout>
+      </Page>
   );
 };
