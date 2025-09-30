@@ -1,7 +1,13 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Space } from 'antd';
-import { EyeOutlined, ControlOutlined } from '@ant-design/icons';
+import { EyeOutlined, ControlOutlined, CameraOutlined } from '@ant-design/icons';
+
+const navigationItems = [
+    { to: '/', label: 'CONTROL', icon: <ControlOutlined /> },
+    { to: '/3d-viewer', label: '3D VIEW', icon: <EyeOutlined /> },
+    { to: '/stream', label: 'STREAM', icon: <CameraOutlined /> }
+];
 
 export const Navigation: React.FC = () => {
     const location = useLocation();
@@ -20,36 +26,23 @@ export const Navigation: React.FC = () => {
                 }}
         >
             <Space>
-                <Link to="/">
-                    <Button
-                        type={location.pathname === '/' ? 'primary' : 'default'}
-                        icon={<ControlOutlined />}
-                        style={{
-                            backgroundColor: location.pathname === '/' ? '#00ff41' : 'transparent',
-                            borderColor: location.pathname === '/' ? '#00ff41' : '#444',
-                            color: location.pathname === '/' ? '#000' : '#fff',
-                            fontWeight: 'bold',
-                            fontSize: '11px'
-                        }}
-                    >
-                        CONTROL
-                    </Button>
-                </Link>
-                <Link to="/3d-viewer">
-                    <Button
-                        type={location.pathname === '/3d-viewer' ? 'primary' : 'default'}
-                        icon={<EyeOutlined />}
-                        style={{
-                            backgroundColor: location.pathname === '/3d-viewer' ? '#00ff41' : 'transparent',
-                            borderColor: location.pathname === '/3d-viewer' ? '#00ff41' : '#444',
-                            color: location.pathname === '/3d-viewer' ? '#000' : '#fff',
-                            fontWeight: 'bold',
-                            fontSize: '11px'
-                        }}
-                    >
-                        3D VIEW
-                    </Button>
-                </Link>
+                {navigationItems.map(item => (
+                    <Link to={item.to} key={item.to}>
+                        <Button
+                            type={location.pathname === item.to ? 'primary' : 'default'}
+                            icon={item.icon}
+                            style={{
+                                backgroundColor: location.pathname === item.to ? '#00ff41' : 'transparent',
+                                borderColor: location.pathname === item.to ? '#00ff41' : '#444',
+                                color: location.pathname === item.to ? '#000' : '#fff',
+                                fontWeight: 'bold',
+                                fontSize: '11px'
+                            }}
+                        >
+                            {item.label}
+                        </Button>
+                    </Link>
+                ))}
             </Space>
         </div>
     );

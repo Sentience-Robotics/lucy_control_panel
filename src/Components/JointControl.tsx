@@ -1,7 +1,7 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Tag } from 'antd';
 import type { JointControlState } from '../Constants/robotTypes';
-import { UrdfParser } from '../Utils/urdfParser';
+import { UrdfParser } from '../Utils/urdfParser.utils.ts';
 
 const { Text } = Typography;
 
