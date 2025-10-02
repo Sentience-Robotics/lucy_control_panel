@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     Typography,
     Space,
@@ -8,6 +8,7 @@ import {
     Col,
     Alert,
     Spin,
+    Input,
 } from 'antd';
 import {
     ReloadOutlined,
@@ -58,6 +59,46 @@ export const RobotControlPanel: React.FC = () => {
     ]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
+
+    // Floating stream window state
+    const STREAM_URL_KEY = 'lucy_stream_url';
+    const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
+    const STREAM_POS_KEY = 'lucy_stream_pos';
+    const STREAM_SIZE_KEY = 'lucy_stream_size';
+
+    const defaultStreamUrl = useMemo(() => (
+        typeof window !== 'undefined'
+            ? (localStorage.getItem(STREAM_URL_KEY) || import.meta.env.VITE_STREAM_URL || 'http://100.64.0.11:8080/')
+            : 'http://100.64.0.11:8080/'
+    ), []);
+
+    const [streamUrl, setStreamUrl] = useState<string>(defaultStreamUrl);
+    const [isStreamVisible, setIsStreamVisible] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        const saved = localStorage.getItem(STREAM_VISIBLE_KEY);
+        return saved ? saved === 'true' : false;
+    });
+    const [{ x, y }, setPos] = useState<{ x: number; y: number }>(() => {
+        if (typeof window === 'undefined') return { x: 16, y: 16 };
+        try {
+            const saved = localStorage.getItem(STREAM_POS_KEY);
+            return saved ? JSON.parse(saved) : { x: 16, y: 16 };
+        } catch {
+            return { x: 16, y: 16 };
+        }
+    });
+    const [{ w, h }, setSize] = useState<{ w: number; h: number }>(() => {
+        if (typeof window === 'undefined') return { w: 360, h: 220 };
+        try {
+            const saved = localStorage.getItem(STREAM_SIZE_KEY);
+            return saved ? JSON.parse(saved) : { w: 360, h: 220 };
+        } catch {
+            return { w: 360, h: 220 };
+        }
+    });
+    const [reloadKey, setReloadKey] = useState<number>(0);
+    const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+    const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -113,6 +154,20 @@ export const RobotControlPanel: React.FC = () => {
         loadUrdfData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Persist stream UI state
+    useEffect(() => {
+        try { localStorage.setItem(STREAM_URL_KEY, streamUrl); } catch {}
+    }, [streamUrl]);
+    useEffect(() => {
+        try { localStorage.setItem(STREAM_VISIBLE_KEY, String(isStreamVisible)); } catch {}
+    }, [isStreamVisible]);
+    useEffect(() => {
+        try { localStorage.setItem(STREAM_POS_KEY, JSON.stringify({ x, y })); } catch {}
+    }, [x, y]);
+    useEffect(() => {
+        try { localStorage.setItem(STREAM_SIZE_KEY, JSON.stringify({ w, h })); } catch {}
+    }, [w, h]);
 
     useEffect(() => {
         if (!isSending) {
@@ -371,6 +426,17 @@ export const RobotControlPanel: React.FC = () => {
                             onLoadPose={handleLoadPose}
                             categoryOrder={categoryOrder}
                         />
+                        <Button
+                            onClick={() => setIsStreamVisible(v => !v)}
+                            style={{
+                                backgroundColor: isStreamVisible ? '#00ff41' : 'transparent',
+                                color: isStreamVisible ? '#000' : '#fff',
+                                borderColor: isStreamVisible ? '#00ff41' : '#444',
+                                boxShadow: isStreamVisible ? '0 0 10px #00ff41' : 'none',
+                            }}
+                        >
+                            {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
+                        </Button>
                     </Space>
                 </Col>
 
@@ -491,6 +557,107 @@ export const RobotControlPanel: React.FC = () => {
                     ) : null}
                 </DragOverlay>
             </DndContext>
+
+            {/* Floating Stream Window */}
+            {isStreamVisible && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        left: x,
+                        top: y,
+                        width: w,
+                        height: h,
+                        zIndex: 1000,
+                        backgroundColor: '#0b0b0b',
+                        border: '1px solid #333',
+                        borderRadius: 8,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                        overflow: 'hidden',
+                        userSelect: 'none',
+                    }}
+                >
+                    <div
+                        onMouseDown={(e) => {
+                            draggingRef.current = { startX: e.clientX, startY: e.clientY, origX: x, origY: y };
+                            const onMove = (ev: MouseEvent) => {
+                                if (!draggingRef.current) return;
+                                const dx = ev.clientX - draggingRef.current.startX;
+                                const dy = ev.clientY - draggingRef.current.startY;
+                                setPos({ x: Math.max(8, draggingRef.current.origX + dx), y: Math.max(8, draggingRef.current.origY + dy) });
+                            };
+                            const onUp = () => {
+                                draggingRef.current = null;
+                                window.removeEventListener('mousemove', onMove);
+                                window.removeEventListener('mouseup', onUp);
+                            };
+                            window.addEventListener('mousemove', onMove);
+                            window.addEventListener('mouseup', onUp);
+                        }}
+                        style={{
+                            height: 36,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0 8px',
+                            background: 'linear-gradient(180deg, #121212, #0b0b0b)',
+                            borderBottom: '1px solid #222',
+                            cursor: 'move',
+                        }}
+                    >
+                        <span style={{ color: '#9cf', fontFamily: 'monospace', fontSize: 12 }}>STREAM</span>
+                        <Space size={6} align="center">
+                            <Input
+                                size="small"
+                                style={{ width: 240 }}
+                                value={streamUrl}
+                                onChange={(e) => setStreamUrl(e.target.value)}
+                                onPressEnter={() => setReloadKey(k => k + 1)}
+                            />
+                            <Button size="small" onClick={() => setReloadKey(k => k + 1)}>Reload</Button>
+                            <Button size="small" href={streamUrl} target="_blank" rel="noreferrer">Open</Button>
+                            <Button size="small" danger onClick={() => setIsStreamVisible(false)}>Close</Button>
+                        </Space>
+                    </div>
+                    <div style={{ width: '100%', height: `calc(100% - 36px)` }}>
+                        <iframe
+                            key={reloadKey}
+                            src={streamUrl}
+                            style={{ width: '100%', height: '100%', border: 'none' }}
+                            allow="autoplay; fullscreen; picture-in-picture"
+                            referrerPolicy="no-referrer"
+                            title="Floating Stream"
+                        />
+                    </div>
+                    <div
+                        onMouseDown={(e) => {
+                            e.stopPropagation();
+                            resizingRef.current = { startX: e.clientX, startY: e.clientY, origW: w, origH: h };
+                            const onMove = (ev: MouseEvent) => {
+                                if (!resizingRef.current) return;
+                                const dw = ev.clientX - resizingRef.current.startX;
+                                const dh = ev.clientY - resizingRef.current.startY;
+                                setSize({ w: Math.max(260, resizingRef.current.origW + dw), h: Math.max(160, resizingRef.current.origH + dh) });
+                            };
+                            const onUp = () => {
+                                resizingRef.current = null;
+                                window.removeEventListener('mousemove', onMove);
+                                window.removeEventListener('mouseup', onUp);
+                            };
+                            window.addEventListener('mousemove', onMove);
+                            window.addEventListener('mouseup', onUp);
+                        }}
+                        style={{
+                            position: 'absolute',
+                            right: 0,
+                            bottom: 0,
+                            width: 14,
+                            height: 14,
+                            cursor: 'nwse-resize',
+                            background: 'linear-gradient(135deg, transparent 50%, #333 50%)',
+                        }}
+                    />
+                </div>
+            )}
         </Page>
     );
 };
