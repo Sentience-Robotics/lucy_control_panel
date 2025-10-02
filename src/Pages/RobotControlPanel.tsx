@@ -37,7 +37,7 @@ import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { Page } from '../Components/Page';
-import { JointStateHandler } from "../Services/ros.service";
+import { JointStateHandler, RosBridgeService } from "../Services/ros.service";
 
 const { Text } = Typography;
 
@@ -59,6 +59,8 @@ export const RobotControlPanel: React.FC = () => {
     ]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
+    const [rosConnected, setRosConnected] = useState<boolean>(RosBridgeService.getInstance().isConnected);
+    const [reconnecting, setReconnecting] = useState<boolean>(false);
 
     // Floating stream window state
     const STREAM_URL_KEY = 'lucy_stream_url';
@@ -155,18 +157,30 @@ export const RobotControlPanel: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Poll ROS bridge connection status
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const connected = RosBridgeService.getInstance().isConnected;
+            setRosConnected(connected);
+            if (connected && reconnecting) {
+                setReconnecting(false);
+            }
+        }, 500);
+        return () => clearInterval(interval);
+    }, [reconnecting]);
+
     // Persist stream UI state
     useEffect(() => {
-        try { localStorage.setItem(STREAM_URL_KEY, streamUrl); } catch {}
+        try { localStorage.setItem(STREAM_URL_KEY, streamUrl); } catch { /* empty */ }
     }, [streamUrl]);
     useEffect(() => {
-        try { localStorage.setItem(STREAM_VISIBLE_KEY, String(isStreamVisible)); } catch {}
+        try { localStorage.setItem(STREAM_VISIBLE_KEY, String(isStreamVisible)); } catch { /* empty */ }
     }, [isStreamVisible]);
     useEffect(() => {
-        try { localStorage.setItem(STREAM_POS_KEY, JSON.stringify({ x, y })); } catch {}
+        try { localStorage.setItem(STREAM_POS_KEY, JSON.stringify({ x, y })); } catch { /* empty */ }
     }, [x, y]);
     useEffect(() => {
-        try { localStorage.setItem(STREAM_SIZE_KEY, JSON.stringify({ w, h })); } catch {}
+        try { localStorage.setItem(STREAM_SIZE_KEY, JSON.stringify({ w, h })); } catch { /* empty */ }
     }, [w, h]);
 
     useEffect(() => {
@@ -392,6 +406,46 @@ export const RobotControlPanel: React.FC = () => {
                                 value={Object.keys(categorizedJoints).length}
                                 valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
                             />
+                        </Col>
+                        <Col>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    padding: '4px 10px',
+                                    borderRadius: 16,
+                                    backgroundColor: '#0d0d0d',
+                                    border: '1px solid #333'
+                                }}>
+                                    <span style={{
+                                        width: 10,
+                                        height: 10,
+                                        borderRadius: '50%',
+                                        backgroundColor: rosConnected ? '#00ff41' : '#ff4d4f',
+                                        boxShadow: rosConnected ? '0 0 8px #00ff41' : '0 0 8px #ff4d4f'
+                                    }} />
+                                    <Text style={{ color: rosConnected ? '#00ff41' : '#ff4d4f', fontFamily: 'monospace', fontSize: 12 }}>
+                                        {rosConnected ? 'ROS BRIDGE: CONNECTED' : (reconnecting ? 'ROS BRIDGE: RECONNECTING…' : 'ROS BRIDGE: DISCONNECTED')}
+                                    </Text>
+                                </div>
+                                <Button
+                                    size="small"
+                                    onClick={() => {
+                                        setReconnecting(true);
+                                        RosBridgeService.getInstance().reconnect();
+                                    }}
+                                    disabled={rosConnected || reconnecting}
+                                    style={{
+                                        backgroundColor: (!rosConnected && !reconnecting) ? '#00ff41' : 'transparent',
+                                        color: (!rosConnected && !reconnecting) ? '#000' : '#fff',
+                                        borderColor: (!rosConnected && !reconnecting) ? '#00ff41' : '#444',
+                                        boxShadow: !(!rosConnected && !reconnecting) ? '0 0 8px #00ff41' : 'none',
+                                    }}
+                                >
+                                    {reconnecting ? 'RECONNECTING…' : 'RECONNECT'}
+                                </Button>
+                            </div>
                         </Col>
                     </Row>
                 </Space>
