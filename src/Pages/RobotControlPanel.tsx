@@ -61,6 +61,15 @@ export const RobotControlPanel: React.FC = () => {
     const [isSending, setIsSending] = useState(false);
     const [rosConnected, setRosConnected] = useState<boolean>(RosBridgeService.getInstance().isConnected);
     const [reconnecting, setReconnecting] = useState<boolean>(false);
+    
+    // ROS URL state
+    const ROS_URL_KEY = 'lucy_ros_url';
+    const defaultRosUrl = useMemo(() => (
+        typeof window !== 'undefined'
+            ? (localStorage.getItem(ROS_URL_KEY) || import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
+            : (import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
+    ), []);
+    const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
 
     // Floating stream window state
     const STREAM_URL_KEY = 'lucy_stream_url';
@@ -182,6 +191,9 @@ export const RobotControlPanel: React.FC = () => {
     useEffect(() => {
         try { localStorage.setItem(STREAM_SIZE_KEY, JSON.stringify({ w, h })); } catch { /* empty */ }
     }, [w, h]);
+    useEffect(() => {
+        try { localStorage.setItem(ROS_URL_KEY, rosUrl); } catch { /* empty */ }
+    }, [rosUrl]);
 
     useEffect(() => {
         if (!isSending) {
@@ -429,11 +441,25 @@ export const RobotControlPanel: React.FC = () => {
                                         {rosConnected ? 'ROS BRIDGE: CONNECTED' : (reconnecting ? 'ROS BRIDGE: RECONNECTING…' : 'ROS BRIDGE: DISCONNECTED')}
                                     </Text>
                                 </div>
+                                <Input
+                                    size="small"
+                                    placeholder="ROS Bridge URL"
+                                    value={rosUrl}
+                                    onChange={(e) => setRosUrl(e.target.value)}
+                                    style={{
+                                        width: 200,
+                                        backgroundColor: '#0d0d0d',
+                                        borderColor: '#333',
+                                        color: '#fff',
+                                        fontFamily: 'monospace',
+                                        fontSize: 12
+                                    }}
+                                />
                                 <Button
                                     size="small"
                                     onClick={() => {
                                         setReconnecting(true);
-                                        RosBridgeService.getInstance().reconnect();
+                                        RosBridgeService.getInstance().changeUrl(rosUrl);
                                     }}
                                     disabled={rosConnected || reconnecting}
                                     style={{

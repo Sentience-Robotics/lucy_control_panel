@@ -7,14 +7,16 @@ class RosBridgeService {
     private static instance: RosBridgeService;
     private ros: ROSLIB.Ros;
     private _isConnected = false;
+    private url: string;
 
     private constructor() {
+        this.url = import.meta.env.VITE_ROS_BRIDGE_SERVER_URL;
         this.ros = this.createConnection();
     }
 
     private createConnection(): ROSLIB.Ros {
         const ros = new ROSLIB.Ros({
-            url: import.meta.env.VITE_ROS_BRIDGE_SERVER_URL
+            url: this.url
         });
 
         ros.on('connection', () => {
@@ -50,9 +52,9 @@ class RosBridgeService {
         return this._isConnected;
     }
 
-    reconnect() {
-        console.log('Reconnecting to ROS websocket server...');
+    changeUrl(url: string) {
         this.ros.close();
+        this.url = url;
         this.ros = this.createConnection();
     }
 }
