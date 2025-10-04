@@ -24,7 +24,9 @@ class RosBridgeService {
             this._isConnected = true;
         });
 
-        ros.on('error', (error) => {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        ros.on('error', (error: never) => {
             console.log('Error connecting to ROS websocket server: ', error);
             this._isConnected = false;
         });
