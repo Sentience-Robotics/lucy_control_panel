@@ -21,7 +21,7 @@ import {
   ClockCircleOutlined
 } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
-import { storageService, type SavedPose } from '../Services/storageService';
+import { storageService, type SavedPose } from '../Services/storage.service.ts';
 
 const { Text, Title } = Typography;
 
