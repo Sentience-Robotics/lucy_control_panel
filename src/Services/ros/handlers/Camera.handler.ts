@@ -1,0 +1,103 @@
+import ROSLIB from "roslib";
+import { RosBridgeService } from "../ros.service.ts";
+
+export class CameraHandler {
+    private static instance: CameraHandler;
+    private imageTopic: ROSLIB.Topic | null = null;
+    private subscribers: ((imageData: Uint8Array) => void)[] = [];
+    private ros: ROSLIB.Ros | null = null;
+    private lastFrameTime = 0;
+    private frameInterval = 100; // ms between frames ≈ 10 FPS
+    private unsubscribeFromStatus: (() => void) | null = null;
+
+    private constructor() {
+        this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
+            if (status === 'connected') {
+                this.ros = RosBridgeService.getInstance().rosConnection;
+                if (this.subscribers.length > 0 && !this.imageTopic) {
+                    this.initializeTopic();
+                }
+            } else if (status === 'disconnected') {
+                this.ros = null;
+                if (this.imageTopic) {
+                    this.imageTopic.unsubscribe();
+                    this.imageTopic = null;
+                }
+            }
+        });
+
+        this.ros = RosBridgeService.getInstance().rosConnection;
+    }
+
+    static getInstance(): CameraHandler {
+        if (!CameraHandler.instance) {
+            CameraHandler.instance = new CameraHandler();
+        }
+        return CameraHandler.instance;
+    }
+
+    static cleanup(): void {
+        if (CameraHandler.instance && CameraHandler.instance.unsubscribeFromStatus) {
+            CameraHandler.instance.unsubscribeFromStatus();
+        }
+    }
+
+    private initializeTopic(
+        topicName: string = '/camera/mobius/jpg',
+        messageType: string = 'sensor_msgs/msg/CompressedImage'
+    ) {
+        if (!this.ros) {
+            console.warn('Cannot initialize camera topic: ROS connection not available');
+            return;
+        }
+
+        this.imageTopic = new ROSLIB.Topic({
+            ros: this.ros,
+            name: topicName,
+            messageType: messageType,
+        });
+
+        this.imageTopic.subscribe((message: any) => {
+            const now = Date.now();
+            if (now - this.lastFrameTime < this.frameInterval) {
+                return; // Skip frame if it's too soon
+            }
+            this.lastFrameTime = now;
+
+            if (!message.data) {
+                return;
+            }
+
+            try {
+                const binary = atob(message.data);
+                const len = binary.length;
+                const array = new Uint8Array(len);
+                for (let i = 0; i < len; i++) array[i] = binary.charCodeAt(i);
+
+                this.subscribers.forEach(sub => sub(array));
+            } catch (err) {
+                console.error('Failed to decode image data:', err);
+            }
+        });
+    }
+
+    subscribeToCamera(
+        callback: (imageData: Uint8Array) => void,
+        topicName: string = '/camera/mobius/jpg',
+        messageType: string = 'sensor_msgs/msg/CompressedImage'
+    ) {
+        this.subscribers.push(callback);
+
+        if (this.imageTopic) return;
+
+        this.initializeTopic(topicName, messageType);
+    }
+
+    unsubscribeFromCamera(callback: (imageData: Uint8Array) => void) {
+        this.subscribers = this.subscribers.filter(sub => sub !== callback);
+        if (this.subscribers.length === 0 && this.imageTopic) {
+            this.imageTopic.unsubscribe();
+            this.imageTopic = null;
+        }
+    }
+}

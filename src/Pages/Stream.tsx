@@ -1,11 +1,11 @@
 import React from 'react';
 import { Page } from '../Components/Page';
 import { Space, Typography } from "antd";
+import { StreamPlayer } from '../Components/StreamPlayer';
 
 const Text = Typography;
 
 export const Stream: React.FC = () => {
-
     const headerContent = (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <div>
@@ -34,14 +34,7 @@ export const Stream: React.FC = () => {
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
-            <div style={{ width: '100%', height: '70vh', border: '1px solid #333', position: 'relative' }}>
-                <iframe
-                    src="http://100.64.0.11:8080/"
-                    style={{ width: '100%', height: '100%', border: 'none' }}
-                    allow="autoplay"
-                    title="Stream"
-                />
-            </div>
+            <StreamPlayer />
         </Page>
     );
 };

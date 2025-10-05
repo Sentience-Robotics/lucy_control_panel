@@ -18,7 +18,6 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
         setLoading(true);
         
         try {
-            // Get the expected credentials from environment variables
             const expectedPassword = import.meta.env.VITE_LOCAL_PASSWORD;
             const expectedUsername = import.meta.env.VITE_LOCAL_USERNAME;
             
@@ -26,15 +25,12 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                 throw new Error('Authentication not configured');
             }
 
-            // Validate username
             if (values.username.toLowerCase() !== expectedUsername.toLowerCase()) {
                 throw new Error('Invalid username');
             }
 
-            // Hash the entered password with MD5
             const hashedPassword = CryptoJS.MD5(values.password).toString();
-            
-            // Compare with the expected password (which should also be MD5 hashed)
+
             if (hashedPassword === expectedPassword) {
                 onLogin(values.username);
             } else {
