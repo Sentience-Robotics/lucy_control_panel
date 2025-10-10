@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid } from '@react-three/drei';
 import { Typography, Button, Spin, Alert } from 'antd';
-import { STLLoader } from 'three-stdlib';
+import {isWebGLAvailable, STLLoader} from 'three-stdlib';
 import * as THREE from 'three';
-import { RobotPathResolver } from '../Constants/robotConfig';
+// import { RobotPathResolver } from '../Constants/robotConfig';
 import { Page } from '../Components/Page';
 
 const { Text } = Typography;
@@ -64,99 +66,108 @@ export const Robot3DViewer: React.FC = () => {
     const loaderRef = useRef(new STLLoader());
 
     const loadRobotModel = async () => {
-        try {
-            setLoading(true);
-            setError(null);
-
-            // Load URDF file
-            const urdfResponse = await fetch(RobotPathResolver.getUrdfPath());
-            if (!urdfResponse.ok) {
-                throw new Error('Failed to load URDF file');
-            }
-
-            const urdfContent = await urdfResponse.text();
-
-            // Parse URDF to extract mesh references and transforms
-            const parser = new DOMParser();
-            const urdfDocument = parser.parseFromString(urdfContent, 'text/xml');
-
-            const visualElements = urdfDocument.querySelectorAll('visual');
-            const meshDataArray: MeshData[] = [];
-
-            for (const visual of visualElements) {
-                const meshElement = visual.querySelector('mesh');
-            if (!meshElement) {
-                continue;
-            }
-
-            const filename = meshElement.getAttribute('filename');
-            if (!filename) {
-                continue;
-            }
-
-            // Convert URDF path to public path using configuration
-            const stlPath = RobotPathResolver.resolveUrdfMeshPath(filename);
-
-            try {
-                // Load STL geometry
-                const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
-                loaderRef.current.load(
-                    stlPath,
-                    (geometry) => {
-                    geometry.computeVertexNormals();
-                    geometry.center();
-                    resolve(geometry);
-                    },
-                    undefined,
-                    (error) => reject(error)
-                );
-                });
-
-                // Extract transform information
-                const origin = visual.parentElement?.querySelector('origin');
-                let position: [number, number, number] = [0, 0, 0];
-                let rotation: [number, number, number] = [0, 0, 0];
-
-                if (origin) {
-                const xyz = origin.getAttribute('xyz');
-                const rpy = origin.getAttribute('rpy');
-
-                if (xyz) {
-                    const coords = xyz.split(' ').map(Number);
-                    position = [coords[0] || 0, coords[1] || 0, coords[2] || 0];
-                }
-
-                if (rpy) {
-                    const angles = rpy.split(' ').map(Number);
-                    rotation = [angles[0] || 0, angles[1] || 0, angles[2] || 0];
-                }
-                }
-
-                // Extract scale
-                const scaleAttr = meshElement.getAttribute('scale');
-                let scale: [number, number, number] = [1, 1, 1];
-                if (scaleAttr) {
-                    const scaleValues = scaleAttr.split(' ').map(Number);
-                    scale = [scaleValues[0] || 1, scaleValues[1] || 1, scaleValues[2] || 1];
-                }
-
-                meshDataArray.push({
-                    geometry,
-                    position,
-                    rotation,
-                    scale,
-                    name: filename
-                });
-            } catch (meshError) {
-                console.warn(`Failed to load mesh ${stlPath}:`, meshError);
-            }
-        }
-            setMeshes(meshDataArray);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load robot model');
-        } finally {
+        if (!isWebGLAvailable()) {
+            setError('WebGL is not supported or activated in your browser. Please use a WebGL-compatible browser.');
             setLoading(false);
+            return;
         }
+        setError("This page is currently not usable, as our URDF file is not finished yet. Please check back later.");
+        setLoading(false);
+        return;
+
+        // try {
+        //     setLoading(true);
+        //     setError(null);
+        //
+        //     // Load URDF file
+        //     const urdfResponse = await fetch(RobotPathResolver.getUrdfPath());
+        //     if (!urdfResponse.ok) {
+        //         throw new Error('Failed to load URDF file');
+        //     }
+        //
+        //     const urdfContent = await urdfResponse.text();
+        //
+        //     // Parse URDF to extract mesh references and transforms
+        //     const parser = new DOMParser();
+        //     const urdfDocument = parser.parseFromString(urdfContent, 'text/xml');
+        //
+        //     const visualElements = urdfDocument.querySelectorAll('visual');
+        //     const meshDataArray: MeshData[] = [];
+        //
+        //     for (const visual of visualElements) {
+        //         const meshElement = visual.querySelector('mesh');
+        //     if (!meshElement) {
+        //         continue;
+        //     }
+        //
+        //     const filename = meshElement.getAttribute('filename');
+        //     if (!filename) {
+        //         continue;
+        //     }
+        //
+        //     // Convert URDF path to public path using configuration
+        //     const stlPath = RobotPathResolver.resolveUrdfMeshPath(filename);
+        //
+        //     try {
+        //         // Load STL geometry
+        //         const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
+        //         loaderRef.current.load(
+        //             stlPath,
+        //             (geometry) => {
+        //             geometry.computeVertexNormals();
+        //             geometry.center();
+        //             resolve(geometry);
+        //             },
+        //             undefined,
+        //             (error) => reject(error)
+        //         );
+        //         });
+        //
+        //         // Extract transform information
+        //         const origin = visual.parentElement?.querySelector('origin');
+        //         let position: [number, number, number] = [0, 0, 0];
+        //         let rotation: [number, number, number] = [0, 0, 0];
+        //
+        //         if (origin) {
+        //         const xyz = origin.getAttribute('xyz');
+        //         const rpy = origin.getAttribute('rpy');
+        //
+        //         if (xyz) {
+        //             const coords = xyz.split(' ').map(Number);
+        //             position = [coords[0] || 0, coords[1] || 0, coords[2] || 0];
+        //         }
+        //
+        //         if (rpy) {
+        //             const angles = rpy.split(' ').map(Number);
+        //             rotation = [angles[0] || 0, angles[1] || 0, angles[2] || 0];
+        //         }
+        //         }
+        //
+        //         // Extract scale
+        //         const scaleAttr = meshElement.getAttribute('scale');
+        //         let scale: [number, number, number] = [1, 1, 1];
+        //         if (scaleAttr) {
+        //             const scaleValues = scaleAttr.split(' ').map(Number);
+        //             scale = [scaleValues[0] || 1, scaleValues[1] || 1, scaleValues[2] || 1];
+        //         }
+        //
+        //         meshDataArray.push({
+        //             geometry,
+        //             position,
+        //             rotation,
+        //             scale,
+        //             name: filename
+        //         });
+        //     } catch (meshError) {
+        //         console.warn(`Failed to load mesh ${stlPath}:`, meshError);
+        //     }
+        // }
+        //     setMeshes(meshDataArray);
+        // } catch (err) {
+        //     setError(err instanceof Error ? err.message : 'Failed to load robot model');
+        // } finally {
+        //     setLoading(false);
+        // }
     };
 
     useEffect(() => {

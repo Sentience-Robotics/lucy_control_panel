@@ -1,11 +1,13 @@
 import { ConfigProvider, theme } from 'antd';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+/* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
 import { Robot3DViewer } from './Pages/Robot3DViewer';
-import { Stream } from "./Pages/Stream";
+import { Stream } from "./Pages/Stream.tsx";
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
+/* Components */
 import { AuthForm } from './Components/AuthForm';
 
 function App() {
@@ -14,7 +16,6 @@ function App() {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [authError, setAuthError] = useState<string>('');
 
-    // Check if user is already authenticated on app load
     useEffect(() => {
         const savedAuth = localStorage.getItem('lucy_auth');
         if (savedAuth) {
@@ -28,7 +29,7 @@ function App() {
                 } else {
                     localStorage.removeItem('lucy_auth');
                 }
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (error) {
                 localStorage.removeItem('lucy_auth');
             }
@@ -38,56 +39,13 @@ function App() {
     const handleLogin = (user: string) => {
         setIsAuthenticated(true);
         setAuthError('');
-        // Save authentication state
         localStorage.setItem('lucy_auth', JSON.stringify({
             username: user,
             timestamp: new Date().toISOString()
         }));
     };
 
-    if (!localPassword || !localUsername) {
-        return (
-            <ConfigProvider
-                theme={{
-                    algorithm: theme.darkAlgorithm,
-                    token: {
-                        colorPrimary: '#00ff41',
-                        colorBgBase: '#000000',
-                        colorBgContainer: '#0a0a0a',
-                        colorBorder: '#333333',
-                        colorText: '#ffffff',
-                        colorTextSecondary: '#888888',
-                        fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
-                    },
-                    components: {
-                        Layout: {
-                            bodyBg: '#000000',
-                            headerBg: '#0a0a0a',
-                        },
-                        Card: {
-                            colorBgContainer: '#0a0a0a',
-                        },
-                        Button: {
-                            colorBgContainer: 'transparent',
-                        },
-                    },
-                }}
-            >
-                <Router>
-                    <Navigation />
-                    <Routes>
-                        <Route path="/" element={<RobotControlPanel />} />
-                        <Route path="/3d-viewer" element={<Robot3DViewer />} />
-                        <Route path="/stream" element={<Stream />} />
-                        <Route path="*" element={<NotFound />} />
-                    </Routes>
-                </Router>
-            </ConfigProvider>
-        );
-    }
-
-    // If password is configured but user is not authenticated, show login form
-    if (!isAuthenticated) {
+    if (localPassword && localUsername && !isAuthenticated) {
         return (
             <ConfigProvider
                 theme={{
@@ -108,7 +66,6 @@ function App() {
         );
     }
 
-    // User is authenticated, show the main app
     return (
         <ConfigProvider
             theme={{

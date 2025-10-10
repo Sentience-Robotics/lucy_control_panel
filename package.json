@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "quickbuild": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -41,6 +42,6 @@
     "globals": "^16.0.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
-    "vite": "^6.3.5"
+    "vite": "5.4.14"
   }
 }
