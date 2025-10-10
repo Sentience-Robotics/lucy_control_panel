@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     Typography,
     Space,
@@ -11,6 +11,7 @@ import {
     Input,
 } from 'antd';
 import {
+    CameraOutlined,
     ReloadOutlined,
     ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -30,20 +31,45 @@ import {
     sortableKeyboardCoordinates,
     rectSortingStrategy,
 } from '@dnd-kit/sortable';
+
+/* Services */
+import { EnableCameraHandler } from "../Services/ros/handlers/EnableCamera.handler";
+import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
+
+/* Hooks */
+import { useRosConnection } from "../hooks/useRosConnection.hook";
+
+/* Utils */
 // import { UrdfParser } from '../Utils/urdfParser.utils.ts';
+
+/* Types */
 import type { JointControlState } from '../Constants/robotTypes';
 // import { RobotPathResolver } from '../Constants/robotConfig';
+
+/* Components */
+import { Page } from '../Components/Page';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
-import { Page } from '../Components/Page';
-import { JointStateHandler, RosBridgeService } from "../Services/ros.service";
+import { ToggleSwitch } from "../Components/ToggleSwitch";
+import StreamPlayerModal from "../Components/StreamPlayerModal";
 
 const { Text } = Typography;
 
 const REFRESH_RATE = 1000;
 
 export const RobotControlPanel: React.FC = () => {
+    const { 
+        connectionStatus, 
+        isConnected, 
+        isConnecting, 
+        isReconnecting, 
+        isDisconnected, 
+        connect, 
+        reconnect, 
+        disconnect 
+    } = useRosConnection();
+
     const [joints, setJoints] = useState<JointControlState[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -59,48 +85,26 @@ export const RobotControlPanel: React.FC = () => {
     ]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
-    const [rosConnected, setRosConnected] = useState<boolean>(RosBridgeService.getInstance().isConnected);
-    const [reconnecting, setReconnecting] = useState<boolean>(false);
+    const [isCamOn, setIsCamOn] = useState(false);
+
+    // ROS URL state
+    const ROS_URL_KEY = 'lucy_ros_url';
+    const defaultRosUrl = useMemo(() => (
+        typeof window !== 'undefined'
+            ? (localStorage.getItem(ROS_URL_KEY) || import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
+            : (import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
+    ), []);
+    const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
+    const [connectionError, setConnectionError] = useState<string | null>(null);
 
     // Floating stream window state
-    const STREAM_URL_KEY = 'lucy_stream_url';
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
-    const STREAM_POS_KEY = 'lucy_stream_pos';
-    const STREAM_SIZE_KEY = 'lucy_stream_size';
 
-    const defaultStreamUrl = useMemo(() => (
-        typeof window !== 'undefined'
-            ? (localStorage.getItem(STREAM_URL_KEY) || import.meta.env.VITE_STREAM_URL || 'http://100.64.0.11:8080/')
-            : 'http://100.64.0.11:8080/'
-    ), []);
-
-    const [streamUrl, setStreamUrl] = useState<string>(defaultStreamUrl);
     const [isStreamVisible, setIsStreamVisible] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         const saved = localStorage.getItem(STREAM_VISIBLE_KEY);
         return saved ? saved === 'true' : false;
     });
-    const [{ x, y }, setPos] = useState<{ x: number; y: number }>(() => {
-        if (typeof window === 'undefined') return { x: 16, y: 16 };
-        try {
-            const saved = localStorage.getItem(STREAM_POS_KEY);
-            return saved ? JSON.parse(saved) : { x: 16, y: 16 };
-        } catch {
-            return { x: 16, y: 16 };
-        }
-    });
-    const [{ w, h }, setSize] = useState<{ w: number; h: number }>(() => {
-        if (typeof window === 'undefined') return { w: 360, h: 220 };
-        try {
-            const saved = localStorage.getItem(STREAM_SIZE_KEY);
-            return saved ? JSON.parse(saved) : { w: 360, h: 220 };
-        } catch {
-            return { w: 360, h: 220 };
-        }
-    });
-    const [reloadKey, setReloadKey] = useState<number>(0);
-    const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-    const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -114,15 +118,18 @@ export const RobotControlPanel: React.FC = () => {
     /* Fixtures for first demo - awaiting servos indications in urdf */
     const max_hand_angle = 2.617994; // approx 150 degrees in radians
     const rightHandFixtures: JointControlState[] = [
+        { name: 'right_shoulder_yaw_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_shoulder_roll_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_elbow_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_wrist_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_thumb_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_index_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_middle_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_ring_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_little_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_hand_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
+        { name: 'right_pinky_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
     ]
 
-    const loadUrdfData = async () => {
+    const loadUrdfData = () => {
         try {
             setJoints(rightHandFixtures);
             setLoading(false);
@@ -154,34 +161,8 @@ export const RobotControlPanel: React.FC = () => {
 
     useEffect(() => {
         loadUrdfData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    // Poll ROS bridge connection status
-    useEffect(() => {
-        const interval = setInterval(() => {
-            const connected = RosBridgeService.getInstance().isConnected;
-            setRosConnected(connected);
-            if (connected && reconnecting) {
-                setReconnecting(false);
-            }
-        }, 500);
-        return () => clearInterval(interval);
-    }, [reconnecting]);
-
-    // Persist stream UI state
-    useEffect(() => {
-        try { localStorage.setItem(STREAM_URL_KEY, streamUrl); } catch { /* empty */ }
-    }, [streamUrl]);
-    useEffect(() => {
-        try { localStorage.setItem(STREAM_VISIBLE_KEY, String(isStreamVisible)); } catch { /* empty */ }
-    }, [isStreamVisible]);
-    useEffect(() => {
-        try { localStorage.setItem(STREAM_POS_KEY, JSON.stringify({ x, y })); } catch { /* empty */ }
-    }, [x, y]);
-    useEffect(() => {
-        try { localStorage.setItem(STREAM_SIZE_KEY, JSON.stringify({ w, h })); } catch { /* empty */ }
-    }, [w, h]);
 
     useEffect(() => {
         if (!isSending) {
@@ -272,76 +253,53 @@ export const RobotControlPanel: React.FC = () => {
         setActiveId(null);
     }, []);
 
-    const SendToggle: React.FC<{ isOn: boolean; onToggle: (next: boolean) => void; }>
-        = ({ isOn, onToggle }) => {
-        return (
-            <button
-                onClick={() => onToggle(!isOn)}
-                aria-pressed={isOn}
-                style={{
-                    width: 180,
-                    height: 32,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    position: 'relative',
-                    padding: 2,
-                    borderRadius: 18,
-                    backgroundColor: '#0d0d0d',
-                    border: '1px solid #2a2a2a',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    outline: 'none',
-                    color: '#00ff41',
-                }}
-            >
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 2,
-                        left: isOn ? 'calc(50% + 2px)' : 2,
-                        width: 'calc(50% - 4px)',
-                        height: 'calc(100% - 4px)',
-                        borderRadius: 16,
-                        backgroundColor: '#00ff41',
-                        boxShadow: isOn ? '0 0 12px #00ff41' : 'none',
-                        transition: 'left 160ms ease, box-shadow 160ms ease',
-                    }}
-                />
-                <span
-                    style={{
-                        width: '50%',
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        letterSpacing: 0.5,
-                        zIndex: 1,
-                        color: isOn ? '#00ff41' : '#000',
-                        opacity: isOn ? 0.9 : 1,
-                    }}
-                >
-                    SEND
-                </span>
-                <span
-                    style={{
-                        width: '50%',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        letterSpacing: 0.5,
-                        zIndex: 1,
-                        color: isOn ? '#000' : '#00ff41',
-                    }}
-                >
-                    <ThunderboltOutlined />
-                    SENDING
-                </span>
-            </button>
-        );
+    function toggleCam(active: boolean) {
+        EnableCameraHandler.getInstance().enableCamera(active);
+        setIsCamOn(active);
+    }
+
+    const handleConnect = async () => {
+        setConnectionError(null);
+        try {
+            if (isConnected) {
+                disconnect();
+            } else {
+                await connect(rosUrl);
+                localStorage.setItem(ROS_URL_KEY, rosUrl);
+            }
+        } catch (error) {
+            setConnectionError(error instanceof Error ? error.message : 'Connection failed');
+        }
+    };
+
+    const handleReconnect = async () => {
+        setConnectionError(null);
+        try {
+            await reconnect(rosUrl);
+            localStorage.setItem(ROS_URL_KEY, rosUrl);
+        } catch (error) {
+            setConnectionError(error instanceof Error ? error.message : 'Reconnection failed');
+        }
+    };
+
+    const getConnectionStatusText = () => {
+        switch (connectionStatus) {
+            case 'connected': return 'CONNECTED';
+            case 'connecting': return 'CONNECTING...';
+            case 'reconnecting': return 'RECONNECTING...';
+            case 'disconnected': return 'DISCONNECTED';
+            default: return 'UNKNOWN';
+        }
+    };
+
+    const getConnectionStatusColor = () => {
+        switch (connectionStatus) {
+            case 'connected': return '#00ff41';
+            case 'connecting': return '#ffa500';
+            case 'reconnecting': return '#ffa500';
+            case 'disconnected': return '#ff4d4f';
+            default: return '#666';
+        }
     };
 
     if (loading) {
@@ -422,28 +380,57 @@ export const RobotControlPanel: React.FC = () => {
                                         width: 10,
                                         height: 10,
                                         borderRadius: '50%',
-                                        backgroundColor: rosConnected ? '#00ff41' : '#ff4d4f',
-                                        boxShadow: rosConnected ? '0 0 8px #00ff41' : '0 0 8px #ff4d4f'
+                                        backgroundColor: getConnectionStatusColor(),
+                                        boxShadow: `0 0 8px ${getConnectionStatusColor()}`
                                     }} />
-                                    <Text style={{ color: rosConnected ? '#00ff41' : '#ff4d4f', fontFamily: 'monospace', fontSize: 12 }}>
-                                        {rosConnected ? 'ROS BRIDGE: CONNECTED' : (reconnecting ? 'ROS BRIDGE: RECONNECTING…' : 'ROS BRIDGE: DISCONNECTED')}
+                                    <Text style={{ 
+                                        color: getConnectionStatusColor(), 
+                                        fontFamily: 'monospace', 
+                                        fontSize: 12 
+                                    }}>
+                                        ROS BRIDGE: {getConnectionStatusText()}
                                     </Text>
                                 </div>
+                                <Input
+                                    size="small"
+                                    placeholder="ROS Bridge URL"
+                                    value={rosUrl}
+                                    onChange={(e) => setRosUrl(e.target.value)}
+                                    disabled={isConnecting || isReconnecting}
+                                    style={{
+                                        width: 200,
+                                        backgroundColor: '#0d0d0d',
+                                        borderColor: '#333',
+                                        color: '#fff',
+                                        fontFamily: 'monospace',
+                                        fontSize: 12
+                                    }}
+                                />
                                 <Button
                                     size="small"
-                                    onClick={() => {
-                                        setReconnecting(true);
-                                        RosBridgeService.getInstance().reconnect();
-                                    }}
-                                    disabled={rosConnected || reconnecting}
+                                    onClick={handleConnect}
+                                    disabled={isConnecting || isReconnecting}
                                     style={{
-                                        backgroundColor: (!rosConnected && !reconnecting) ? '#00ff41' : 'transparent',
-                                        color: (!rosConnected && !reconnecting) ? '#000' : '#fff',
-                                        borderColor: (!rosConnected && !reconnecting) ? '#00ff41' : '#444',
-                                        boxShadow: !(!rosConnected && !reconnecting) ? '0 0 8px #00ff41' : 'none',
+                                        backgroundColor: isConnected ? 'transparent' : '#00ff41',
+                                        color: isConnected ? '#fff' : '#000',
+                                        borderColor: isConnected ? '#444' : '#00ff41',
+                                        boxShadow: isConnected ? 'none' : '0 0 8px #00ff41',
                                     }}
                                 >
-                                    {reconnecting ? 'RECONNECTING…' : 'RECONNECT'}
+                                    {isConnected ? 'DISCONNECT' : 'CONNECT'}
+                                </Button>
+                                <Button
+                                    size="small"
+                                    onClick={handleReconnect}
+                                    disabled={isDisconnected || isConnecting || isReconnecting}
+                                    style={{
+                                        backgroundColor: (isConnected || isReconnecting) ? '#ffa500' : 'transparent',
+                                        color: (isConnected || isReconnecting) ? '#000' : '#fff',
+                                        borderColor: (isConnected || isReconnecting) ? '#ffa500' : '#444',
+                                        boxShadow: (isConnected || isReconnecting) ? '0 0 8px #ffa500' : 'none',
+                                    }}
+                                >
+                                    {isReconnecting ? 'RECONNECTING...' : 'RECONNECT'}
                                 </Button>
                             </div>
                         </Col>
@@ -460,6 +447,18 @@ export const RobotControlPanel: React.FC = () => {
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
+            {connectionError && (
+                <Alert
+                    message="Connection Error"
+                    description={connectionError}
+                    type="error"
+                    showIcon
+                    closable
+                    onClose={() => setConnectionError(null)}
+                    style={{ marginBottom: 12 }}
+                />
+            )}
+
             <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
                 <Col flex="auto">
                     <Space wrap>
@@ -494,69 +493,41 @@ export const RobotControlPanel: React.FC = () => {
                     </Space>
                 </Col>
 
-                <Col>
-                    <SendToggle isOn={isSending} onToggle={setIsSending} />
-                </Col>
+                <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
+                    <Col>
+                        <ToggleSwitch
+                            isOn={isCamOn}
+                            onToggle={toggleCam}
+                            title="Update stream feed"
+                            rightIcon={<CameraOutlined />}
+                            width={180}
+                            height={32}
+                        />
+                    </Col>
 
-                <Col>
-                    <Space>
-                        <Space align="center">
-                            <Text style={{ color: '#fff', fontFamily: 'monospace' }}>UNIT:</Text>
-                            <div
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 2,
-                                    padding: 2,
-                                    borderRadius: 20,
-                                    backgroundColor: '#0d0d0d',
-                                    border: '1px solid #333',
-                                }}
-                            >
-                                <button
-                                    onClick={() => setShowDegrees(false)}
-                                    style={{
-                                        appearance: 'none',
-                                        border: 'none',
-                                        outline: 'none',
-                                        cursor: 'pointer',
-                                        padding: '4px 10px',
-                                        borderRadius: 16,
-                                        fontFamily: 'monospace',
-                                        fontSize: 12,
-                                        letterSpacing: 0.5,
-                                        backgroundColor: !showDegrees ? '#00ff41' : 'transparent',
-                                        color: !showDegrees ? '#000' : '#00ff41',
-                                        boxShadow: !showDegrees ? '0 0 10px #00ff41' : 'none',
-                                        transition: 'all 120ms ease-out',
-                                    }}
-                                >
-                                    RAD
-                                </button>
-                                <button
-                                    onClick={() => setShowDegrees(true)}
-                                    style={{
-                                        appearance: 'none',
-                                        border: 'none',
-                                        outline: 'none',
-                                        cursor: 'pointer',
-                                        padding: '4px 10px',
-                                        borderRadius: 16,
-                                        fontFamily: 'monospace',
-                                        fontSize: 12,
-                                        letterSpacing: 0.5,
-                                        backgroundColor: showDegrees ? '#00ff41' : 'transparent',
-                                        color: showDegrees ? '#000' : '#00ff41',
-                                        boxShadow: showDegrees ? '0 0 10px #00ff41' : 'none',
-                                        transition: 'all 120ms ease-out',
-                                    }}
-                                >
-                                    DEG
-                                </button>
-                            </div>
-                        </Space>
-                    </Space>
-                </Col>
+                    <Col>
+                        <ToggleSwitch
+                            isOn={isSending}
+                            onToggle={() => setIsSending(v => !v)}
+                            title="Send instructions"
+                            rightIcon={<ThunderboltOutlined />}
+                            width={180}
+                            height={32}
+                        />
+                    </Col>
+
+                    <Col>
+                        <ToggleSwitch
+                            isOn={showDegrees}
+                            onToggle={() => setShowDegrees(v => !v)}
+                            title="Angle units"
+                            textOn="DEGREES"
+                            textOff="RADIANS"
+                            width={180}
+                            height={32}
+                        />
+                    </Col>
+                </Row>
             </Row>
 
             <DndContext
@@ -612,106 +583,12 @@ export const RobotControlPanel: React.FC = () => {
                 </DragOverlay>
             </DndContext>
 
-            {/* Floating Stream Window */}
-            {isStreamVisible && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        left: x,
-                        top: y,
-                        width: w,
-                        height: h,
-                        zIndex: 1000,
-                        backgroundColor: '#0b0b0b',
-                        border: '1px solid #333',
-                        borderRadius: 8,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                        overflow: 'hidden',
-                        userSelect: 'none',
-                    }}
-                >
-                    <div
-                        onMouseDown={(e) => {
-                            draggingRef.current = { startX: e.clientX, startY: e.clientY, origX: x, origY: y };
-                            const onMove = (ev: MouseEvent) => {
-                                if (!draggingRef.current) return;
-                                const dx = ev.clientX - draggingRef.current.startX;
-                                const dy = ev.clientY - draggingRef.current.startY;
-                                setPos({ x: Math.max(8, draggingRef.current.origX + dx), y: Math.max(8, draggingRef.current.origY + dy) });
-                            };
-                            const onUp = () => {
-                                draggingRef.current = null;
-                                window.removeEventListener('mousemove', onMove);
-                                window.removeEventListener('mouseup', onUp);
-                            };
-                            window.addEventListener('mousemove', onMove);
-                            window.addEventListener('mouseup', onUp);
-                        }}
-                        style={{
-                            height: 36,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '0 8px',
-                            background: 'linear-gradient(180deg, #121212, #0b0b0b)',
-                            borderBottom: '1px solid #222',
-                            cursor: 'move',
-                        }}
-                    >
-                        <span style={{ color: '#9cf', fontFamily: 'monospace', fontSize: 12 }}>STREAM</span>
-                        <Space size={6} align="center">
-                            <Input
-                                size="small"
-                                style={{ width: 240 }}
-                                value={streamUrl}
-                                onChange={(e) => setStreamUrl(e.target.value)}
-                                onPressEnter={() => setReloadKey(k => k + 1)}
-                            />
-                            <Button size="small" onClick={() => setReloadKey(k => k + 1)}>Reload</Button>
-                            <Button size="small" href={streamUrl} target="_blank" rel="noreferrer">Open</Button>
-                            <Button size="small" danger onClick={() => setIsStreamVisible(false)}>Close</Button>
-                        </Space>
-                    </div>
-                    <div style={{ width: '100%', height: `calc(100% - 36px)` }}>
-                        <iframe
-                            key={reloadKey}
-                            src={streamUrl}
-                            style={{ width: '100%', height: '100%', border: 'none' }}
-                            allow="autoplay; fullscreen; picture-in-picture"
-                            referrerPolicy="no-referrer"
-                            title="Floating Stream"
-                        />
-                    </div>
-                    <div
-                        onMouseDown={(e) => {
-                            e.stopPropagation();
-                            resizingRef.current = { startX: e.clientX, startY: e.clientY, origW: w, origH: h };
-                            const onMove = (ev: MouseEvent) => {
-                                if (!resizingRef.current) return;
-                                const dw = ev.clientX - resizingRef.current.startX;
-                                const dh = ev.clientY - resizingRef.current.startY;
-                                setSize({ w: Math.max(260, resizingRef.current.origW + dw), h: Math.max(160, resizingRef.current.origH + dh) });
-                            };
-                            const onUp = () => {
-                                resizingRef.current = null;
-                                window.removeEventListener('mousemove', onMove);
-                                window.removeEventListener('mouseup', onUp);
-                            };
-                            window.addEventListener('mousemove', onMove);
-                            window.addEventListener('mouseup', onUp);
-                        }}
-                        style={{
-                            position: 'absolute',
-                            right: 0,
-                            bottom: 0,
-                            width: 14,
-                            height: 14,
-                            cursor: 'nwse-resize',
-                            background: 'linear-gradient(135deg, transparent 50%, #333 50%)',
-                        }}
-                    />
-                </div>
-            )}
+            <StreamPlayerModal
+                isVisible={isStreamVisible}
+                onClose={() => setIsStreamVisible(false)}
+                initialPosition={{ x: 100, y: 100 }}
+                initialSize={{ w: 480, h: 320 }}
+            />
         </Page>
     );
 };

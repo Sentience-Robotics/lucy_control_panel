@@ -53,7 +53,6 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
   const loadSavedPoses = useCallback(async () => {
     try {
       const poses = await storageService.loadPoses();
-      console.log('Loaded poses:', poses); // Debug log
       setSavedPoses(poses);
       setPoseCount(poses.length);
     } catch (error) {
@@ -81,7 +80,6 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
     setLoading(true);
     try {
       const savedPose = await storageService.savePose(poseName.trim(), joints, categoryOrder);
-      console.log('Saved pose:', savedPose); // Debug log
       message.success(`Pose "${savedPose.name}" saved successfully`);
       setPoseName('');
       setSaveModalVisible(false);

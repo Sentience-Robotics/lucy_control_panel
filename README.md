@@ -25,6 +25,38 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 - **🎨 Cyberpunk UI** - Terminal-inspired interface with signature green glow effects
 - **📱 Responsive Design** - Works seamlessly across desktop and mobile devices
 - **🔌 Connection Management** - Visual connection status and control interface
+- **🔐 Secure Authentication** - Optional username and password protection with MD5 encryption
+- **🌐 Custom ROS Bridge URL** - Configurable ROS Bridge connection with persistent settings
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Create a `.env` file in the project root to configure the application:
+
+```env
+# ROS Bridge Server URL
+VITE_ROS_BRIDGE_SERVER_URL=ws://localhost:9090
+
+# Authentication (both required for password protection)
+VITE_LOCAL_USERNAME=admin
+VITE_LOCAL_PASSWORD=5d41402abc4b2a76b9719d911017c592
+
+VITE_PORT=3000
+
+VITE_ENABLE_LOGS=true
+```
+
+### Authentication Setup
+
+1. **Username**: Set `VITE_LOCAL_USERNAME` to your desired username
+2. **Password**: Set `VITE_LOCAL_PASSWORD` to the MD5 hash of your password
+   - Generate MD5 hash: `echo -n "yourpassword" | md5sum`
+   - Example: Password "lucy123" → MD5 hash "5d41402abc4b2a76b9719d911017c592"
+
+**Note**: If either `VITE_LOCAL_USERNAME` or `VITE_LOCAL_PASSWORD` is not set, the application will run without authentication.
 
 ---
 
