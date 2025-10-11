@@ -42,6 +42,40 @@ export class CameraHandler {
         }
     }
 
+    private imageCallback = (message: any) => {
+        const now = Date.now();
+        const msgTimeMs = (message.header.stamp.sec * 1000) + (message.header.stamp.nanosec / 1e6);
+        const ageMs = now - msgTimeMs;
+
+        if (ageMs > 2000) {
+            console.warn(`Current frame (${(ageMs / 1000).toFixed(2)} s old).`);
+            // Don't work, memory leak
+            // if (this.imageTopic) {
+            //     this.imageTopic.unsubscribe();
+            //     setTimeout(() => this.imageTopic?.subscribe(this.callback), 500);
+            // }
+            // return;
+        }
+
+        if (now - this.lastFrameTime < this.frameInterval) {
+            return; // Skip frame if it's too soon
+        }
+        this.lastFrameTime = now;
+
+        if (!message.data) return;
+
+        try {
+            const binary = atob(message.data);
+            const len = binary.length;
+            const array = new Uint8Array(len);
+            for (let i = 0; i < len; i++) array[i] = binary.charCodeAt(i);
+
+            this.subscribers.forEach(sub => sub(array));
+        } catch (err) {
+            console.error('Failed to decode image data:', err);
+        }
+    };
+
     private initializeTopic(
         topicName: string = '/camera/mobius/jpg',
         messageType: string = 'sensor_msgs/msg/CompressedImage'
@@ -55,30 +89,11 @@ export class CameraHandler {
             ros: this.ros,
             name: topicName,
             messageType: messageType,
+            queue_length: 1,
+            throttle_rate: 0,
         });
 
-        this.imageTopic.subscribe((message: any) => {
-            const now = Date.now();
-            if (now - this.lastFrameTime < this.frameInterval) {
-                return; // Skip frame if it's too soon
-            }
-            this.lastFrameTime = now;
-
-            if (!message.data) {
-                return;
-            }
-
-            try {
-                const binary = atob(message.data);
-                const len = binary.length;
-                const array = new Uint8Array(len);
-                for (let i = 0; i < len; i++) array[i] = binary.charCodeAt(i);
-
-                this.subscribers.forEach(sub => sub(array));
-            } catch (err) {
-                console.error('Failed to decode image data:', err);
-            }
-        });
+        this.imageTopic.subscribe(this.imageCallback);
     }
 
     subscribeToCamera(
