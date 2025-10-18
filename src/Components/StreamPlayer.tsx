@@ -2,13 +2,18 @@ import React, { useEffect, useRef } from 'react';
 
 import { CameraHandler } from "../Services/ros/handlers/Camera.handler";
 
-export const StreamPlayer: React.FC = () => {
+interface StreamPlayerProps {
+    onFrameDelayChange?: (delay: number) => void;
+    onFpsChange?: (fps: number) => void;
+}
+
+export const StreamPlayer: React.FC<StreamPlayerProps> = ({ onFrameDelayChange, onFpsChange }) => {
     const imgRef = useRef<HTMLImageElement>(null);
 
     useEffect(() => {
         const cameraHandler = CameraHandler.getInstance();
 
-        const handleImageData = (data: Uint8Array) => {
+        const handleImageData = (data: Uint8Array, frameDelay?: number, fps?: number) => {
             if (!imgRef.current) return;
 
             const standardArray = new Uint8Array(data);
@@ -16,6 +21,14 @@ export const StreamPlayer: React.FC = () => {
 
             const url = URL.createObjectURL(blob);
             imgRef.current.src = url;
+
+            if (onFrameDelayChange && frameDelay !== undefined) {
+                onFrameDelayChange(frameDelay);
+            }
+
+            if (onFpsChange && fps !== undefined) {
+                onFpsChange(fps);
+            }
 
             setTimeout(() => URL.revokeObjectURL(url), 100);
         };
