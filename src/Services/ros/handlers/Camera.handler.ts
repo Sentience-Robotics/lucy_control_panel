@@ -1,13 +1,12 @@
 import ROSLIB from "roslib";
 import { RosBridgeService } from "../ros.service.ts";
+import { logger } from "../../../Utils/logger.utils.ts";
 
 export class CameraHandler {
     private static instance: CameraHandler;
     private imageTopic: ROSLIB.Topic | null = null;
     private subscribers: ((imageData: Uint8Array) => void)[] = [];
     private ros: ROSLIB.Ros | null = null;
-    private lastFrameTime = 0;
-    private frameInterval = 100; // ms between frames ≈ 10 FPS
     private unsubscribeFromStatus: (() => void) | null = null;
 
     private constructor() {
@@ -42,40 +41,6 @@ export class CameraHandler {
         }
     }
 
-    private imageCallback = (message: any) => {
-        const now = Date.now();
-        const msgTimeMs = (message.header.stamp.sec * 1000) + (message.header.stamp.nanosec / 1e6);
-        const ageMs = now - msgTimeMs;
-
-        if (ageMs > 2000) {
-            console.warn(`Current frame (${(ageMs / 1000).toFixed(2)} s old).`);
-            // Don't work, memory leak
-            // if (this.imageTopic) {
-            //     this.imageTopic.unsubscribe();
-            //     setTimeout(() => this.imageTopic?.subscribe(this.callback), 500);
-            // }
-            // return;
-        }
-
-        if (now - this.lastFrameTime < this.frameInterval) {
-            return; // Skip frame if it's too soon
-        }
-        this.lastFrameTime = now;
-
-        if (!message.data) return;
-
-        try {
-            const binary = atob(message.data);
-            const len = binary.length;
-            const array = new Uint8Array(len);
-            for (let i = 0; i < len; i++) array[i] = binary.charCodeAt(i);
-
-            this.subscribers.forEach(sub => sub(array));
-        } catch (err) {
-            console.error('Failed to decode image data:', err);
-        }
-    };
-
     private initializeTopic(
         topicName: string = '/camera/mobius/jpg',
         messageType: string = 'sensor_msgs/msg/CompressedImage'
@@ -93,19 +58,36 @@ export class CameraHandler {
             throttle_rate: 0,
         });
 
-        this.imageTopic.subscribe(this.imageCallback);
+        this.imageTopic.subscribe((message: any) => {
+            const now = Date.now();
+            const messageTimestamp = (message.header.stamp.sec * 1000) + (message.header.stamp.nanosec / 1e6);
+            logger(`Received image frame. Message timestamp: ${new Date(messageTimestamp).toISOString()}, Now: ${new Date(now).toISOString()}, Delay: ${now - messageTimestamp} ms`);
+
+            if (!message.data) {
+                return;
+            }
+
+            try {
+                const binary = atob(message.data);
+                const len = binary.length;
+                const array = new Uint8Array(len);
+                for (let i = 0; i < len; i++) array[i] = binary.charCodeAt(i);
+
+                this.subscribers.forEach(sub => sub(array));
+            } catch (err) {
+                console.error('Failed to decode image data:', err);
+            }
+        });
     }
 
     subscribeToCamera(
-        callback: (imageData: Uint8Array) => void,
-        topicName: string = '/camera/mobius/jpg',
-        messageType: string = 'sensor_msgs/msg/CompressedImage'
+        callback: (imageData: Uint8Array) => void
     ) {
         this.subscribers.push(callback);
 
         if (this.imageTopic) return;
 
-        this.initializeTopic(topicName, messageType);
+        this.initializeTopic();
     }
 
     unsubscribeFromCamera(callback: (imageData: Uint8Array) => void) {
