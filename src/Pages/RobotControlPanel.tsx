@@ -53,21 +53,22 @@ import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import StreamPlayerModal from "../Components/StreamPlayerModal";
+import { ConnectedClientsHandler } from "../Services/ros/handlers/ConnectedClients.handler";
 
 const { Text } = Typography;
 
 const REFRESH_RATE = 1000;
 
 export const RobotControlPanel: React.FC = () => {
-    const { 
-        connectionStatus, 
-        isConnected, 
-        isConnecting, 
-        isReconnecting, 
-        isDisconnected, 
-        connect, 
-        reconnect, 
-        disconnect 
+    const {
+        connectionStatus,
+        isConnected,
+        isConnecting,
+        isReconnecting,
+        isDisconnected,
+        connect,
+        reconnect,
+        disconnect
     } = useRosConnection();
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
@@ -175,6 +176,18 @@ export const RobotControlPanel: React.FC = () => {
 
         return () => clearInterval(interval);
     }, [isSending, joints]);
+
+    const [countState, setCountState] = useState<number>(0);
+
+    useEffect(() => {
+        const handler = new ConnectedClientsHandler((count: number) => {
+            setCountState(count);
+        });
+
+        return () => {
+            handler.unsubscribe();
+        };
+    }, []);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
@@ -293,6 +306,9 @@ export const RobotControlPanel: React.FC = () => {
     };
 
     const getConnectionStatusColor = () => {
+        if (countState > 1) {
+            return '#ffa500';
+        }
         switch (connectionStatus) {
             case 'connected': return '#00ff41';
             case 'connecting': return '#ffa500';
@@ -383,12 +399,12 @@ export const RobotControlPanel: React.FC = () => {
                                         backgroundColor: getConnectionStatusColor(),
                                         boxShadow: `0 0 8px ${getConnectionStatusColor()}`
                                     }} />
-                                    <Text style={{ 
-                                        color: getConnectionStatusColor(), 
-                                        fontFamily: 'monospace', 
-                                        fontSize: 12 
+                                    <Text style={{
+                                        color: getConnectionStatusColor(),
+                                        fontFamily: 'monospace',
+                                        fontSize: 12
                                     }}>
-                                        ROS BRIDGE: {getConnectionStatusText()}
+                                        ROS BRIDGE: {countState > 0 ? countState : ''} {getConnectionStatusText()}
                                     </Text>
                                 </div>
                                 <Input
