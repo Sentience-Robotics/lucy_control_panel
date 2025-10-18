@@ -11,7 +11,6 @@ import {
     Input,
 } from 'antd';
 import {
-    CameraOutlined,
     ReloadOutlined,
     ThunderboltOutlined,
 } from '@ant-design/icons';
@@ -33,7 +32,6 @@ import {
 } from '@dnd-kit/sortable';
 
 /* Services */
-import { EnableCameraHandler } from "../Services/ros/handlers/EnableCamera.handler";
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 
 /* Hooks */
@@ -85,7 +83,6 @@ export const RobotControlPanel: React.FC = () => {
     ]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
-    const [isCamOn, setIsCamOn] = useState(false);
 
     // ROS URL state
     const ROS_URL_KEY = 'lucy_ros_url';
@@ -252,11 +249,6 @@ export const RobotControlPanel: React.FC = () => {
 
         setActiveId(null);
     }, []);
-
-    function toggleCam(active: boolean) {
-        EnableCameraHandler.getInstance().enableCamera(active);
-        setIsCamOn(active);
-    }
 
     const handleConnect = async () => {
         setConnectionError(null);
@@ -494,17 +486,6 @@ export const RobotControlPanel: React.FC = () => {
                 </Col>
 
                 <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
-                    <Col>
-                        <ToggleSwitch
-                            isOn={isCamOn}
-                            onToggle={toggleCam}
-                            title="Update stream feed"
-                            rightIcon={<CameraOutlined />}
-                            width={180}
-                            height={32}
-                        />
-                    </Col>
-
                     <Col>
                         <ToggleSwitch
                             isOn={isSending}
