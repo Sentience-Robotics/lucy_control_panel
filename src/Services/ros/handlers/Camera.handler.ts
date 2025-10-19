@@ -1,13 +1,12 @@
 import ROSLIB from "roslib";
 import { RosBridgeService } from "../ros.service.ts";
+import { logger } from "../../../Utils/logger.utils.ts";
 
 export class CameraHandler {
     private static instance: CameraHandler;
     private imageTopic: ROSLIB.Topic | null = null;
     private subscribers: ((imageData: Uint8Array, frameDelay?: number, fps?: number) => void)[] = [];
     private ros: ROSLIB.Ros | null = null;
-    private lastFrameTime = 0;
-    private frameInterval = 100; // ms between frames ≈ 10 FPS
     private unsubscribeFromStatus: (() => void) | null = null;
     private frameDelay = 0;
     private fps = 0;
@@ -59,6 +58,8 @@ export class CameraHandler {
             ros: this.ros,
             name: topicName,
             messageType: messageType,
+            queue_length: 1,
+            throttle_rate: 0,
         });
 
         this.imageTopic.subscribe((message: any) => {
@@ -111,7 +112,7 @@ export class CameraHandler {
 
         if (this.imageTopic) return;
 
-        this.initializeTopic(topicName, messageType);
+        this.initializeTopic();
     }
 
     unsubscribeFromCamera(callback: (imageData: Uint8Array, frameDelay?: number, fps?: number) => void) {
