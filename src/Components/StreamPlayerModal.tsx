@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Button, Space } from 'antd';
 import {StreamPlayer} from "./StreamPlayer.tsx";
+import { StreamMetrics } from "./StreamMetrics.tsx";
 
 interface StreamPlayerModalProps {
     isVisible: boolean;
@@ -19,6 +20,8 @@ export default function StreamPlayerModal({
 }: StreamPlayerModalProps) {
     const [{ x, y }, setPos] = useState(initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
+    const [frameDelay, setFrameDelay] = useState<number>(0);
+    const [fps, setFps] = useState<number>(0);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
 
@@ -115,18 +118,21 @@ export default function StreamPlayerModal({
                     cursor: 'move',
                 }}
             >
-        <span style={{ color: '#9cf', fontFamily: 'monospace', fontSize: 12 }}>
-          STREAM
-        </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <span style={{ color: '#00ff41', fontFamily: 'monospace', fontSize: 12 }}>
+                        STREAM
+                    </span>
+                    <StreamMetrics fps={fps} frameDelay={frameDelay} />
+                </div>
                 <Space size={6} align="center">
                     <Button size="small" danger onClick={onClose}>
-                        Close
+                        X
                     </Button>
                 </Space>
             </div>
 
             {/* Stream Content */}
-            <StreamPlayer />
+            <StreamPlayer onFrameDelayChange={setFrameDelay} onFpsChange={setFps} />
 
             {/* Resize Handle */}
             <div
