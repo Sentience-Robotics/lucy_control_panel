@@ -1,6 +1,5 @@
 import ROSLIB from "roslib";
 import { RosBridgeService } from "../ros.service.ts";
-import { logger } from "../../../Utils/logger.utils.ts";
 
 export class CameraHandler {
     private static instance: CameraHandler;
@@ -12,6 +11,7 @@ export class CameraHandler {
     private fps = 0;
     private frameCount = 0;
     private fpsStartTime = 0;
+    private lastMessageTime = 0;
 
     private constructor() {
         this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
@@ -58,19 +58,19 @@ export class CameraHandler {
             ros: this.ros,
             name: topicName,
             messageType: messageType,
-            queue_length: 1,
-            throttle_rate: 0,
         });
 
         this.imageTopic.subscribe((message: any) => {
             const now = Date.now();
-            if (now - this.lastFrameTime < this.frameInterval) {
-                return; // Skip frame if it's too soon
-            }
             
-            // Calculate latency
-            this.frameDelay = this.lastFrameTime > 0 ? now - this.lastFrameTime : 0;
-            this.lastFrameTime = now;
+            // Calculate network delay using ROS message timestamp
+            if (message.header && message.header.stamp) {
+                const messageTime = message.header.stamp.secs * 1000 + Math.floor(message.header.stamp.nanosecs / 1000000);
+                this.frameDelay = this.lastMessageTime > 0 ? messageTime - this.lastMessageTime : 0;
+                this.lastMessageTime = messageTime;
+            } else {
+                throw new Error('Camera message missing timestamp header. Ensure camera node publishes with proper header.stamp.');
+            }
 
             // Calculate FPS
             if (this.fpsStartTime === 0) {
