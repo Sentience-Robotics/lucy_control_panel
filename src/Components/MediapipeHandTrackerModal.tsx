@@ -8,6 +8,7 @@ interface MediapipeHandTrackerModalProps {
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
     aspectRatio?: number;
+    moveRobotIndex?: (x: number) => void;
 }
 
 export default function MediapipeHandTrackerModal({
@@ -15,7 +16,8 @@ export default function MediapipeHandTrackerModal({
     onClose,
     initialPosition = { x: 100, y: 100 },
     initialSize = { w: 640, h: 480 },
-    aspectRatio = 4 / 3
+    aspectRatio = 4 / 3,
+    moveRobotIndex
 }: MediapipeHandTrackerModalProps) {
     const [{ x, y }, setPos] = useState(initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
@@ -126,7 +128,7 @@ export default function MediapipeHandTrackerModal({
                     </Button>
                 </Space>
             </div>
-            <MediapipeHandTracker />
+            <MediapipeHandTracker moveRobotIndex={moveRobotIndex} />
 
             {/* Resize Handle */}
             <div

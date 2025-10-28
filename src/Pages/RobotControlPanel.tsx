@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
     Typography,
     Space,
@@ -56,7 +56,7 @@ import MediapipeHandTrackerModal from '../Components/MediapipeHandTrackerModal';
 
 const { Text } = Typography;
 
-const REFRESH_RATE = 1000;
+const REFRESH_RATE = 300;
 
 export const RobotControlPanel: React.FC = () => {
     const {
@@ -71,6 +71,7 @@ export const RobotControlPanel: React.FC = () => {
     } = useRosConnection();
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
+    const jointsRef = useRef<JointControlState[]>(joints);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(true);
@@ -166,16 +167,20 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        jointsRef.current = joints;
+    }, [joints]);
+
+    useEffect(() => {
         if (!isSending) {
             return;
         }
 
         const interval = setInterval(() => {
-            JointStateHandler.getInstance().publishJointStates(joints);
+            JointStateHandler.getInstance().publishJointStates(jointsRef.current);
         }, REFRESH_RATE);
 
         return () => clearInterval(interval);
-    }, [isSending, joints]);
+    }, [isSending]);
 
     const [countState, setCountState] = useState<number>(0);
 
@@ -605,6 +610,18 @@ export const RobotControlPanel: React.FC = () => {
                 onClose={() => setIsWebcamActive(false)}
                 initialPosition={{ x: 400, y: 150 }}
                 initialSize={{ w: 480, h: 320 }}
+                moveRobotIndex={(x) => {
+                    //TODO Temporary poc, map x to index joint
+                    setJoints((prevJoints) =>
+                        prevJoints.map((joint) => {
+                            const clampedX = Math.max(0, Math.min(2, x / 300));
+                            if (joint.name === 'right_index_joint') {
+                                return { ...joint, currentValue: clampedX, targetValue: clampedX };
+                            }
+                            return joint;
+                        })
+                    );
+                }}
             />
         </Page>
     );

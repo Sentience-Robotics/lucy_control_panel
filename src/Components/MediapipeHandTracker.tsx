@@ -1,14 +1,23 @@
 import { HAND_CONNECTIONS, Hands, type Results } from "@mediapipe/hands";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 
-interface MediapipeHandTrackerProps { width?: number, height?: number }
-const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({ width, height }) => {
+interface MediapipeHandTrackerProps {
+    width?: number;
+    height?: number;
+    moveRobotIndex?: (x: number) => void;
+}
 
+const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
+    width,
+    height,
+    moveRobotIndex
+}) => {
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [indexTip, setIndexTip] = useState<{ x: number; y: number } | null>(null);
 
     const onResults = (results: Results) => {
         if (!webcamRef.current?.video || !canvasRef.current) return;
@@ -32,6 +41,21 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({ width, heig
                     lineWidth: 4,
                 });
                 drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: 2 });
+                //TODO Temporary poc, move index from top to bottom
+                // Get the index fingertip (landmark #8)
+                const indexTipLandmark = landmarks[8];
+                if (indexTipLandmark) {
+                    const x = indexTipLandmark.x * videoWidth;
+                    const y = indexTipLandmark.y * videoHeight;
+
+                    setIndexTip({ x, y });
+                    moveRobotIndex?.(y);
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = "cyan";
+                    ctx.fill();
+                }
             }
         }
         ctx.restore();
@@ -105,6 +129,25 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({ width, heig
                     height,
                 }}
             />
+
+            {/* TODO remove this debug info */}
+            {indexTip && (
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "20px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        background: "rgba(0,0,0,0.6)",
+                        color: "white",
+                        padding: "10px 20px",
+                        borderRadius: "10px",
+                        fontFamily: "monospace",
+                    }}
+                >
+                    Index tip: x={indexTip.x.toFixed(1)} | y={indexTip.y.toFixed(1)}
+                </div>
+            )}
         </div>
     )
 }
