@@ -80,30 +80,30 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({ width, heig
             <Webcam
                 ref={webcamRef}
                 mirrored={true}
-                onUserMedia={(m) => { console.log(m) } }
+                onUserMedia={(m) => { console.log(m) }}
                 onUserMediaError={(e) => { console.error(e) }}
-            // style={{
-            //     position: "absolute",
-            //     left: 0,
-            //     right: 0,
-            //     textAlign: "center",
-            //     zIndex: 9,
-            //     width,
-            //     height,
-            // }}
+                style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    textAlign: "center",
+                    zIndex: -1,
+                    width,
+                    height,
+                }}
             />
 
             <canvas
                 ref={canvasRef}
-            // style={{
-            //     position: "absolute",
-            //     left: 0,
-            //     right: 0,
-            //     textAlign: "center",
-            //     zIndex: 10,
-            //     width,
-            //     height,
-            // }}
+                style={{
+                    position: "absolute",
+                    left: 0,
+                    right: 0,
+                    textAlign: "center",
+                    zIndex: 0,
+                    width,
+                    height,
+                }}
             />
         </div>
     )

@@ -32,3 +32,5 @@ dist-ssr
 .env.production.local
 
 yarn.lock
+certs/key.pem
+certs/cert.pem

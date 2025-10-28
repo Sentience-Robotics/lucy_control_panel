@@ -126,10 +126,9 @@ export default function MediapipeHandTrackerModal({
                     </Button>
                 </Space>
             </div>
-            <text> 
-                user camera
-            </text>
-            <MediapipeHandTracker/>
+            <MediapipeHandTracker />
+
+            {/* Resize Handle */}
             <div
                 onMouseDown={handleResizeStart}
                 style={{
