@@ -1,9 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Button, Space } from 'antd';
-import { StreamPlayer } from "./StreamPlayer.tsx";
-import { StreamMetrics } from "./StreamMetrics.tsx";
+import MediapipeHandTracker from './MediapipeHandTracker.tsx';
 
-interface StreamPlayerModalProps {
+interface MediapipeHandTrackerModalProps {
     isVisible: boolean;
     onClose: () => void;
     initialPosition?: { x: number; y: number };
@@ -11,17 +10,15 @@ interface StreamPlayerModalProps {
     aspectRatio?: number;
 }
 
-export default function StreamPlayerModal({
+export default function MediapipeHandTrackerModal({
     isVisible,
     onClose,
     initialPosition = { x: 100, y: 100 },
     initialSize = { w: 640, h: 480 },
     aspectRatio = 4 / 3
-}: StreamPlayerModalProps) {
+}: MediapipeHandTrackerModalProps) {
     const [{ x, y }, setPos] = useState(initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
-    const [frameDelay, setFrameDelay] = useState<number>(0);
-    const [fps, setFps] = useState<number>(0);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
 
@@ -120,9 +117,8 @@ export default function StreamPlayerModal({
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <span style={{ color: '#00ff41', fontFamily: 'monospace', fontSize: 12 }}>
-                        STREAM
+                        WEBCAM
                     </span>
-                    <StreamMetrics fps={fps} frameDelay={frameDelay} />
                 </div>
                 <Space size={6} align="center">
                     <Button size="small" danger onClick={onClose}>
@@ -130,11 +126,10 @@ export default function StreamPlayerModal({
                     </Button>
                 </Space>
             </div>
-
-            {/* Stream Content */}
-            <StreamPlayer onFrameDelayChange={setFrameDelay} onFpsChange={setFps} />
-
-            {/* Resize Handle */}
+            <text> 
+                user camera
+            </text>
+            <MediapipeHandTracker/>
             <div
                 onMouseDown={handleResizeStart}
                 style={{
