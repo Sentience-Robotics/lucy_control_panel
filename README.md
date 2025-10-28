@@ -38,7 +38,7 @@ Create a `.env` file in the project root to configure the application:
 
 ```env
 # ROS Bridge Server URL
-VITE_ROS_BRIDGE_SERVER_URL=ws://localhost:9090
+VITE_ROS_BRIDGE_SERVER_URL=wss://localhost:9090
 
 # Authentication (both required for password protection)
 VITE_LOCAL_USERNAME=admin

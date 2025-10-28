@@ -90,8 +90,8 @@ export const RobotControlPanel: React.FC = () => {
     const ROS_URL_KEY = 'lucy_ros_url';
     const defaultRosUrl = useMemo(() => (
         typeof window !== 'undefined'
-            ? (localStorage.getItem(ROS_URL_KEY) || import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
-            : (import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
+            ? (localStorage.getItem(ROS_URL_KEY) || import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090')
+            : (import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090')
     ), []);
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);
