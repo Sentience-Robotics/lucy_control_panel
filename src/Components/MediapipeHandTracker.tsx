@@ -35,6 +35,8 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         ctx.drawImage(results.image, 0, 0, videoWidth, videoHeight);
 
         if (results.multiHandLandmarks) {
+            // results.multiHandedness [{index: 0, label: "right"} {index: 1, label: "left"}]
+            // results.multiHandLandmarks [[], []]
             for (const landmarks of results.multiHandLandmarks) {
                 drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
                     color: "#00FF00",
