@@ -87,6 +87,8 @@ export const RobotControlPanel: React.FC = () => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
 
+    const [selectedArm, setSelectedArm] = useState<boolean>(true); // true = right, false = left
+
     // ROS URL state
     const ROS_URL_KEY = 'lucy_ros_url';
     const defaultRosUrl = useMemo(() => (
@@ -118,11 +120,11 @@ export const RobotControlPanel: React.FC = () => {
     );
 
     /* Fixtures for first demo - awaiting servos indications in urdf */
-    const max_hand_angle = 2.617994; // approx 150 degrees in radians
+    const max_hand_angle = 4.017994; // approx 150 degrees in radians
     const rightHandFixtures: JointControlState[] = [
-        { name: 'right_shoulder_yaw_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_shoulder_roll_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_elbow_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_shoulder_yaw_joint', currentValue: 3.14, targetValue: 3.14, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_shoulder_roll_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_elbow_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
         { name: 'right_wrist_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_thumb_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_index_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
@@ -523,6 +525,21 @@ export const RobotControlPanel: React.FC = () => {
                 <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
                     <Col>
                         <ToggleSwitch
+                            isOn={selectedArm}
+                            onToggle={() => {
+                                JointStateHandler.getInstance().changeTopic(selectedArm ? '/joints_left_arm' : '/joints_right_arm');
+                                setSelectedArm(v => !v);
+                            }}
+                            title="Selected arm"
+                            textOff="LEFT"
+                            textOn="RIGHT"
+                            width={180}
+                            height={32}
+                        />
+                    </Col>
+
+                    <Col>
+                        <ToggleSwitch
                             isOn={isSending}
                             onToggle={() => setIsSending(v => !v)}
                             title="Send instructions"
@@ -610,11 +627,11 @@ export const RobotControlPanel: React.FC = () => {
                 onClose={() => setIsWebcamActive(false)}
                 initialPosition={{ x: 400, y: 150 }}
                 initialSize={{ w: 480, h: 320 }}
-                moveRobotIndex={(x) => {
+                moveRobotIndex={(y) => {
                     //TODO Temporary poc, map x to index joint
                     setJoints((prevJoints) =>
                         prevJoints.map((joint) => {
-                            const clampedX = Math.max(0, Math.min(2, x / 300));
+                            const clampedX = Math.max(0, Math.min(2, y / 300));
                             if (joint.name === 'right_index_joint') {
                                 return { ...joint, currentValue: clampedX, targetValue: clampedX };
                             }
