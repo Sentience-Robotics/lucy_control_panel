@@ -45,7 +45,11 @@ export const StreamPlayer: React.FC<StreamPlayerProps> = ({ onFrameDelayChange, 
             ref={imgRef}
             id="camera"
             alt="Toggle the stream feed update to see the content"
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain'
+            }}
         />
     );
 };

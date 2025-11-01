@@ -16,7 +16,7 @@ export default function StreamPlayerModal({
     onClose,
     initialPosition = { x: 100, y: 100 },
     initialSize = { w: 640, h: 480 },
-    aspectRatio = 4 / 3
+    aspectRatio = 4.5 / 3
 }: StreamPlayerModalProps) {
     const [{ x, y }, setPos] = useState(initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
