@@ -15,7 +15,7 @@ class RosBridgeService {
     private readonly CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
 
     private constructor() {
-        this.url = import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090';
+        this.url = import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090';
     }
 
     private setConnectionStatus(status: ConnectionStatus) {
@@ -103,6 +103,7 @@ class RosBridgeService {
 
     async connect(url?: string): Promise<void> {
         return new Promise((resolve, reject) => {
+            console.log(url);
             if (this._connectionStatus === 'connecting' || this._connectionStatus === 'connected') {
                 resolve();
                 return;
