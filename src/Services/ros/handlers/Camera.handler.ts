@@ -1,6 +1,5 @@
 import ROSLIB from "roslib";
 import { RosBridgeService } from "../ros.service.ts";
-import { logger } from "../../../Utils/logger.utils.ts";
 
 export class CameraHandler {
     private static instance: CameraHandler;
@@ -104,9 +103,7 @@ export class CameraHandler {
     }
 
     subscribeToCamera(
-        callback: (imageData: Uint8Array, frameDelay?: number, fps?: number) => void,
-        topicName: string = '/camera/mobius/jpg',
-        messageType: string = 'sensor_msgs/msg/CompressedImage'
+        callback: (imageData: Uint8Array, frameDelay?: number, fps?: number) => void
     ) {
         this.subscribers.push(callback);
 

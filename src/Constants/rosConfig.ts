@@ -1,6 +1,6 @@
 export const ROS_CONFIG = {
     jointStateTopic: {
-        name: '/servo_subscriber',
+        name: '/joints_right_arm',
         messageType: 'sensor_msgs/JointState'
     }
 };

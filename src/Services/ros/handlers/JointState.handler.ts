@@ -8,8 +8,10 @@ export class JointStateHandler {
     private static instance: JointStateHandler;
     private jointStateTopic: ROSLIB.Topic | null = null;
     private unsubscribeFromStatus: (() => void) | null = null;
+    private topicName: string;
 
-    private constructor() {
+    private constructor(topicName: string = ROS_CONFIG.jointStateTopic.name) {
+        this.topicName = topicName;
         this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
             if (status === 'connected') {
                 this.initializeTopic();
@@ -26,10 +28,15 @@ export class JointStateHandler {
         if (ros) {
             this.jointStateTopic = new ROSLIB.Topic({
                 ros: ros,
-                name: ROS_CONFIG.jointStateTopic.name,
+                name: this.topicName,
                 messageType: ROS_CONFIG.jointStateTopic.messageType
             });
         }
+    }
+
+    changeTopic(topicName: string) {
+        this.topicName = topicName;
+        this.initializeTopic();
     }
 
     static getInstance(): JointStateHandler {
