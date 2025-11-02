@@ -50,9 +50,11 @@ import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
-import StreamPlayerModal from "../Components/StreamPlayerModal";
+import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { ConnectedClientsHandler } from "../Services/ros/handlers/ConnectedClients.handler";
-import MediapipeHandTrackerModal from '../Components/MediapipeHandTrackerModal';
+import { MovableModal } from '../Components/MovableModal';
+import { MediapipeHandTracker } from '../Components/MediapipeHandTracker';
+import { ROS_TOPICS } from '../Services/ros/ros.service';
 
 const { Text } = Typography;
 
@@ -87,7 +89,7 @@ export const RobotControlPanel: React.FC = () => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
 
-    const [selectedArm, setSelectedArm] = useState<boolean>(true); // true = right, false = left
+    const [selectedArm, setSelectedArm] = useState<ROS_TOPICS>(ROS_TOPICS.RIGHT_ARM); // true = right, false = left
 
     // ROS URL state
     const ROS_URL_KEY = 'lucy_ros_url';
@@ -103,7 +105,7 @@ export const RobotControlPanel: React.FC = () => {
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
 
     const [isStreamVisible, setIsStreamVisible] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return false;
+        if (typeof window === 'undefined') { return false; }
         const saved = localStorage.getItem(STREAM_VISIBLE_KEY);
         return saved ? saved === 'true' : false;
     });
@@ -525,10 +527,11 @@ export const RobotControlPanel: React.FC = () => {
                 <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
                     <Col>
                         <ToggleSwitch
-                            isOn={selectedArm}
+                            isOn={selectedArm === ROS_TOPICS.RIGHT_ARM}
                             onToggle={() => {
-                                JointStateHandler.getInstance().changeTopic(selectedArm ? '/joints_left_arm' : '/joints_right_arm');
-                                setSelectedArm(v => !v);
+                                const newValue = selectedArm === ROS_TOPICS.RIGHT_ARM ? ROS_TOPICS.LEFT_ARM : ROS_TOPICS.RIGHT_ARM;
+                                JointStateHandler.getInstance().changeTopic(newValue);
+                                setSelectedArm(newValue);
                             }}
                             title="Selected arm"
                             textOff="LEFT"
@@ -620,26 +623,28 @@ export const RobotControlPanel: React.FC = () => {
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
                 initialPosition={{ x: 100, y: 100 }}
-                initialSize={{ w: 480, h: 320 }}
             />
-            <MediapipeHandTrackerModal
+
+            <MovableModal
+                modalName="WEBCAM"
                 isVisible={isWebcamActive}
                 onClose={() => setIsWebcamActive(false)}
                 initialPosition={{ x: 400, y: 150 }}
-                initialSize={{ w: 480, h: 320 }}
-                moveRobotIndex={(y) => {
-                    //TODO Temporary poc, map x to index joint
-                    setJoints((prevJoints) =>
-                        prevJoints.map((joint) => {
-                            const clampedX = Math.max(0, Math.min(2, y / 300));
-                            if (joint.name === 'right_index_joint') {
-                                return { ...joint, currentValue: clampedX, targetValue: clampedX };
-                            }
-                            return joint;
-                        })
-                    );
-                }}
-            />
+            >
+                <MediapipeHandTracker
+                    moveRobotIndex={(y) => {
+                        //TODO Temporary poc, map x to index joint
+                        setJoints((prevJoints) =>
+                            prevJoints.map((joint) => {
+                                const clampedX = Math.max(0, Math.min(2, y / 300));
+                                if (joint.name === 'right_index_joint') {
+                                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
+                                }
+                                return joint;
+                            })
+                        );
+                    }} />
+            </MovableModal>
         </Page>
     );
 };

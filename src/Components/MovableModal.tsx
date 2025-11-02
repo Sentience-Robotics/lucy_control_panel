@@ -1,30 +1,33 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, type ReactNode } from 'react';
 import { Button, Space } from 'antd';
-import MediapipeHandTracker from './MediapipeHandTracker.tsx';
 
 interface MediapipeHandTrackerModalProps {
+    children: ReactNode;
+    header?: ReactNode;
+    modalName: string;
     isVisible: boolean;
     onClose: () => void;
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
     aspectRatio?: number;
-    moveRobotIndex?: (x: number) => void;
 }
 
-export default function MediapipeHandTrackerModal({
+export function MovableModal({
+    children,
+    header,
+    modalName,
     isVisible,
     onClose,
     initialPosition = { x: 100, y: 100 },
-    initialSize = { w: 640, h: 480 },
+    initialSize = { w: 480, h: 320 },
     aspectRatio = 4 / 3,
-    moveRobotIndex
 }: MediapipeHandTrackerModalProps) {
     const [{ x, y }, setPos] = useState(initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
 
-    if (!isVisible) return null;
+    if (!isVisible) { return null; }
 
     const handleDragStart = (e: React.MouseEvent) => {
         draggingRef.current = {
@@ -35,7 +38,7 @@ export default function MediapipeHandTrackerModal({
         };
 
         const onMove = (ev: MouseEvent) => {
-            if (!draggingRef.current) return;
+            if (!draggingRef.current) { return; }
             const dx = ev.clientX - draggingRef.current.startX;
             const dy = ev.clientY - draggingRef.current.startY;
             setPos({
@@ -64,7 +67,7 @@ export default function MediapipeHandTrackerModal({
         };
 
         const onMove = (ev: MouseEvent) => {
-            if (!resizingRef.current) return;
+            if (!resizingRef.current) { return; }
             const dw = ev.clientX - resizingRef.current.startX;
             const dh = ev.clientY - resizingRef.current.startY;
 
@@ -119,8 +122,9 @@ export default function MediapipeHandTrackerModal({
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <span style={{ color: '#00ff41', fontFamily: 'monospace', fontSize: 12 }}>
-                        WEBCAM
+                        {modalName}
                     </span>
+                    {header}
                 </div>
                 <Space size={6} align="center">
                     <Button size="small" danger onClick={onClose}>
@@ -128,7 +132,7 @@ export default function MediapipeHandTrackerModal({
                     </Button>
                 </Space>
             </div>
-            <MediapipeHandTracker moveRobotIndex={moveRobotIndex} />
+            {children}
 
             {/* Resize Handle */}
             <div

@@ -5,6 +5,11 @@ import { logger } from "../../Utils/logger.utils.ts";
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
+export enum ROS_TOPICS {
+    LEFT_ARM = 'joints/left_arm',
+    RIGHT_ARM = 'joints/right_arm',
+}
+
 class RosBridgeService {
     private static instance: RosBridgeService;
     private ros: ROSLIB.Ros | null = null;
@@ -103,7 +108,7 @@ class RosBridgeService {
 
     async connect(url?: string): Promise<void> {
         return new Promise((resolve, reject) => {
-            console.log(url);
+            logger(`Attempting to connect to ROS Bridge at ${url || this.url}...`);
             if (this._connectionStatus === 'connecting' || this._connectionStatus === 'connected') {
                 resolve();
                 return;

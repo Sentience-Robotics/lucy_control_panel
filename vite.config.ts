@@ -1,21 +1,28 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import fs from "fs";
-import path from "path";
-
-const certPath = path.resolve("/home/dev/certs/cert.pem");
-const keyPath = path.resolve("/home/dev/certs/key.pem");
-const cert = fs.readFileSync(certPath);
-const key = fs.readFileSync(keyPath);
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+
+  const https =
+    env.VITE_HTTPS === "true"
+      ? {
+          key: fs.readFileSync(env.VITE_SSL_KEY),
+          cert: fs.readFileSync(env.VITE_SSL_CERT),
+        }
+      : undefined;
+
   return {
     plugins: [react()],
     server: {
-      port: parseInt(env.VITE_PORT || "5000"),
+      https,
       host: true,
-      https: { key, cert },
+      port: parseInt(env.VITE_PORT || "5000"),
+      hmr: {
+        protocol: "wss",
+        clientPort: parseInt(env.VITE_HMR_PORT || "443"),
+      },
     },
   };
 });

@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
+import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
 
 interface MediapipeHandTrackerProps {
     width?: number;
@@ -10,7 +11,7 @@ interface MediapipeHandTrackerProps {
     moveRobotIndex?: (x: number) => void;
 }
 
-const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
+export const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     width,
     height,
     moveRobotIndex
@@ -20,7 +21,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     const [indexTip, setIndexTip] = useState<{ x: number; y: number } | null>(null);
 
     const onResults = (results: Results) => {
-        if (!webcamRef.current?.video || !canvasRef.current) return;
+        if (!webcamRef.current?.video || !canvasRef.current) { return; }
 
         const videoWidth = webcamRef.current.video.videoWidth;
         const videoHeight = webcamRef.current.video.videoHeight;
@@ -28,13 +29,14 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         canvasRef.current.height = videoHeight;
 
         const ctx = canvasRef.current.getContext("2d");
-        if (!ctx) return;
+        if (!ctx) { return; }
 
         ctx.save();
         ctx.clearRect(0, 0, videoWidth, videoHeight);
         ctx.drawImage(results.image, 0, 0, videoWidth, videoHeight);
 
         if (results.multiHandLandmarks) {
+            //TODO Remove when mediapipe feature is completed
             // results.multiHandedness [{index: 0, label: "right"} {index: 1, label: "left"}]
             // results.multiHandLandmarks [[], []]
             for (const landmarks of results.multiHandLandmarks) {
@@ -65,23 +67,16 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
 
     useEffect(() => {
         const hands = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+            locateFile: (file) => `${MEDIAPIPE_HANDS_URL}${file}`,
         });
-        hands.setOptions({
-            maxNumHands: 2,
-            modelComplexity: 1,
-            selfieMode: true,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5,
-
-        });
+        hands.setOptions(HANDS_MODEL_CONFIG);
         hands.onResults(onResults);
 
         const initCamera = () => {
-            if (!webcamRef.current?.video) return;
+            if (!webcamRef.current?.video) { return; }
             const camera = new Camera(webcamRef.current.video, {
                 onFrame: async () => {
-                    if (!webcamRef.current?.video) return;
+                    if (!webcamRef.current?.video) { return; }
                     await hands.send({ image: webcamRef.current.video });
                 },
                 width,
@@ -153,5 +148,3 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         </div>
     )
 }
-
-export default MediapipeHandTracker;

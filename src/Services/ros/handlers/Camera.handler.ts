@@ -11,6 +11,7 @@ export class CameraHandler {
     private fps = 0;
     private frameCount = 0;
     private fpsStartTime = 0;
+    private lastFrameTime = 0;
 
     private constructor() {
         this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
@@ -63,9 +64,6 @@ export class CameraHandler {
 
         this.imageTopic.subscribe((message: any) => {
             const now = Date.now();
-            if (now - this.lastFrameTime < this.frameInterval) {
-                return; // Skip frame if it's too soon
-            }
             
             // Calculate latency
             this.frameDelay = this.lastFrameTime > 0 ? now - this.lastFrameTime : 0;

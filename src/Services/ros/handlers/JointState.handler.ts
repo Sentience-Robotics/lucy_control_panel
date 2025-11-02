@@ -16,6 +16,7 @@ export class JointStateHandler {
             if (status === 'connected') {
                 this.initializeTopic();
             } else if (status === 'disconnected') {
+                this.jointStateTopic?.unsubscribe();
                 this.jointStateTopic = null;
             }
         });
@@ -26,6 +27,9 @@ export class JointStateHandler {
     private initializeTopic() {
         const ros = RosBridgeService.getInstance().rosConnection;
         if (ros) {
+            if (this.jointStateTopic) {
+                this.jointStateTopic.unsubscribe();
+            }
             this.jointStateTopic = new ROSLIB.Topic({
                 ros: ros,
                 name: this.topicName,
@@ -47,8 +51,14 @@ export class JointStateHandler {
     }
 
     static cleanup(): void {
-        if (JointStateHandler.instance && JointStateHandler.instance.unsubscribeFromStatus) {
-            JointStateHandler.instance.unsubscribeFromStatus();
+        if (JointStateHandler.instance) {
+            if (JointStateHandler.instance.jointStateTopic) {
+                JointStateHandler.instance.jointStateTopic.unsubscribe();
+                JointStateHandler.instance.jointStateTopic = null;
+            }
+            if (JointStateHandler.instance.unsubscribeFromStatus) {
+                JointStateHandler.instance.unsubscribeFromStatus();
+            }
         }
     }
 
