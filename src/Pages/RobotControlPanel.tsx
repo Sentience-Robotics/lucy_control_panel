@@ -93,11 +93,19 @@ export const RobotControlPanel: React.FC = () => {
 
     // ROS URL state
     const ROS_URL_KEY = 'lucy_ros_url';
-    const defaultRosUrl = useMemo(() => (
-        typeof window !== 'undefined'
-            ? (localStorage.getItem(ROS_URL_KEY) || import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090')
-            : (import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090')
-    ), []);
+    const defaultRosUrl = useMemo(() => {
+        if (typeof window === 'undefined') {
+            // Server-side fallback
+            return import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090';
+        }
+
+        // localStorage
+        const stored = localStorage.getItem(ROS_URL_KEY);
+        if (stored) { return stored; }
+
+        // Dynamic WSS URL from current origin
+        return `https://${window.location.hostname}:${window.location.port}/rosbridge`;
+    }, []);
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);
 

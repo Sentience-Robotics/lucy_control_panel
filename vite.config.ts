@@ -8,9 +8,9 @@ export default defineConfig(({ mode }) => {
   const https =
     env.VITE_HTTPS === "true"
       ? {
-          key: fs.readFileSync(env.VITE_SSL_KEY),
-          cert: fs.readFileSync(env.VITE_SSL_CERT),
-        }
+        key: fs.readFileSync(env.VITE_SSL_KEY),
+        cert: fs.readFileSync(env.VITE_SSL_CERT),
+      }
       : undefined;
 
   return {
@@ -21,7 +21,17 @@ export default defineConfig(({ mode }) => {
       port: parseInt(env.VITE_PORT || "5000"),
       hmr: {
         protocol: "wss",
-        clientPort: parseInt(env.VITE_HMR_PORT || "443"),
+        clientPort: parseInt(env.VITE_PORT || "5000"),
+      },
+      proxy: {
+        // Proxy WS upgrades from the browser path /rosbridge -> rosbridge ws server
+        '^/rosbridge': {
+          target: 'ws://127.0.0.1:9090',
+          ws: true,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/rosbridge/, ''),
+        },
       },
     },
   };
