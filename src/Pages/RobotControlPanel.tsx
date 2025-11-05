@@ -95,8 +95,7 @@ export const RobotControlPanel: React.FC = () => {
     const ROS_URL_KEY = 'lucy_ros_url';
     const defaultRosUrl = useMemo(() => {
         if (typeof window === 'undefined') {
-            // Server-side fallback
-            return import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090';
+            throw new Error('Window is undefined');
         }
 
         // localStorage
