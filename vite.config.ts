@@ -8,8 +8,8 @@ export default defineConfig(({ mode }) => {
   const https =
     env.VITE_HTTPS === "true"
       ? {
-        key: fs.readFileSync(env.VITE_SSL_KEY),
-        cert: fs.readFileSync(env.VITE_SSL_CERT),
+        key: fs.readFileSync(env.VITE_SSL_KEY_PATH),
+        cert: fs.readFileSync(env.VITE_SSL_CERT_PATH),
       }
       : undefined;
 

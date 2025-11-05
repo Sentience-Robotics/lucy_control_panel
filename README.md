@@ -58,6 +58,16 @@ VITE_ENABLE_LOGS=true
 
 **Note**: If either `VITE_LOCAL_USERNAME` or `VITE_LOCAL_PASSWORD` is not set, the application will run without authentication.
 
+
+### HTTP/HTTPS Setup
+To run the application over HTTPS, generate self-signed certificates (through certs/generate_certificate.sh). Copy them where you want and configure the environment variables below:
+
+```env
+VITE_HTTPS=true
+VITE_SSL_CERT_PATH=/path/to/cert.pem
+VITE_SSL_KEY_PATH=/path/to/key.pem
+```
+
 ---
 
 ## 📖 Documentation

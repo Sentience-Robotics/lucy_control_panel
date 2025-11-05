@@ -1,11 +1,7 @@
 openssl genrsa -out key.pem 2048
+openssl req -new -x509 -key key.pem -out cert.pem -days 365 -subj "/CN=localhost"
 
-openssl req -x509 -new -nodes \
-  -key key.pem \
-  -sha256 -days 365 \
-  -out cert.pem \
-  -config cert.conf
-
+echo "Copying certificates to /home/dev/certs"
 mkdir -p /home/dev/certs
 cp cert.pem /home/dev/certs/cert.pem
 cp key.pem /home/dev/certs/key.pem
