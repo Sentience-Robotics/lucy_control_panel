@@ -14,14 +14,10 @@ class RosBridgeService {
     private static instance: RosBridgeService;
     private ros: ROSLIB.Ros | null = null;
     private _connectionStatus: ConnectionStatus = 'disconnected';
-    private url: string;
+    private url: string = '';
     private connectionTimeout: NodeJS.Timeout | null = null;
     private statusListeners: ((status: ConnectionStatus) => void)[] = [];
     private readonly CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
-
-    private constructor() {
-        this.url = import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'wss://localhost:9090';
-    }
 
     private setConnectionStatus(status: ConnectionStatus) {
         if (this._connectionStatus !== status) {
@@ -106,17 +102,15 @@ class RosBridgeService {
         };
     }
 
-    async connect(url?: string): Promise<void> {
+    async connect(url: string): Promise<void> {
         return new Promise((resolve, reject) => {
-            logger(`Attempting to connect to ROS Bridge at ${url || this.url}...`);
+            logger(`Attempting to connect to ROS Bridge at ${url}...`);
             if (this._connectionStatus === 'connecting' || this._connectionStatus === 'connected') {
                 resolve();
                 return;
             }
 
-            if (url && url !== this.url) {
-                this.url = url;
-            }
+            this.url = url;
 
             if (this.ros) {
                 this.ros.close();
@@ -151,7 +145,7 @@ class RosBridgeService {
         });
     }
 
-    async reconnect(url?: string): Promise<void> {
+    async reconnect(url: string): Promise<void> {
         this.setConnectionStatus('reconnecting');
         try {
             await this.connect(url);

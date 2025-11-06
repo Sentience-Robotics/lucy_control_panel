@@ -103,7 +103,8 @@ export const RobotControlPanel: React.FC = () => {
         if (stored) { return stored; }
 
         // Dynamic WSS URL from current origin
-        return `https://${window.location.hostname}:${window.location.port}/rosbridge`;
+        return import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_URL ||
+            `https://${window.location.hostname}:${window.location.port}/rosbridge`;
     }, []);
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -130,7 +131,7 @@ export const RobotControlPanel: React.FC = () => {
 
     /* Fixtures for first demo - awaiting servos indications in urdf */
     const max_hand_angle = 4.017994; // approx 150 degrees in radians
-    const rightHandFixtures: JointControlState[] = [
+    const rightArmFixtures: JointControlState[] = [
         { name: 'right_shoulder_yaw_joint', currentValue: 3.14, targetValue: 3.14, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
         { name: 'right_shoulder_roll_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
         { name: 'right_elbow_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
@@ -144,7 +145,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const loadUrdfData = () => {
         try {
-            setJoints(rightHandFixtures);
+            setJoints(rightArmFixtures);
             setLoading(false);
             return;
 
