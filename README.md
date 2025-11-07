@@ -37,14 +37,12 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 Create a `.env` file in the project root to configure the application:
 
 ```env
-# ROS Bridge Server URL
-VITE_ROS_BRIDGE_SERVER_URL=ws://localhost:9090
-
 # Authentication (both required for password protection)
 VITE_LOCAL_USERNAME=admin
 VITE_LOCAL_PASSWORD=5d41402abc4b2a76b9719d911017c592
 
 VITE_PORT=3000
+VITE_OVERRIDE_ROS_BRIDGE_SERVER_URL=https://100.100.100.100:5000/rosbridge
 
 VITE_ENABLE_LOGS=true
 ```
@@ -57,6 +55,21 @@ VITE_ENABLE_LOGS=true
    - Example: Password "lucy123" → MD5 hash "5d41402abc4b2a76b9719d911017c592"
 
 **Note**: If either `VITE_LOCAL_USERNAME` or `VITE_LOCAL_PASSWORD` is not set, the application will run without authentication.
+
+
+### HTTP/HTTPS Setup
+To run the application over HTTPS, generate self-signed certificates:
+```sh
+cd certs && ./generate_certificate.sh
+```
+
+Update paths if necessary in .env file:
+
+```env
+VITE_HTTPS=true
+VITE_SSL_CERT_PATH=/path/to/ssl/cert.pem
+VITE_SSL_KEY_PATH=/path/to/ssl/key.pem
+```
 
 ---
 

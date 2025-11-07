@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
     Typography,
     Space,
@@ -50,12 +50,15 @@ import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
-import StreamPlayerModal from "../Components/StreamPlayerModal";
+import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { ConnectedClientsHandler } from "../Services/ros/handlers/ConnectedClients.handler";
+import { MovableModal } from '../Components/MovableModal';
+import { MediapipeHandTracker } from '../Components/MediapipeHandTracker';
+import { ROS_TOPICS } from '../Services/ros/ros.service';
 
 const { Text } = Typography;
 
-const REFRESH_RATE = 1000;
+const REFRESH_RATE = 300;
 
 export const RobotControlPanel: React.FC = () => {
     const {
@@ -70,6 +73,7 @@ export const RobotControlPanel: React.FC = () => {
     } = useRosConnection();
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
+    const jointsRef = useRef<JointControlState[]>(joints);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(true);
@@ -85,13 +89,23 @@ export const RobotControlPanel: React.FC = () => {
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
 
+    const [selectedArm, setSelectedArm] = useState<ROS_TOPICS>(ROS_TOPICS.RIGHT_ARM); // true = right, false = left
+
     // ROS URL state
     const ROS_URL_KEY = 'lucy_ros_url';
-    const defaultRosUrl = useMemo(() => (
-        typeof window !== 'undefined'
-            ? (localStorage.getItem(ROS_URL_KEY) || import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
-            : (import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
-    ), []);
+    const defaultRosUrl = useMemo(() => {
+        if (typeof window === 'undefined') {
+            throw new Error('Window is undefined');
+        }
+
+        // localStorage
+        const stored = localStorage.getItem(ROS_URL_KEY);
+        if (stored) { return stored; }
+
+        // Dynamic WSS URL from current origin
+        return import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_URL ||
+            `https://${window.location.hostname}:${window.location.port}/rosbridge`;
+    }, []);
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -99,10 +113,12 @@ export const RobotControlPanel: React.FC = () => {
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
 
     const [isStreamVisible, setIsStreamVisible] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return false;
+        if (typeof window === 'undefined') { return false; }
         const saved = localStorage.getItem(STREAM_VISIBLE_KEY);
         return saved ? saved === 'true' : false;
     });
+
+    const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -114,11 +130,11 @@ export const RobotControlPanel: React.FC = () => {
     );
 
     /* Fixtures for first demo - awaiting servos indications in urdf */
-    const max_hand_angle = 2.617994; // approx 150 degrees in radians
-    const rightHandFixtures: JointControlState[] = [
-        { name: 'right_shoulder_yaw_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_shoulder_roll_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_elbow_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+    const max_hand_angle = 4.017994; // approx 150 degrees in radians
+    const rightArmFixtures: JointControlState[] = [
+        { name: 'right_shoulder_yaw_joint', currentValue: 3.14, targetValue: 3.14, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_shoulder_roll_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_elbow_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
         { name: 'right_wrist_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_thumb_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_index_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
@@ -129,7 +145,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const loadUrdfData = () => {
         try {
-            setJoints(rightHandFixtures);
+            setJoints(rightArmFixtures);
             setLoading(false);
             return;
 
@@ -163,16 +179,20 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        jointsRef.current = joints;
+    }, [joints]);
+
+    useEffect(() => {
         if (!isSending) {
             return;
         }
 
         const interval = setInterval(() => {
-            JointStateHandler.getInstance().publishJointStates(joints);
+            JointStateHandler.getInstance().publishJointStates(jointsRef.current);
         }, REFRESH_RATE);
 
         return () => clearInterval(interval);
-    }, [isSending, joints]);
+    }, [isSending]);
 
     const [countState, setCountState] = useState<number>(0);
 
@@ -498,10 +518,37 @@ export const RobotControlPanel: React.FC = () => {
                         >
                             {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
                         </Button>
+                        <Button
+                            onClick={() => setIsWebcamActive(v => !v)}
+                            style={{
+                                backgroundColor: isWebcamActive ? '#00ff41' : 'transparent',
+                                color: isWebcamActive ? '#000' : '#fff',
+                                borderColor: isWebcamActive ? '#00ff41' : '#444',
+                                boxShadow: isWebcamActive ? '0 0 10px #00ff41' : 'none',
+                            }}
+                        >
+                            {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
+                        </Button>
                     </Space>
                 </Col>
 
                 <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
+                    <Col>
+                        <ToggleSwitch
+                            isOn={selectedArm === ROS_TOPICS.RIGHT_ARM}
+                            onToggle={() => {
+                                const newValue = selectedArm === ROS_TOPICS.RIGHT_ARM ? ROS_TOPICS.LEFT_ARM : ROS_TOPICS.RIGHT_ARM;
+                                JointStateHandler.getInstance().changeTopic(newValue);
+                                setSelectedArm(newValue);
+                            }}
+                            title="Selected arm"
+                            textOff="LEFT"
+                            textOn="RIGHT"
+                            width={180}
+                            height={32}
+                        />
+                    </Col>
+
                     <Col>
                         <ToggleSwitch
                             isOn={isSending}
@@ -584,8 +631,28 @@ export const RobotControlPanel: React.FC = () => {
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
                 initialPosition={{ x: 100, y: 100 }}
-                initialSize={{ w: 480, h: 320 }}
             />
+
+            <MovableModal
+                modalName="WEBCAM"
+                isVisible={isWebcamActive}
+                onClose={() => setIsWebcamActive(false)}
+                initialPosition={{ x: 400, y: 150 }}
+            >
+                <MediapipeHandTracker
+                    moveRobotIndex={(y) => {
+                        //TODO Temporary poc, map x to index joint
+                        setJoints((prevJoints) =>
+                            prevJoints.map((joint) => {
+                                const clampedX = Math.max(0, Math.min(2, y / 300));
+                                if (joint.name === 'right_index_joint') {
+                                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
+                                }
+                                return joint;
+                            })
+                        );
+                    }} />
+            </MovableModal>
         </Page>
     );
 };

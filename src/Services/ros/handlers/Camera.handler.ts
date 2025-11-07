@@ -1,6 +1,5 @@
 import ROSLIB from "roslib";
 import { RosBridgeService } from "../ros.service.ts";
-import { logger } from "../../../Utils/logger.utils.ts";
 
 export class CameraHandler {
     private static instance: CameraHandler;
@@ -12,6 +11,7 @@ export class CameraHandler {
     private fps = 0;
     private frameCount = 0;
     private fpsStartTime = 0;
+    private lastFrameTime = 0;
 
     private constructor() {
         this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
@@ -64,9 +64,6 @@ export class CameraHandler {
 
         this.imageTopic.subscribe((message: any) => {
             const now = Date.now();
-            if (now - this.lastFrameTime < this.frameInterval) {
-                return; // Skip frame if it's too soon
-            }
             
             // Calculate latency
             this.frameDelay = this.lastFrameTime > 0 ? now - this.lastFrameTime : 0;
@@ -104,9 +101,7 @@ export class CameraHandler {
     }
 
     subscribeToCamera(
-        callback: (imageData: Uint8Array, frameDelay?: number, fps?: number) => void,
-        topicName: string = '/camera/mobius/jpg',
-        messageType: string = 'sensor_msgs/msg/CompressedImage'
+        callback: (imageData: Uint8Array, frameDelay?: number, fps?: number) => void
     ) {
         this.subscribers.push(callback);
 
