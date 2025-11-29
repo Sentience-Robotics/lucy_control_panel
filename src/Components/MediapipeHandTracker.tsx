@@ -11,7 +11,7 @@ interface MediapipeHandTrackerProps {
     moveRobotIndex?: (x: number) => void;
 }
 
-export const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
+const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     width,
     height,
     moveRobotIndex
@@ -259,3 +259,5 @@ export const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         </div>
     )
 }
+
+export default MediapipeHandTracker;
