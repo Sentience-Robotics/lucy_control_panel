@@ -1,4 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, {
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+    useMemo,
+    lazy,
+    Suspense,
+} from 'react';
 import {
     Typography,
     Space,
@@ -53,8 +61,9 @@ import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { ConnectedClientsHandler } from "../Services/ros/handlers/ConnectedClients.handler";
 import { MovableModal } from '../Components/MovableModal';
-import { MediapipeHandTracker } from '../Components/MediapipeHandTracker';
 import { ROS_TOPICS } from '../Services/ros/ros.service';
+
+const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
 const { Text } = Typography;
 
@@ -639,19 +648,23 @@ export const RobotControlPanel: React.FC = () => {
                 onClose={() => setIsWebcamActive(false)}
                 initialPosition={{ x: 400, y: 150 }}
             >
-                <MediapipeHandTracker
-                    moveRobotIndex={(y) => {
-                        //TODO Temporary poc, map x to index joint
-                        setJoints((prevJoints) =>
-                            prevJoints.map((joint) => {
-                                const clampedX = Math.max(0, Math.min(2, y / 300));
-                                if (joint.name === 'right_index_joint') {
-                                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
-                                }
-                                return joint;
-                            })
-                        );
-                    }} />
+                {isWebcamActive && (
+                    <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
+                        <MediapipeHandTracker
+                            moveRobotIndex={(y) => {
+                                //TODO Temporary poc, map x to index joint
+                                setJoints((prevJoints) =>
+                                    prevJoints.map((joint) => {
+                                        const clampedX = Math.max(0, Math.min(2, y / 300));
+                                        if (joint.name === 'right_index_joint') {
+                                            return { ...joint, currentValue: clampedX, targetValue: clampedX };
+                                        }
+                                        return joint;
+                                    })
+                                );
+                            }} />
+                    </Suspense>
+                )}
             </MovableModal>
         </Page>
     );
