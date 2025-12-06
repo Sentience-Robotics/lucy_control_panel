@@ -56,7 +56,7 @@ const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boo
     );
 };
 
-export const Robot3DViewer: React.FC = () => {
+const Robot3DViewer: React.FC = () => {
     const [meshes, setMeshes] = useState<MeshData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -357,3 +357,5 @@ export const Robot3DViewer: React.FC = () => {
       </Page>
   );
 };
+
+export default Robot3DViewer;

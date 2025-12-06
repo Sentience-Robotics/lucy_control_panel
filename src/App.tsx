@@ -1,14 +1,15 @@
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, Spin } from 'antd';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 /* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
-import { Robot3DViewer } from './Pages/Robot3DViewer';
 import { Stream } from "./Pages/Stream.tsx";
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
+
+const Robot3DViewer = lazy(() => import('./Pages/Robot3DViewer').then(module => ({ default: module.default })));
 
 function App() {
     const localPassword: string | undefined = import.meta.env.VITE_LOCAL_PASSWORD;
@@ -97,7 +98,11 @@ function App() {
                 <Navigation />
                 <Routes>
                     <Route path="/" element={<RobotControlPanel />} />
-                    <Route path="/3d-viewer" element={<Robot3DViewer />} />
+                    <Route path="/3d-viewer" element={
+                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
+                            <Robot3DViewer />
+                        </Suspense>
+                    } />
                     <Route path="/stream" element={<Stream />} />
                     <Route path="*" element={<NotFound />} />
                 </Routes>
