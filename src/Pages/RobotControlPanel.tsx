@@ -139,12 +139,12 @@ export const RobotControlPanel: React.FC = () => {
     );
 
     /* Fixtures for first demo - awaiting servos indications in urdf */
-    const max_hand_angle = 4.017994; // approx 150 degrees in radians
+    const max_hand_angle = 5.236; // approx 300 degrees in radians
     const rightArmFixtures: JointControlState[] = [
-        { name: 'right_shoulder_yaw_joint', currentValue: 3.14, targetValue: 3.14, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_shoulder_roll_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_elbow_joint', currentValue: 3.49, targetValue: 3.49, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_wrist_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
+        { name: 'right_shoulder_yaw_joint', currentValue: 2.79, targetValue: 2.79, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_shoulder_roll_joint', currentValue: 3.14, targetValue: 3.14, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_elbow_joint', currentValue: 1.74, targetValue: 1.74, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
+        { name: 'right_wrist_joint', currentValue: 2.62, targetValue: 2.62, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_thumb_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_index_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
         { name: 'right_middle_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
