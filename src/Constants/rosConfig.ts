@@ -14,6 +14,12 @@ export interface StreamSource {
 
 export const STREAM_SOURCES: StreamSource[] = [
     {
+        id: 'ext-camera',
+        name: 'External USB Webcam',
+        topic: '/ext_camera/jpg',
+        messageType: 'sensor_msgs/msg/CompressedImage'
+    },
+    {
         id: 'realsense-rgb',
         name: 'Realsense RGB',
         topic: '/realsense/realsense2_camera/color/image_raw/compressed',
