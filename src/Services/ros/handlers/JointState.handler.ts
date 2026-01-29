@@ -73,7 +73,12 @@ export class JointStateHandler {
         }
 
         const message = new ROSLIB.Message({
-            position: joints.map(j => radianToDegree(j.currentValue)),
+            joint_names: joints.map(j => j.name),
+            points: [
+            {
+                positions: joints.map(j => radianToDegree(j.currentValue)),
+            }
+            ]
         });
         this.jointStateTopic.publish(message);
     }

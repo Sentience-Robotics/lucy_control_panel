@@ -1,7 +1,7 @@
 export const ROS_CONFIG = {
     jointStateTopic: {
-        name: '/joints/right_arm',
-        messageType: 'sensor_msgs/JointState'
+        name: '/right_arm_controller/joint_trajectory',
+        messageType: 'trajectory_msgs/msg/JointTrajectory'
     }
 };
 
