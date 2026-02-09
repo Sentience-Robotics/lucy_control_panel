@@ -57,12 +57,14 @@ const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boo
 };
 
 const Robot3DViewer: React.FC = () => {
+    // @ts-expect-error unused
     const [meshes, setMeshes] = useState<MeshData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [wireframe, setWireframe] = useState(false);
     const [opacity, setOpacity] = useState(0.8);
     const [showGrid, setShowGrid] = useState(true);
+    // @ts-expect-error unused
     const loaderRef = useRef(new STLLoader());
 
     const loadRobotModel = async () => {

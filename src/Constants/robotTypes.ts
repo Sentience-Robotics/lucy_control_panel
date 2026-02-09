@@ -33,14 +33,15 @@ export interface JointControlState {
   minValue: number;
   maxValue: number;
   type: Joint['type'];
-  category: string;
+  category: string | undefined;
+  inverted?: boolean;
+  restValue?: number;
 }
 
-export type JointCategory =
-  | 'Head'
-  | 'Left Hand'
-  | 'Right Hand'
-  | 'Left Arm'
-  | 'Right Arm'
-  | 'Torso'
-  | 'Base';
+export interface JointConfiguration {
+  category?: string;
+  minValue?: number;
+  maxValue?: number;
+  inverted?: boolean;
+  restValue?: number;
+}

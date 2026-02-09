@@ -27,8 +27,7 @@ const { Text, Title } = Typography;
 
 interface PoseManagerProps {
   joints: JointControlState[];
-  onLoadPose: (joints: Record<string, number>, categoryOrder?: string[]) => void;
-  categoryOrder?: string[];
+  onLoadPose: (joints: Record<string, number>) => void;
 }
 
 const PRESET_POSE_NAMES = [
@@ -42,7 +41,7 @@ const PRESET_POSE_NAMES = [
   'Custom Pose'
 ];
 
-export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, categoryOrder }) => {
+export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) => {
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [loadModalVisible, setLoadModalVisible] = useState(false);
   const [poseName, setPoseName] = useState('');
@@ -79,7 +78,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
 
     setLoading(true);
     try {
-      const savedPose = await storageService.savePose(poseName.trim(), joints, categoryOrder);
+      const savedPose = await storageService.savePose(poseName.trim(), joints);
       message.success(`Pose "${savedPose.name}" saved successfully`);
       setPoseName('');
       setSaveModalVisible(false);
@@ -90,16 +89,15 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
     } finally {
       setLoading(false);
     }
-  }, [poseName, joints, categoryOrder, loadSavedPoses]);
+  }, [poseName, joints, loadSavedPoses]);
 
   const handleLoadPose = useCallback(async (poseId: string) => {
     setLoading(true);
     try {
       const pose = await storageService.loadPose(poseId);
       if (pose) {
-        onLoadPose(pose.joints, pose.categoryOrder);
-        const layoutInfo = pose.categoryOrder ? ' and layout' : '';
-        message.success(`Pose "${pose.name}"${layoutInfo} loaded successfully`);
+        onLoadPose(pose.joints);
+        message.success(`Pose "${pose.name}" loaded successfully`);
         setLoadModalVisible(false);
       } else {
         message.error('Pose not found');
@@ -183,11 +181,10 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
       >
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Text style={{ color: '#fff' }}>
-            Enter a name for your pose. This will save the current position of all {joints.length} joints{categoryOrder ? ' and the current category layout' : ''}.
+            Enter a name for your pose. This will save the current position of all {joints.length} joints.
             <br />
             <Text style={{ color: '#888', fontSize: '12px' }}>
               You can save multiple poses with different names. Duplicate names will automatically get a number suffix.
-              {categoryOrder && ' Layout includes category arrangement for easy restoration.'}
             </Text>
           </Text>
 
@@ -333,11 +330,6 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
                       </Space>
                       <Text style={{ color: '#888' }}>
                         {getJointCount(pose.joints)} joints stored
-                        {pose.categoryOrder && (
-                          <span style={{ color: '#00ff41', marginLeft: 8 }}>
-                            + layout
-                          </span>
-                        )}
                       </Text>
                     </Space>
                   }

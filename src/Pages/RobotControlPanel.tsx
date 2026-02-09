@@ -22,40 +22,20 @@ import {
     ReloadOutlined,
     ThunderboltOutlined,
 } from '@ant-design/icons';
-import {
-    DndContext,
-    rectIntersection,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragOverlay,
-} from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    rectSortingStrategy,
-} from '@dnd-kit/sortable';
 
 /* Services */
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
+import { storageService } from "../Services/storage.service";
 
 /* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 
-/* Utils */
-// import { UrdfParser } from '../Utils/urdfParser.utils.ts';
-
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
-// import { RobotPathResolver } from '../Constants/robotConfig';
 
 /* Components */
 import { Page } from '../Components/Page';
 import { JointCategory } from '../Components/JointCategory';
-import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
@@ -68,6 +48,7 @@ const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTrack
 const { Text } = Typography;
 
 const REFRESH_RATE = 300;
+const NO_CATEGORY_LABEL = "Uncategorized";
 
 export const RobotControlPanel: React.FC = () => {
     const {
@@ -86,16 +67,6 @@ export const RobotControlPanel: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(true);
-    const [categoryOrder, setCategoryOrder] = useState<string[]>([
-        'Head',
-        'Torso',
-        'Left Arm',
-        'Right Arm',
-        'Left Hand',
-        'Right Hand',
-        'Base',
-    ]);
-    const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
 
     const [selectedArm, setSelectedArm] = useState<ROS_TOPICS>(ROS_TOPICS.RIGHT_ARM); // true = right, false = left
@@ -129,51 +100,30 @@ export const RobotControlPanel: React.FC = () => {
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { distance: 8 },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
     /* Fixtures for first demo - awaiting servos indications in urdf */
-    const max_hand_angle = 5.236; // approx 300 degrees in radians
-    const rightArmFixtures: JointControlState[] = [
-        { name: 'right_shoulder_yaw_joint', currentValue: 2.79, targetValue: 2.79, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_shoulder_roll_joint', currentValue: 3.14, targetValue: 3.14, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_elbow_joint', currentValue: 1.74, targetValue: 1.74, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_wrist_joint', currentValue: 2.62, targetValue: 2.62, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_thumb_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_index_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_middle_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_ring_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_pinky_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-    ]
+    const rightArmFixtures: JointControlState[] = JointStateHandler.getInstance().getJoints(); // Return Fixture for now;
 
-    const loadUrdfData = () => {
+    const loadUrdfData = async () => {
         try {
-            setJoints(rightArmFixtures);
-            setLoading(false);
-            return;
+            // Load saved configurations
+            const savedConfigs = await storageService.loadJointConfigurations();
+            
+            // Merge configurations into fixtures
+            const mergedJoints = rightArmFixtures.map(joint => {
+                const config = savedConfigs[joint.name];
+                return {
+                    ...joint,
+                    category: config?.category || joint.category,
+                    minValue: config?.minValue ?? joint.minValue,
+                    maxValue: config?.maxValue ?? joint.maxValue,
+                    inverted: config?.inverted ?? joint.inverted,
+                    restValue: config?.restValue ?? joint.restValue
+                };
+            });
 
-            // setLoading(true);
-            // setError(null);
-            // setHasError(false);
-            //
-            // const response = await fetch(RobotPathResolver.getUrdfPath());
-            // if (!response.ok) {
-            //     throw new Error('Failed to load URDF file');
-            // }
-            //
-            // const urdfContent = await response.text();
-            // const parser = new UrdfParser(urdfContent);
-            // const parsedJoints = parser.parseJoints();
-            // const controlStates = UrdfParser.createJointControlStates(parsedJoints);
-            //
-            // setJoints(controlStates);
-        } catch (err) {
+            setJoints(mergedJoints);
+            setLoading(false);
+            return;} catch (err) {
             setError(
                 err instanceof Error ? err.message : 'Failed to load robot configuration'
             );
@@ -228,8 +178,9 @@ export const RobotControlPanel: React.FC = () => {
     const handleResetCategory = useCallback((category: string) => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                if (joint.category === category) {
-                    const midValue = (joint.minValue + joint.maxValue) / 2;
+                const jointCategory = joint.category || NO_CATEGORY_LABEL;
+                if (jointCategory === category) {
+                    const midValue = joint.restValue ?? ((joint.minValue + joint.maxValue) / 2);
                     return { ...joint, currentValue: midValue, targetValue: midValue };
                 }
                 return joint;
@@ -240,7 +191,7 @@ export const RobotControlPanel: React.FC = () => {
     const handleResetAll = useCallback(() => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                const midValue = (joint.minValue + joint.maxValue) / 2;
+                const midValue = joint.restValue ?? ((joint.minValue + joint.maxValue) / 2);
                 return { ...joint, currentValue: midValue, targetValue: midValue };
             })
         );
@@ -249,16 +200,17 @@ export const RobotControlPanel: React.FC = () => {
     const categorizedJoints = useMemo(() => {
         const categories: { [key: string]: JointControlState[] } = {};
         joints.forEach((joint) => {
-            if (!categories[joint.category]) {
-                categories[joint.category] = [];
+            const categoryName = joint.category || NO_CATEGORY_LABEL;
+            if (!categories[categoryName]) {
+                categories[categoryName] = [];
             }
-            categories[joint.category].push(joint);
+            categories[categoryName].push(joint);
         });
         return categories;
     }, [joints]);
 
     const handleLoadPose = useCallback(
-        (poseJoints: Record<string, number>, categoryOrder?: string[]) => {
+        (poseJoints: Record<string, number>) => {
             setJoints((prevJoints) =>
                 prevJoints.map((joint) => ({
                     ...joint,
@@ -266,31 +218,9 @@ export const RobotControlPanel: React.FC = () => {
                     targetValue: poseJoints[joint.name] ?? joint.targetValue,
                 }))
             );
-
-            if (categoryOrder) {
-                setCategoryOrder(categoryOrder);
-            }
         },
         []
     );
-
-    const handleDragStart = useCallback((event: DragStartEvent) => {
-        setActiveId(event.active.id as string);
-    }, []);
-
-    const handleDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event;
-
-        if (active.id !== over?.id) {
-            setCategoryOrder((items) => {
-                const oldIndex = items.indexOf(active.id as string);
-                const newIndex = items.indexOf(over?.id as string);
-                return arrayMove(items, oldIndex, newIndex);
-            });
-        }
-
-        setActiveId(null);
-    }, []);
 
     const handleConnect = async () => {
         setConnectionError(null);
@@ -514,7 +444,6 @@ export const RobotControlPanel: React.FC = () => {
                         <PoseManager
                             joints={joints}
                             onLoadPose={handleLoadPose}
-                            categoryOrder={categoryOrder}
                         />
                         <Button
                             onClick={() => setIsStreamVisible(v => !v)}
@@ -583,58 +512,28 @@ export const RobotControlPanel: React.FC = () => {
                 </Row>
             </Row>
 
-            <DndContext
-                sensors={sensors}
-                collisionDetection={rectIntersection}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(max(320px, 30%), 1fr))',
+                    gridAutoRows: '1fr',
+                    gap: '12px',
+                    width: '100%',
+                    alignItems: 'stretch',
+                }}
             >
-                <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                            gridAutoRows: '1fr',
-                            gap: '12px',
-                            width: '100%',
-                            alignItems: 'stretch',
-                        }}
-                    >
-                        {categoryOrder.map((category) => {
-                            if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
-                                return null;
-                            }
-
-                            return (
-                                <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <DraggableCategory
-                                        id={category}
-                                        category={category}
-                                        joints={categorizedJoints[category]}
-                                        onJointValueChange={handleJointValueChange}
-                                        onResetCategory={handleResetCategory}
-                                        showDegrees={showDegrees}
-                                    />
-                                </div>
-                            );
-                        })}
+                {Object.keys(categorizedJoints).sort().map((category) => (
+                    <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                        <JointCategory
+                            category={category}
+                            joints={categorizedJoints[category]}
+                            onJointValueChange={handleJointValueChange}
+                            onResetCategory={handleResetCategory}
+                            showDegrees={showDegrees}
+                        />
                     </div>
-                </SortableContext>
-
-                <DragOverlay>
-                    {activeId ? (
-                        <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
-                            <JointCategory
-                                category={activeId}
-                                joints={categorizedJoints[activeId] || []}
-                                onJointValueChange={() => { }}
-                                onResetCategory={() => { }}
-                                showDegrees={showDegrees}
-                            />
-                        </div>
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
+                ))}
+            </div>
 
             <StreamPlayerModal
                 isVisible={isStreamVisible}
