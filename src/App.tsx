@@ -10,6 +10,7 @@ import { NotFound } from './Pages/NotFound';
 import { AuthForm } from './Components/AuthForm';
 
 const Robot3DViewer = lazy(() => import('./Pages/Robot3DViewer').then(module => ({ default: module.default })));
+const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
 
 function App() {
     const localPassword: string | undefined = import.meta.env.VITE_LOCAL_PASSWORD;
@@ -101,6 +102,11 @@ function App() {
                     <Route path="/3d-viewer" element={
                         <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
                             <Robot3DViewer />
+                        </Suspense>
+                    } />
+                    <Route path="/configuration" element={
+                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
+                            <Configuration />
                         </Suspense>
                     } />
                     <Route path="/stream" element={<Stream />} />

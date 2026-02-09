@@ -1,23 +1,25 @@
-import type { JointControlState } from '../Constants/robotTypes';
+import type { JointControlState, JointConfiguration } from '../Constants/robotTypes';
 
 export interface SavedPose {
   id: string;
   name: string;
   timestamp: number;
   joints: Record<string, number>; // joint name -> value mapping
-  categoryOrder?: string[]; // optional category arrangement
 }
 
 export interface StorageService {
-  savePose(name: string, joints: JointControlState[], categoryOrder?: string[]): Promise<SavedPose>;
+  savePose(name: string, joints: JointControlState[]): Promise<SavedPose>;
   loadPoses(): Promise<SavedPose[]>;
   deletePose(id: string): Promise<void>;
   loadPose(id: string): Promise<SavedPose | null>;
+  saveJointConfigurations(configs: Record<string, JointConfiguration>): Promise<void>;
+  loadJointConfigurations(): Promise<Record<string, JointConfiguration>>;
 }
 
 // localStorage-based implementation
 class LocalStorageService implements StorageService {
   private readonly POSES_KEY = 'lucy_poses';
+  private readonly CONFIGS_KEY = 'lucy_joint_configs';
 
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -48,7 +50,7 @@ class LocalStorageService implements StorageService {
     }
   }
 
-  async savePose(name: string, joints: JointControlState[], categoryOrder?: string[]): Promise<SavedPose> {
+  async savePose(name: string, joints: JointControlState[]): Promise<SavedPose> {
     const existingPoses = this.loadPosesFromStorage();
 
     // Convert joints array to object for more efficient storage
@@ -61,8 +63,7 @@ class LocalStorageService implements StorageService {
       id: this.generateId(),
       name: name.trim(),
       timestamp: Date.now(),
-      joints: jointValues,
-      categoryOrder: categoryOrder
+      joints: jointValues
     };
 
     // Check for duplicate names and add counter if needed
@@ -96,6 +97,26 @@ class LocalStorageService implements StorageService {
   async loadPose(id: string): Promise<SavedPose | null> {
     const poses = this.loadPosesFromStorage();
     return poses.find(pose => pose.id === id) || null;
+  }
+
+  async saveJointConfigurations(configs: Record<string, JointConfiguration>): Promise<void> {
+    try {
+      localStorage.setItem(this.CONFIGS_KEY, JSON.stringify(configs));
+    } catch (error) {
+      console.error('Failed to save joint configurations to localStorage:', error);
+      throw error;
+    }
+  }
+
+  async loadJointConfigurations(): Promise<Record<string, JointConfiguration>> {
+    try {
+      const data = localStorage.getItem(this.CONFIGS_KEY);
+      if (!data) return {};
+      return JSON.parse(data);
+    } catch (error) {
+      console.warn('Failed to load joint configurations from localStorage:', error);
+      return {};
+    }
   }
 }
 
