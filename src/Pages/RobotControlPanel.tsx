@@ -21,6 +21,8 @@ import {
 import {
     ReloadOutlined,
     ThunderboltOutlined,
+    AudioOutlined,
+    CustomerServiceOutlined,
 } from '@ant-design/icons';
 
 /* Services */
@@ -42,6 +44,7 @@ import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { ConnectedClientsHandler } from "../Services/ros/handlers/ConnectedClients.handler";
 import { MovableModal } from '../Components/MovableModal';
 import { ROS_TOPICS } from '../Services/ros/ros.service';
+import { AudioBridgeHandler, type AudioBridgeError } from '../Services/ros/handlers/AudioBridge.handler';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -99,6 +102,10 @@ export const RobotControlPanel: React.FC = () => {
     });
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+
+    const [usePanelMic, setUsePanelMic] = useState<boolean>(false);
+    const [usePanelSpeakers, setUsePanelSpeakers] = useState<boolean>(false);
+    const [panelAudioError, setPanelAudioError] = useState<string | null>(null);
 
     /* Fixtures for first demo - awaiting servos indications in urdf */
     const rightArmFixtures: JointControlState[] = JointStateHandler.getInstance().getJoints(); // Return Fixture for now;
@@ -164,6 +171,28 @@ export const RobotControlPanel: React.FC = () => {
             handler.unsubscribe();
         };
     }, []);
+
+    const audioBridge = useMemo(() => AudioBridgeHandler.getInstance(), []);
+    useEffect(() => {
+        audioBridge.setCallbacks({
+            onError: (err: AudioBridgeError) => {
+                const msg = err === 'permission_denied' ? 'Microphone permission denied'
+                    : err === 'no_device' ? 'No microphone found'
+                        : err === 'ros_disconnected' ? 'ROS disconnected'
+                            : 'Audio bridge error';
+                setPanelAudioError(msg);
+                setUsePanelMic(false);
+                setUsePanelSpeakers(false);
+            },
+        });
+    }, [audioBridge]);
+    useEffect(() => {
+        if (!isConnected && (usePanelMic || usePanelSpeakers)) {
+            audioBridge.stop();
+            setUsePanelMic(false);
+            setUsePanelSpeakers(false);
+        }
+    }, [isConnected, usePanelMic, usePanelSpeakers, audioBridge]);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
@@ -255,6 +284,34 @@ export const RobotControlPanel: React.FC = () => {
             default: return 'UNKNOWN';
         }
     };
+
+    const handlePanelMicToggle = useCallback(async () => {
+        setPanelAudioError(null);
+        if (usePanelMic) {
+            audioBridge.stopMic();
+            setUsePanelMic(false);
+        } else {
+            setUsePanelMic(true);
+            await audioBridge.startMic();
+            if (!audioBridge.isMicActive()) {
+                setUsePanelMic(false);
+            }
+        }
+    }, [audioBridge, usePanelMic]);
+
+    const handlePanelSpeakersToggle = useCallback(() => {
+        setPanelAudioError(null);
+        if (usePanelSpeakers) {
+            audioBridge.stopSpeakers();
+            setUsePanelSpeakers(false);
+        } else {
+            setUsePanelSpeakers(true);
+            audioBridge.startSpeakers();
+            if (!audioBridge.isSpeakersActive()) {
+                setUsePanelSpeakers(false);
+            }
+        }
+    }, [audioBridge, usePanelSpeakers]);
 
     const getConnectionStatusColor = () => {
         if (countState > 1) {
@@ -425,6 +482,17 @@ export const RobotControlPanel: React.FC = () => {
                     style={{ marginBottom: 12 }}
                 />
             )}
+            {panelAudioError && (
+                <Alert
+                    message="Audio bridge"
+                    description={panelAudioError}
+                    type="warning"
+                    showIcon
+                    closable
+                    onClose={() => setPanelAudioError(null)}
+                    style={{ marginBottom: 12 }}
+                />
+            )}
 
             <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
                 <Col flex="auto">
@@ -508,6 +576,91 @@ export const RobotControlPanel: React.FC = () => {
                             width={180}
                             height={32}
                         />
+                    </Col>
+
+                    <Col style={{ marginLeft: 'auto' }}>
+                        <Space size={8}>
+                            <button
+                                type="button"
+                                onClick={handlePanelMicToggle}
+                                disabled={!isConnected}
+                                title={usePanelMic ? 'Microphone on (click to turn off)' : 'Use my microphone'}
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    padding: 0,
+                                    borderRadius: 50,
+                                    flexShrink: 0,
+                                    backgroundColor: usePanelMic ? '#00ff41' : 'transparent',
+                                    color: usePanelMic ? '#000' : '#fff',
+                                    border: `1px solid ${usePanelMic ? '#00ff41' : '#444'}`,
+                                    boxShadow: usePanelMic ? '0 0 10px #00ff41' : 'none',
+                                    opacity: !isConnected ? 0.6 : 1,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: isConnected ? 'pointer' : 'not-allowed',
+                                }}
+                            >
+                                <span style={{ position: 'relative', display: 'inline-flex' }}>
+                                    <AudioOutlined style={{ fontSize: 18 }} />
+                                    {!usePanelMic && (
+                                        <span
+                                            style={{
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                width: '140%',
+                                                height: 2,
+                                                background: '#888',
+                                                transform: 'translate(-50%, -50%) rotate(-45deg)',
+                                                pointerEvents: 'none',
+                                            }}
+                                        />
+                                    )}
+                                </span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handlePanelSpeakersToggle}
+                                disabled={!isConnected}
+                                title={usePanelSpeakers ? 'Speakers on (click to turn off)' : 'Use my speakers'}
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    padding: 0,
+                                    borderRadius: 50,
+                                    flexShrink: 0,
+                                    backgroundColor: usePanelSpeakers ? '#00ff41' : 'transparent',
+                                    color: usePanelSpeakers ? '#000' : '#fff',
+                                    border: `1px solid ${usePanelSpeakers ? '#00ff41' : '#444'}`,
+                                    boxShadow: usePanelSpeakers ? '0 0 10px #00ff41' : 'none',
+                                    opacity: !isConnected ? 0.6 : 1,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: isConnected ? 'pointer' : 'not-allowed',
+                                }}
+                            >
+                                <span style={{ position: 'relative', display: 'inline-flex' }}>
+                                    <CustomerServiceOutlined style={{ fontSize: 18 }} />
+                                    {!usePanelSpeakers && (
+                                        <span
+                                            style={{
+                                                position: 'absolute',
+                                                left: '50%',
+                                                top: '50%',
+                                                width: '140%',
+                                                height: 2,
+                                                background: '#888',
+                                                transform: 'translate(-50%, -50%) rotate(-45deg)',
+                                                pointerEvents: 'none',
+                                            }}
+                                        />
+                                    )}
+                                </span>
+                            </button>
+                        </Space>
                     </Col>
                 </Row>
             </Row>

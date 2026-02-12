@@ -34,3 +34,10 @@ export const STREAM_SOURCES: StreamSource[] = [
 ];
 
 export const DEFAULT_STREAM_SOURCE = STREAM_SOURCES[0];
+
+/** Audio I/O for control-panel-as-mic/speakers (see lucy_ros_api docs/CONTROL_PANEL_AUDIO.md) */
+export const AUDIO_TOPICS = {
+    MIC_AUDIO: '/mic_audio',
+    AUDIO: '/audio',
+    MESSAGE_TYPE: 'audio_common_msgs/msg/AudioStamped',
+} as const;

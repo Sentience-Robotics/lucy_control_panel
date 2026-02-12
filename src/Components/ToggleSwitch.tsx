@@ -10,6 +10,7 @@ export interface ToggleSwitchProps {
     textOff?: string;
     width?: number;
     height?: number;
+    disabled?: boolean;
 }
 
 export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
@@ -21,7 +22,8 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     textOn = 'ON',
     textOff = 'OFF',
     width = 180,
-    height = 32
+    height = 32,
+    disabled = false,
 }) => {
     return (
         <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
@@ -36,8 +38,9 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                 {title}
             </span>
             <button
-                onClick={() => onToggle(!isOn)}
+                onClick={() => !disabled && onToggle(!isOn)}
                 aria-pressed={isOn}
+                aria-disabled={disabled}
                 aria-label={`${title}: ${isOn ? 'on' : 'off'}`}
                 style={{
                     width,
@@ -50,10 +53,11 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                     borderRadius: 18,
                     backgroundColor: '#0d0d0d',
                     border: '1px solid #2a2a2a',
-                    cursor: 'pointer',
+                    cursor: disabled ? 'not-allowed' : 'pointer',
                     userSelect: 'none',
                     outline: 'none',
                     color: '#00ff41',
+                    opacity: disabled ? 0.6 : 1,
                 }}
             >
                 <div
