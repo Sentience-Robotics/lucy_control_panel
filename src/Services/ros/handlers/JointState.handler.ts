@@ -1,96 +1,137 @@
 import ROSLIB from 'roslib';
-import { ROS_CONFIG } from '../../../Constants/rosConfig.ts';
-import type { JointControlState } from "../../../Constants/robotTypes.ts";
-import { radianToDegree } from "../../../Utils/math.utils.ts";
-import { RosBridgeService } from "../ros.service.ts";
+import { ROS_CONFIG, CONTROLLER_JOINTS_CONFIG, type ControllerJointConfig } from '../../../Constants/rosConfig.ts';
+import type { JointControlState } from '../../../Constants/robotTypes.ts';
+import { RosBridgeService } from '../ros.service.ts';
+
+/** Builds a map of joint name -> controller config for fast lookup. */
+function jointToControllerMap(configs: ControllerJointConfig[]): Map<string, ControllerJointConfig> {
+  const m = new Map<string, ControllerJointConfig>();
+  for (const c of configs) {
+    for (const j of c.joints) {
+      m.set(j, c);
+    }
+  }
+  return m;
+}
 
 export class JointStateHandler {
-    private static instance: JointStateHandler;
-    private jointStateTopic: ROSLIB.Topic | null = null;
-    private unsubscribeFromStatus: (() => void) | null = null;
-    private topicName: string;
+  private static instance: JointStateHandler;
+  private topicByTopicName: Map<string, ROSLIB.Topic> = new Map();
+  private unsubscribeFromStatus: (() => void) | null = null;
+  private controllerConfigs: ControllerJointConfig[];
+  private jointToController: Map<string, ControllerJointConfig>;
 
-    private constructor(topicName: string = ROS_CONFIG.jointStateTopic.name) {
-        this.topicName = topicName;
-        this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
-            if (status === 'connected') {
-                this.initializeTopic();
-            } else if (status === 'disconnected') {
-                this.jointStateTopic?.unsubscribe();
-                this.jointStateTopic = null;
-            }
+  private constructor(controllerConfigs: ControllerJointConfig[]) {
+    this.controllerConfigs = controllerConfigs;
+    this.jointToController = jointToControllerMap(controllerConfigs);
+    this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
+      if (status === 'connected') {
+        this.initializeTopics();
+      } else if (status === 'disconnected') {
+        this.topicByTopicName.forEach((t) => t.unsubscribe());
+        this.topicByTopicName.clear();
+      }
+    });
+    this.initializeTopics();
+  }
+
+  private initializeTopics() {
+    const ros = RosBridgeService.getInstance().rosConnection;
+    if (!ros) return;
+    this.topicByTopicName.forEach((t) => t.unsubscribe());
+    this.topicByTopicName.clear();
+    for (const c of this.controllerConfigs) {
+      this.topicByTopicName.set(c.topic, new ROSLIB.Topic({
+        ros,
+        name: c.topic,
+        messageType: ROS_CONFIG.jointStateTopic.messageType,
+      }));
+    }
+  }
+
+  /** Update controller config (e.g. after receiving from ROS). */
+  setControllerConfigs(controllerConfigs: ControllerJointConfig[]) {
+    this.controllerConfigs = controllerConfigs;
+    this.jointToController = jointToControllerMap(controllerConfigs);
+    this.initializeTopics();
+  }
+
+  /** Return current actuated joints as JointControlState[] (from controller config). Used by Configuration page. */
+  getJoints(): JointControlState[] {
+    const defaultMin = -Math.PI;
+    const defaultMax = Math.PI;
+    const joints: JointControlState[] = [];
+    for (const c of this.controllerConfigs) {
+      for (const name of c.joints) {
+        joints.push({
+          name,
+          currentValue: 0,
+          targetValue: 0,
+          minValue: defaultMin,
+          maxValue: defaultMax,
+          type: 'revolute',
+          category: c.defaultCategory,
         });
+      }
+    }
+    return joints;
+  }
 
-        this.initializeTopic();
+  static getInstance(controllerConfigs?: ControllerJointConfig[]): JointStateHandler {
+    if (!JointStateHandler.instance) {
+      JointStateHandler.instance = new JointStateHandler(controllerConfigs ?? CONTROLLER_JOINTS_CONFIG);
+    } else if (controllerConfigs) {
+      JointStateHandler.instance.setControllerConfigs(controllerConfigs);
+    }
+    return JointStateHandler.instance;
+  }
+
+  static cleanup(): void {
+    if (JointStateHandler.instance) {
+      JointStateHandler.instance.topicByTopicName.forEach((t) => t.unsubscribe());
+      JointStateHandler.instance.topicByTopicName.clear();
+      if (JointStateHandler.instance.unsubscribeFromStatus) {
+        JointStateHandler.instance.unsubscribeFromStatus();
+      }
+    }
+  }
+
+  /**
+   * Publish current joint positions to ros2_control.
+   * Groups joints by controller and publishes one JointTrajectory per controller.
+   * Joint order and names follow controller config (required by JointTrajectoryController).
+   * Positions are in radians.
+   */
+  publishJointStates(joints: JointControlState[]) {
+    const ros = RosBridgeService.getInstance().rosConnection;
+    if (!ros) {
+      console.warn('Cannot publish joint states: ROS connection not available');
+      return;
+    }
+    this.initializeTopics();
+
+    const jointByName = new Map<string, JointControlState>();
+    for (const j of joints) {
+      jointByName.set(j.name, j);
     }
 
-    private initializeTopic() {
-        const ros = RosBridgeService.getInstance().rosConnection;
-        if (ros) {
-            if (this.jointStateTopic) {
-                this.jointStateTopic.unsubscribe();
-            }
-            this.jointStateTopic = new ROSLIB.Topic({
-                ros: ros,
-                name: this.topicName,
-                messageType: ROS_CONFIG.jointStateTopic.messageType
-            });
-        }
+    for (const cfg of this.controllerConfigs) {
+      const names: string[] = [];
+      const positions: number[] = [];
+      for (const name of cfg.joints) {
+        const j = jointByName.get(name);
+        if (j == null) continue;
+        names.push(name);
+        positions.push(j.currentValue);
+      }
+      if (names.length === 0) continue;
+      const topic = this.topicByTopicName.get(cfg.topic);
+      if (!topic) continue;
+      const message = new ROSLIB.Message({
+        joint_names: names,
+        points: [{ positions, time_from_start: { sec: 0, nanosec: 0 } }],
+      });
+      topic.publish(message);
     }
-
-    changeTopic(topicName: string) {
-        this.topicName = topicName;
-        this.initializeTopic();
-    }
-
-    static getInstance(): JointStateHandler {
-        if (!JointStateHandler.instance) {
-            JointStateHandler.instance = new JointStateHandler();
-        }
-        return JointStateHandler.instance;
-    }
-
-    static cleanup(): void {
-        if (JointStateHandler.instance) {
-            if (JointStateHandler.instance.jointStateTopic) {
-                JointStateHandler.instance.jointStateTopic.unsubscribe();
-                JointStateHandler.instance.jointStateTopic = null;
-            }
-            if (JointStateHandler.instance.unsubscribeFromStatus) {
-                JointStateHandler.instance.unsubscribeFromStatus();
-            }
-        }
-    }
-
-    publishJointStates(joints: JointControlState[]) {
-        if (!this.jointStateTopic) {
-            this.initializeTopic();
-        }
-
-        if (!this.jointStateTopic) {
-            console.warn('Cannot publish joint states: ROS connection not available');
-            return;
-        }
-
-        const message = new ROSLIB.Message({
-            position: joints.map(j => radianToDegree(j.currentValue)),
-        });
-        this.jointStateTopic.publish(message);
-    }
-
-    getJoints(): JointControlState[] {
-        /* Fixtures for first demo - awaiting servos indications in urdf */
-        const max_hand_angle = 5.236; // approx 300 degrees in radians
-        return [
-            { name: 'right_shoulder_yaw_joint', currentValue: 2.79, targetValue: 2.79, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_shoulder_roll_joint', currentValue: 3.14, targetValue: 3.14, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_elbow_joint', currentValue: 1.74, targetValue: 1.74, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_wrist_joint', currentValue: 2.62, targetValue: 2.62, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_thumb_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_index_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_middle_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_ring_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-            { name: 'right_pinky_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: undefined },
-        ];
-    }
+  }
 }

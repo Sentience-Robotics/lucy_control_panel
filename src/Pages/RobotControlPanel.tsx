@@ -22,33 +22,54 @@ import {
     ReloadOutlined,
     ThunderboltOutlined,
 } from '@ant-design/icons';
+import {
+    DndContext,
+    rectIntersection,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragOverlay,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
 
 /* Services */
+import ROSLIB from 'roslib';
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { storageService } from "../Services/storage.service";
+import { RosBridgeService } from '../Services/ros/ros.service';
 
 /* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 
+/* Utils */
+// import { UrdfParser } from '../Utils/urdfParser.utils.ts';
+
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
+// import { RobotPathResolver } from '../Constants/robotConfig';
 
 /* Components */
 import { Page } from '../Components/Page';
 import { JointCategory } from '../Components/JointCategory';
+import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { ConnectedClientsHandler } from "../Services/ros/handlers/ConnectedClients.handler";
 import { MovableModal } from '../Components/MovableModal';
-import { ROS_TOPICS } from '../Services/ros/ros.service';
+import { CONTROLLER_JOINTS_CONFIG, CONTROLLER_JOINTS_TOPIC, CONTROLLER_JOINTS_MESSAGE_TYPE, type ControllerJointConfig } from '../Constants/rosConfig';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
 const { Text } = Typography;
 
 const REFRESH_RATE = 300;
-const NO_CATEGORY_LABEL = "Uncategorized";
 
 export const RobotControlPanel: React.FC = () => {
     const {
@@ -67,9 +88,11 @@ export const RobotControlPanel: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(true);
+    const [categoryOrder, setCategoryOrder] = useState<string[]>(() =>
+        [...new Set(CONTROLLER_JOINTS_CONFIG.map((c) => c.defaultCategory))]
+    );
+    const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
-
-    const [selectedArm, setSelectedArm] = useState<ROS_TOPICS>(ROS_TOPICS.RIGHT_ARM); // true = right, false = left
 
     // ROS URL state
     const ROS_URL_KEY = 'lucy_ros_url';
@@ -84,7 +107,7 @@ export const RobotControlPanel: React.FC = () => {
 
         // Dynamic WSS URL from current origin
         return import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_URL ||
-            `https://${window.location.hostname}:${window.location.port}/rosbridge`;
+            `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`;
     }, []);
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -100,42 +123,52 @@ export const RobotControlPanel: React.FC = () => {
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
 
-    /* Fixtures for first demo - awaiting servos indications in urdf */
-    const rightArmFixtures: JointControlState[] = JointStateHandler.getInstance().getJoints(); // Return Fixture for now;
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 8 },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
 
-    const loadUrdfData = async () => {
+    /** Build initial joint list from controller config (ros2_control joint names). */
+    const buildJointsFromControllerConfig = useCallback((configs: ControllerJointConfig[]): JointControlState[] => {
+        const defaultMin = -Math.PI;
+        const defaultMax = Math.PI;
+        const joints: JointControlState[] = [];
+        for (const c of configs) {
+            for (const name of c.joints) {
+                joints.push({
+                    name,
+                    currentValue: 0,
+                    targetValue: 0,
+                    minValue: defaultMin,
+                    maxValue: defaultMax,
+                    type: 'revolute',
+                    category: c.defaultCategory,
+                });
+            }
+        }
+        return joints;
+    }, []);
+
+    const loadJointsFromConfig = useCallback(() => {
         try {
-            // Load saved configurations
-            const savedConfigs = await storageService.loadJointConfigurations();
-            
-            // Merge configurations into fixtures
-            const mergedJoints = rightArmFixtures.map(joint => {
-                const config = savedConfigs[joint.name];
-                return {
-                    ...joint,
-                    category: config?.category || joint.category,
-                    minValue: config?.minValue ?? joint.minValue,
-                    maxValue: config?.maxValue ?? joint.maxValue,
-                    inverted: config?.inverted ?? joint.inverted,
-                    restValue: config?.restValue ?? joint.restValue
-                };
-            });
-
-            setJoints(mergedJoints);
-            setLoading(false);
-            return;} catch (err) {
-            setError(
-                err instanceof Error ? err.message : 'Failed to load robot configuration'
-            );
+            setError(null);
+            const initial = buildJointsFromControllerConfig(CONTROLLER_JOINTS_CONFIG);
+            setJoints(initial);
+            setCategoryOrder([...new Set(initial.map((j) => j.category).filter(Boolean))] as string[]);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load robot configuration');
         } finally {
             setLoading(false);
         }
-    };
+    }, [buildJointsFromControllerConfig]);
 
     useEffect(() => {
-        loadUrdfData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        loadJointsFromConfig();
+    }, [loadJointsFromConfig]);
 
     useEffect(() => {
         jointsRef.current = joints;
@@ -165,6 +198,39 @@ export const RobotControlPanel: React.FC = () => {
         };
     }, []);
 
+    // Optional: subscribe to controller joints from ROS to keep panel in sync with ros2_control
+    useEffect(() => {
+        if (!isConnected) return;
+        const conn = RosBridgeService.getInstance().rosConnection;
+        if (!conn) return;
+        const topic = new ROSLIB.Topic({
+            ros: conn,
+            name: CONTROLLER_JOINTS_TOPIC,
+            messageType: CONTROLLER_JOINTS_MESSAGE_TYPE,
+        });
+        const onMessage = (msg: { data: string }) => {
+            try {
+                const data = JSON.parse(msg.data) as { controllers?: ControllerJointConfig[] };
+                if (!data.controllers || !Array.isArray(data.controllers)) return;
+                JointStateHandler.getInstance(data.controllers);
+                setJoints((prev) => {
+                    const byName = new Map(prev.map((j) => [j.name, j]));
+                    const next = buildJointsFromControllerConfig(data.controllers as ControllerJointConfig[]);
+                    return next.map((j) => {
+                        const existing = byName.get(j.name);
+                        return existing ? { ...j, currentValue: existing.currentValue, targetValue: existing.targetValue } : j;
+                    });
+                });
+            } catch {
+                // ignore malformed messages
+            }
+        };
+        topic.subscribe(onMessage);
+        return () => {
+            topic.unsubscribe(onMessage);
+        };
+    }, [isConnected, buildJointsFromControllerConfig]);
+
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) =>
@@ -178,9 +244,8 @@ export const RobotControlPanel: React.FC = () => {
     const handleResetCategory = useCallback((category: string) => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                const jointCategory = joint.category || NO_CATEGORY_LABEL;
-                if (jointCategory === category) {
-                    const midValue = joint.restValue ?? ((joint.minValue + joint.maxValue) / 2);
+                if (joint.category === category) {
+                    const midValue = (joint.minValue + joint.maxValue) / 2;
                     return { ...joint, currentValue: midValue, targetValue: midValue };
                 }
                 return joint;
@@ -191,7 +256,7 @@ export const RobotControlPanel: React.FC = () => {
     const handleResetAll = useCallback(() => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                const midValue = joint.restValue ?? ((joint.minValue + joint.maxValue) / 2);
+                const midValue = (joint.minValue + joint.maxValue) / 2;
                 return { ...joint, currentValue: midValue, targetValue: midValue };
             })
         );
@@ -200,17 +265,16 @@ export const RobotControlPanel: React.FC = () => {
     const categorizedJoints = useMemo(() => {
         const categories: { [key: string]: JointControlState[] } = {};
         joints.forEach((joint) => {
-            const categoryName = joint.category || NO_CATEGORY_LABEL;
-            if (!categories[categoryName]) {
-                categories[categoryName] = [];
+            if (!categories[joint.category]) {
+                categories[joint.category] = [];
             }
-            categories[categoryName].push(joint);
+            categories[joint.category].push(joint);
         });
         return categories;
     }, [joints]);
 
     const handleLoadPose = useCallback(
-        (poseJoints: Record<string, number>) => {
+        (poseJoints: Record<string, number>, categoryOrder?: string[]) => {
             setJoints((prevJoints) =>
                 prevJoints.map((joint) => ({
                     ...joint,
@@ -218,9 +282,31 @@ export const RobotControlPanel: React.FC = () => {
                     targetValue: poseJoints[joint.name] ?? joint.targetValue,
                 }))
             );
+
+            if (categoryOrder) {
+                setCategoryOrder(categoryOrder);
+            }
         },
         []
     );
+
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        setActiveId(event.active.id as string);
+    }, []);
+
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (active.id !== over?.id) {
+            setCategoryOrder((items) => {
+                const oldIndex = items.indexOf(active.id as string);
+                const newIndex = items.indexOf(over?.id as string);
+                return arrayMove(items, oldIndex, newIndex);
+            });
+        }
+
+        setActiveId(null);
+    }, []);
 
     const handleConnect = async () => {
         setConnectionError(null);
@@ -287,7 +373,7 @@ export const RobotControlPanel: React.FC = () => {
                     type="error"
                     showIcon
                     action={
-                        <Button size="small" onClick={loadUrdfData}>
+                        <Button size="small" onClick={loadJointsFromConfig}>
                             Retry
                         </Button>
                     }
@@ -444,6 +530,7 @@ export const RobotControlPanel: React.FC = () => {
                         <PoseManager
                             joints={joints}
                             onLoadPose={handleLoadPose}
+                            categoryOrder={categoryOrder}
                         />
                         <Button
                             onClick={() => setIsStreamVisible(v => !v)}
@@ -473,22 +560,6 @@ export const RobotControlPanel: React.FC = () => {
                 <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
                     <Col>
                         <ToggleSwitch
-                            isOn={selectedArm === ROS_TOPICS.RIGHT_ARM}
-                            onToggle={() => {
-                                const newValue = selectedArm === ROS_TOPICS.RIGHT_ARM ? ROS_TOPICS.LEFT_ARM : ROS_TOPICS.RIGHT_ARM;
-                                JointStateHandler.getInstance().changeTopic(newValue);
-                                setSelectedArm(newValue);
-                            }}
-                            title="Selected arm"
-                            textOff="LEFT"
-                            textOn="RIGHT"
-                            width={180}
-                            height={32}
-                        />
-                    </Col>
-
-                    <Col>
-                        <ToggleSwitch
                             isOn={isSending}
                             onToggle={() => setIsSending(v => !v)}
                             title="Send instructions"
@@ -512,28 +583,58 @@ export const RobotControlPanel: React.FC = () => {
                 </Row>
             </Row>
 
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(max(320px, 30%), 1fr))',
-                    gridAutoRows: '1fr',
-                    gap: '12px',
-                    width: '100%',
-                    alignItems: 'stretch',
-                }}
+            <DndContext
+                sensors={sensors}
+                collisionDetection={rectIntersection}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
             >
-                {Object.keys(categorizedJoints).sort().map((category) => (
-                    <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                        <JointCategory
-                            category={category}
-                            joints={categorizedJoints[category]}
-                            onJointValueChange={handleJointValueChange}
-                            onResetCategory={handleResetCategory}
-                            showDegrees={showDegrees}
-                        />
+                <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
+                    <div
+                        style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                            gridAutoRows: '1fr',
+                            gap: '12px',
+                            width: '100%',
+                            alignItems: 'stretch',
+                        }}
+                    >
+                        {categoryOrder.map((category) => {
+                            if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
+                                return null;
+                            }
+
+                            return (
+                                <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                    <DraggableCategory
+                                        id={category}
+                                        category={category}
+                                        joints={categorizedJoints[category]}
+                                        onJointValueChange={handleJointValueChange}
+                                        onResetCategory={handleResetCategory}
+                                        showDegrees={showDegrees}
+                                    />
+                                </div>
+                            );
+                        })}
                     </div>
-                ))}
-            </div>
+                </SortableContext>
+
+                <DragOverlay>
+                    {activeId ? (
+                        <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
+                            <JointCategory
+                                category={activeId}
+                                joints={categorizedJoints[activeId] || []}
+                                onJointValueChange={() => { }}
+                                onResetCategory={() => { }}
+                                showDegrees={showDegrees}
+                            />
+                        </div>
+                    ) : null}
+                </DragOverlay>
+            </DndContext>
 
             <StreamPlayerModal
                 isVisible={isStreamVisible}
