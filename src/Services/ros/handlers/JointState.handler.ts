@@ -14,10 +14,19 @@ function jointToControllerMap(configs: ControllerJointConfig[]): Map<string, Con
   return m;
 }
 
+/** ROS time (sec + nsec) for trajectory header; from /clock when use_sim_time, else wall clock. */
+function getRosTimeNow(rosTime: { sec: number; nanosec: number } | null): { sec: number; nanosec: number } {
+  if (rosTime) return rosTime;
+  const t = Date.now();
+  return { sec: Math.floor(t / 1000), nanosec: (t % 1000) * 1e6 };
+}
+
 export class JointStateHandler {
   private static instance: JointStateHandler;
   private topicByTopicName: Map<string, ROSLIB.Topic> = new Map();
   private unsubscribeFromStatus: (() => void) | null = null;
+  private clockTopic: ROSLIB.Topic | null = null;
+  private lastClock: { sec: number; nanosec: number } | null = null;
   private controllerConfigs: ControllerJointConfig[];
   private jointToController: Map<string, ControllerJointConfig>;
 
@@ -27,12 +36,33 @@ export class JointStateHandler {
     this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
       if (status === 'connected') {
         this.initializeTopics();
+        this.subscribeClock();
       } else if (status === 'disconnected') {
         this.topicByTopicName.forEach((t) => t.unsubscribe());
         this.topicByTopicName.clear();
+        if (this.clockTopic) {
+          this.clockTopic.unsubscribe();
+          this.clockTopic = null;
+        }
+        this.lastClock = null;
       }
     });
     this.initializeTopics();
+    if (RosBridgeService.getInstance().rosConnection) this.subscribeClock();
+  }
+
+  private subscribeClock() {
+    const ros = RosBridgeService.getInstance().rosConnection;
+    if (!ros) return;
+    if (this.clockTopic) this.clockTopic.unsubscribe();
+    this.clockTopic = new ROSLIB.Topic({
+      ros,
+      name: '/clock',
+      messageType: 'rosgraph_msgs/msg/Clock',
+    });
+    this.clockTopic.subscribe((msg: { clock: { sec: number; nanosec: number } }) => {
+      if (msg?.clock) this.lastClock = msg.clock;
+    });
   }
 
   private initializeTopics() {
@@ -101,6 +131,7 @@ export class JointStateHandler {
    * Groups joints by controller and publishes one JointTrajectory per controller.
    * Joint order and names follow controller config (required by JointTrajectoryController).
    * Positions are in radians.
+   * Uses a small non-zero time_from_start (0.2s) so the controller accepts the goal (some drop points with t=0).
    */
   publishJointStates(joints: JointControlState[]) {
     const ros = RosBridgeService.getInstance().rosConnection;
@@ -127,9 +158,11 @@ export class JointStateHandler {
       if (names.length === 0) continue;
       const topic = this.topicByTopicName.get(cfg.topic);
       if (!topic) continue;
+      const stamp = getRosTimeNow(this.lastClock);
       const message = new ROSLIB.Message({
+        header: { stamp, frame_id: '' },
         joint_names: names,
-        points: [{ positions, time_from_start: { sec: 0, nanosec: 0 } }],
+        points: [{ positions, time_from_start: { sec: 0, nanosec: 200000000 } }],
       });
       topic.publish(message);
     }
