@@ -134,7 +134,7 @@ export const RobotControlPanel: React.FC = () => {
 
     /** Build initial joint list from controller config (ros2_control joint names). */
     const buildJointsFromControllerConfig = useCallback((configs: ControllerJointConfig[]): JointControlState[] => {
-        const defaultMin = -Math.PI;
+        const defaultMin = 0;
         const defaultMax = Math.PI;
         const joints: JointControlState[] = [];
         for (const c of configs) {
@@ -208,9 +208,11 @@ export const RobotControlPanel: React.FC = () => {
             name: CONTROLLER_JOINTS_TOPIC,
             messageType: CONTROLLER_JOINTS_MESSAGE_TYPE,
         });
-        const onMessage = (msg: { data: string }) => {
+        const onMessage = (msg: ROSLIB.Message) => {
             try {
-                const data = JSON.parse(msg.data) as { controllers?: ControllerJointConfig[] };
+                const raw = (msg as unknown as { data?: string }).data;
+                if (typeof raw !== 'string') return;
+                const data = JSON.parse(raw) as { controllers?: ControllerJointConfig[] };
                 if (!data.controllers || !Array.isArray(data.controllers)) return;
                 JointStateHandler.getInstance(data.controllers);
                 setJoints((prev) => {
@@ -245,8 +247,9 @@ export const RobotControlPanel: React.FC = () => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
                 if (joint.category === category) {
-                    const midValue = (joint.minValue + joint.maxValue) / 2;
-                    return { ...joint, currentValue: midValue, targetValue: midValue };
+                    const rest = joint.restValue ?? 0;
+                    const clamped = Math.max(joint.minValue, Math.min(joint.maxValue, rest));
+                    return { ...joint, currentValue: clamped, targetValue: clamped };
                 }
                 return joint;
             })
@@ -256,8 +259,9 @@ export const RobotControlPanel: React.FC = () => {
     const handleResetAll = useCallback(() => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                const midValue = (joint.minValue + joint.maxValue) / 2;
-                return { ...joint, currentValue: midValue, targetValue: midValue };
+                const rest = joint.restValue ?? 0;
+                const clamped = Math.max(joint.minValue, Math.min(joint.maxValue, rest));
+                return { ...joint, currentValue: clamped, targetValue: clamped };
             })
         );
     }, []);
@@ -265,10 +269,11 @@ export const RobotControlPanel: React.FC = () => {
     const categorizedJoints = useMemo(() => {
         const categories: { [key: string]: JointControlState[] } = {};
         joints.forEach((joint) => {
-            if (!categories[joint.category]) {
-                categories[joint.category] = [];
+            const key = joint.category ?? 'Uncategorized';
+            if (!categories[key]) {
+                categories[key] = [];
             }
-            categories[joint.category].push(joint);
+            categories[key].push(joint);
         });
         return categories;
     }, [joints]);
@@ -530,7 +535,6 @@ export const RobotControlPanel: React.FC = () => {
                         <PoseManager
                             joints={joints}
                             onLoadPose={handleLoadPose}
-                            categoryOrder={categoryOrder}
                         />
                         <Button
                             onClick={() => setIsStreamVisible(v => !v)}

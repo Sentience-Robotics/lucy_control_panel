@@ -3,17 +3,6 @@ import { ROS_CONFIG, CONTROLLER_JOINTS_CONFIG, type ControllerJointConfig } from
 import type { JointControlState } from '../../../Constants/robotTypes.ts';
 import { RosBridgeService } from '../ros.service.ts';
 
-/** Builds a map of joint name -> controller config for fast lookup. */
-function jointToControllerMap(configs: ControllerJointConfig[]): Map<string, ControllerJointConfig> {
-  const m = new Map<string, ControllerJointConfig>();
-  for (const c of configs) {
-    for (const j of c.joints) {
-      m.set(j, c);
-    }
-  }
-  return m;
-}
-
 /** ROS time (sec + nsec) for trajectory header; from /clock when use_sim_time, else wall clock. */
 function getRosTimeNow(rosTime: { sec: number; nanosec: number } | null): { sec: number; nanosec: number } {
   if (rosTime) return rosTime;
@@ -28,11 +17,9 @@ export class JointStateHandler {
   private clockTopic: ROSLIB.Topic | null = null;
   private lastClock: { sec: number; nanosec: number } | null = null;
   private controllerConfigs: ControllerJointConfig[];
-  private jointToController: Map<string, ControllerJointConfig>;
 
   private constructor(controllerConfigs: ControllerJointConfig[]) {
     this.controllerConfigs = controllerConfigs;
-    this.jointToController = jointToControllerMap(controllerConfigs);
     this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
       if (status === 'connected') {
         this.initializeTopics();
@@ -60,8 +47,9 @@ export class JointStateHandler {
       name: '/clock',
       messageType: 'rosgraph_msgs/msg/Clock',
     });
-    this.clockTopic.subscribe((msg: { clock: { sec: number; nanosec: number } }) => {
-      if (msg?.clock) this.lastClock = msg.clock;
+    this.clockTopic.subscribe((msg: ROSLIB.Message) => {
+      const clock = (msg as unknown as { clock?: { sec: number; nanosec: number } }).clock;
+      if (clock) this.lastClock = clock;
     });
   }
 
@@ -82,13 +70,12 @@ export class JointStateHandler {
   /** Update controller config (e.g. after receiving from ROS). */
   setControllerConfigs(controllerConfigs: ControllerJointConfig[]) {
     this.controllerConfigs = controllerConfigs;
-    this.jointToController = jointToControllerMap(controllerConfigs);
     this.initializeTopics();
   }
 
   /** Return current actuated joints as JointControlState[] (from controller config). Used by Configuration page. */
   getJoints(): JointControlState[] {
-    const defaultMin = -Math.PI;
+    const defaultMin = 0;
     const defaultMax = Math.PI;
     const joints: JointControlState[] = [];
     for (const c of this.controllerConfigs) {
