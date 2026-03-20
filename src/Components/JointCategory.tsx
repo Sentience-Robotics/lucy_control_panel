@@ -100,7 +100,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 borderColor: '#444',
                 color: '#fff'
                 }}
-                title={`Reset all ${category} joints to center position`}
+                title={`Reset all ${category} joints to their rest value`}
             >
                 Reset
             </Button>
