@@ -1,7 +1,8 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Tag } from 'antd';
 import type { JointControlState } from '../Constants/robotTypes';
-import { UrdfParser } from '../Utils/urdfParser.utils.ts';
+
+import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
 
 const { Text } = Typography;
 
@@ -41,14 +42,14 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 
   const displayValues = useMemo(() => {
     const getDisplayValue = (radians: number): number => {
-      return showDegrees ? Math.round(UrdfParser.radiansToDegrees(radians) * 100) / 100 : Math.round(radians * 1000) / 1000;
+      return showDegrees ? Math.round(radianToDegree(radians) * 100) / 100 : Math.round(radians * 1000) / 1000;
     };
 
     const getDisplayRange = (): [number, number] => {
       if (showDegrees) {
         return [
-          Math.round(UrdfParser.radiansToDegrees(joint.minValue) * 100) / 100,
-          Math.round(UrdfParser.radiansToDegrees(joint.maxValue) * 100) / 100
+          Math.round(radianToDegree(joint.minValue) * 100) / 100,
+          Math.round(radianToDegree(joint.maxValue) * 100) / 100
         ];
       }
       return [
@@ -64,7 +65,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   }, [joint.minValue, joint.maxValue, localValue, showDegrees]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
-    return showDegrees ? UrdfParser.degreesToRadians(displayValue) : displayValue;
+    return showDegrees ? degreeToRadian(displayValue) : displayValue;
   }, [showDegrees]);
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;

@@ -22,17 +22,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     showDegrees
 }) => {
     const categoryColor = useMemo(() => {
-        switch (category) {
-            case 'Head': return '#ff6b6b';
-            case 'Left Hand': return '#4ecdc4';
-            case 'Right Hand': return '#45b7d1';
-            case 'Left Arm': return '#96ceb4';
-            case 'Right Arm': return '#feca57';
-            case 'Torso': return '#ff9ff3';
-            case 'Base': return '#a55eea';
-            default: return '#74b9ff';
-        }
-    }, [category]);
+        return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    }, []);
 
     const handleResetCategory = useCallback(() => {
         onResetCategory(category);
