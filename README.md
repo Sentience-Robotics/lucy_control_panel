@@ -30,6 +30,97 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 
 ---
 
+## 🛠️ Prerequisites
+
+| Tool | Required version | Notes |
+|---|---|---|
+| Node.js | **≥ 22.0.0** | `camera-controls` requires Node 22+ |
+| Yarn | 1.x (classic) | `npm install -g yarn` |
+
+> **Quick Node upgrade with nvm**
+>
+> If you have Node < 22 (e.g. the Ubuntu 22.04 default 18.x), install nvm and switch:
+> ```sh
+> # Install nvm (skip if already installed)
+> curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+> source ~/.bashrc   # or ~/.zshrc
+>
+> # Install and activate Node 22
+> nvm install 22
+> nvm use 22         # or: nvm use  (auto-reads .nvmrc)
+>
+> # Verify
+> node --version     # should print v22.x.x
+> ```
+>
+> A `.nvmrc` file at the project root pins the version — running `nvm use` from the directory is sufficient on future sessions.
+
+---
+
+## 📦 Installation
+
+```sh
+# 1. Clone the repository
+git clone https://github.com/sentience-robotics/lucy_control_panel.git
+cd lucy_control_panel
+
+# 2. Switch to the required Node version (requires nvm)
+nvm use
+
+# 3. Install dependencies
+yarn install
+
+# 4. Copy the example environment file and fill in your values
+cp .env.example .env
+```
+
+See the [Configuration](#️-configuration) section below for all available environment variables.
+
+---
+
+## ▶️ Run
+
+### Development
+
+Starts the Vite dev server with hot-module replacement.
+
+```sh
+yarn dev
+```
+
+The app is available at `http://localhost:3000` by default (or the port set in `VITE_PORT`).
+
+### Production build
+
+```sh
+# Full build (TypeScript type-check + Vite bundle)
+yarn build
+
+# Quick build (Vite only, skips tsc)
+yarn quickbuild
+
+# Preview the production bundle locally
+yarn preview
+```
+
+### HTTPS (self-signed certificates)
+
+Required when the robot's ROS Bridge runs over HTTPS / WSS:
+
+```sh
+cd certs && ./generate_certificate.sh && cd ..
+```
+
+Then set in `.env`:
+
+```env
+VITE_HTTPS=true
+VITE_SSL_CERT_PATH=./certs/cert.pem
+VITE_SSL_KEY_PATH=./certs/key.pem
+```
+
+---
+
 ## ⚙️ Configuration
 
 ### Environment Variables
@@ -56,20 +147,6 @@ VITE_ENABLE_LOGS=true
 
 **Note**: If either `VITE_LOCAL_USERNAME` or `VITE_LOCAL_PASSWORD` is not set, the application will run without authentication.
 
-
-### HTTP/HTTPS Setup
-To run the application over HTTPS, generate self-signed certificates:
-```sh
-cd certs && ./generate_certificate.sh
-```
-
-Update paths if necessary in .env file:
-
-```env
-VITE_HTTPS=true
-VITE_SSL_CERT_PATH=/path/to/ssl/cert.pem
-VITE_SSL_KEY_PATH=/path/to/ssl/key.pem
-```
 
 ---
 
