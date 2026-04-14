@@ -18,5 +18,3 @@ Shared UI components under `src/Components/`.
 | `StreamMetrics` | FPS / latency overlay |
 | `MediapipeHandTracker` | Hand-tracking overlay via MediaPipe |
 | `DataFlowEffect` | Decorative animated data-flow background |
-
-> TODO: Add individual `.md` files for components with non-trivial props or behaviour.

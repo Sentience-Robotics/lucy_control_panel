@@ -9,5 +9,3 @@ Route-level views under `src/Pages/`.
 | `Configuration` | `/config` | Joint and controller configuration |
 | `Stream` | `/stream` | Camera stream viewer |
 | `NotFound` | `*` | 404 fallback |
-
-> TODO: Add individual `.md` files for pages with complex state or data-flow.
