@@ -2,32 +2,27 @@
 
 Technical reference for the Lucy Control Panel frontend application.
 
-## Structure
+---
 
-```
-docs/
-├── architecture/
-│   └── overview.md              High-level module map and data-flow
-├── services/
-│   ├── ros/
-│   │   ├── ros.service.md       RosBridgeService (WebSocket lifecycle)
-│   │   └── handlers/
-│   │       ├── JointState.handler.md
-│   │       ├── Camera.handler.md
-│   │       └── ConnectedClients.handler.md
-│   ├── storage.service.md
-│   └── axiosClient.service.md
-├── constants/
-│   ├── rosConfig.md
-│   ├── robotTypes.md
-│   └── robotConfig.md
-├── hooks/
-│   └── useRosConnection.md
-├── components/
-│   └── README.md
-└── pages/
-    └── README.md
-```
+## Navigation
+
+### [Architecture](./architecture/overview.md)
+High-level module map and data-flow diagram across the full stack.
+
+### Services
+
+| Document | Description |
+|---|---|
+| [RosBridgeService](./services/ros/ros.service.md) | WebSocket connection lifecycle, status events, reconnection |
+| [JointStateHandler](./services/ros/handlers/JointState.handler.md) | Joint command publication via `trajectory_msgs/JointTrajectory` |
+
+### [Components](./components/README.md)
+Shared UI components reference table.
+
+### [Pages](./pages/README.md)
+Route-level views and their responsibilities.
+
+---
 
 ## Conventions
 
