@@ -5,11 +5,6 @@ import { logger } from "../../Utils/logger.utils.ts";
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
 
-export enum ROS_TOPICS {
-    LEFT_ARM = 'joints/left_arm',
-    RIGHT_ARM = 'joints/right_arm',
-}
-
 class RosBridgeService {
     private static instance: RosBridgeService;
     private ros: ROSLIB.Ros | null = null;
