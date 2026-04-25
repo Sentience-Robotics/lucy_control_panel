@@ -18,7 +18,6 @@ export const CONTROLLER_JOINTS_CONFIG: ControllerJointConfig[] = [
   {
     topic: '/left_arm_controller/joint_trajectory',
     joints: [
-      'left_shoulder_y_link_joint',
       'left_shoulder_z_link_joint',
       'left_shoulder_x_link_joint',
       'left_elbow_x_link_joint',
@@ -34,7 +33,6 @@ export const CONTROLLER_JOINTS_CONFIG: ControllerJointConfig[] = [
   {
     topic: '/right_arm_controller/joint_trajectory',
     joints: [
-      'right_shoulder_y_link_joint',
       'right_shoulder_z_link_joint',
       'right_shoulder_x_link_joint',
       'right_elbow',
@@ -46,6 +44,14 @@ export const CONTROLLER_JOINTS_CONFIG: ControllerJointConfig[] = [
       'i01.rightHand.pinky_link_joint',
     ],
     defaultCategory: 'Right Arm',
+  },
+  {
+    topic: '/torso_head_controller/joint_trajectory',
+    joints: [
+      'left_shoulder_y_link_joint',
+      'right_shoulder_y_link_joint',
+    ],
+    defaultCategory: 'Torso Head',
   },
 ];
 
