@@ -1,4 +1,4 @@
-import { HAND_CONNECTIONS, Hands, type Results } from "@mediapipe/hands";
+import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark} from "@mediapipe/hands";
 import React, { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
@@ -16,9 +16,51 @@ export const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     height,
     moveRobotIndex
 }) => {
+    type Point3D = { x: number; y: number; z: number };
+    type finger3D = {tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D};
+    type finger3DSample = {point1: Point3D, point2: Point3D, point3: Point3D};
+
+    // const THUMB_FINGER = {
+    //     TIP: 4,
+    //     DIP: 3,
+    //     PIP: 2,
+    //     MCP: 1
+    // };
+
+    const INDEX_FINGER = {
+        TIP: 8,
+        DIP: 7,
+        PIP: 6,
+        MCP: 5
+    };
+
+    // const MIDDLE_FINGER = {
+    //     TIP: 12,
+    //     DIP: 11,
+    //     PIP: 10,
+    //     MCP: 9
+    // };
+
+    // const RING_FINGER = {
+    //     TIP: 16,
+    //     DIP: 15,
+    //     PIP: 14,
+    //     MCP: 13
+    // };
+
+    // const PINKY_FINGER = {
+    //     TIP: 20,
+    //     DIP: 19,
+    //     PIP: 18,
+    //     MCP: 17
+    // };
+
+
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [indexTip, setIndexTip] = useState<{ x: number; y: number } | null>(null);
+    const lastProcessTimeRef = useRef<number>(0);
+
 
     const onResults = (results: Results) => {
         if (!webcamRef.current?.video || !canvasRef.current) { return; }
@@ -36,33 +78,102 @@ export const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         ctx.drawImage(results.image, 0, 0, videoWidth, videoHeight);
 
         if (results.multiHandLandmarks) {
-            //TODO Remove when mediapipe feature is completed
-            // results.multiHandedness [{index: 0, label: "right"} {index: 1, label: "left"}]
-            // results.multiHandLandmarks [[], []]
             for (const landmarks of results.multiHandLandmarks) {
                 drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
                     color: "#00FF00",
                     lineWidth: 4,
                 });
                 drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: 2 });
-                //TODO Temporary poc, move index from top to bottom
-                // Get the index fingertip (landmark #8)
-                const indexTipLandmark = landmarks[8];
-                if (indexTipLandmark) {
-                    const x = indexTipLandmark.x * videoWidth;
-                    const y = indexTipLandmark.y * videoHeight;
-
-                    setIndexTip({ x, y });
-                    moveRobotIndex?.(y);
-
-                    ctx.beginPath();
-                    ctx.arc(x, y, 8, 0, 2 * Math.PI);
-                    ctx.fillStyle = "cyan";
-                    ctx.fill();
-                }
             }
         }
+
+        const now = Date.now();
+        if (now - lastProcessTimeRef.current >= 1000) {
+            lastProcessTimeRef.current = now;
+            processHands(results.multiHandLandmarks);
+        }
+
         ctx.restore();
+    };
+
+        function processHands(hands: NormalizedLandmark[][]) {
+        hands.forEach((hand, handIndex) => {
+            processFinger({tip: hand[INDEX_FINGER.TIP], 
+                dip: hand[INDEX_FINGER.DIP], 
+                pip: hand[INDEX_FINGER.PIP], 
+                mcp: hand[INDEX_FINGER.MCP], 
+                wrist: hand[0],
+            }, `Index finger of hand ${handIndex}: `);
+            
+        });
+    };
+
+    function processFinger(finger: finger3D, message: string) {
+        const sample1: finger3DSample = {point1: finger.tip, point2: finger.dip, point3: finger.pip};
+        const sample2: finger3DSample = {point1: finger.dip, point2: finger.pip, point3: finger.mcp};
+        const sample3: finger3DSample = {point1: finger.pip, point2: finger.mcp, point3: finger.wrist};
+
+        const angle1: number = angleBetweenPoints3D(sample1);
+        const angle2: number = angleBetweenPoints3D(sample2);
+        const angle3: number = angleBetweenPoints3D(sample3);
+        const flex: number = flexingPercentage(angle1, angle2, angle3);
+
+        console.log(message, `angle1: ${angle1}, angle2: ${angle2}, angle3: ${angle3}`);
+        console.log(message, `flexing percentage: ${flex}`);
+    };
+
+    // Returns a value between O (fully relaxed) and 1 (fully flexed) using the 3 joint angles in a finger
+    function flexingPercentage(angle1: number, angle2: number, angle3: number): number {
+        const fullRelaxedLowerLimit = 0.3;
+        const fullFlexedHigherLimit = 0.9;
+
+        const clamp = (value: number, min: number, max: number): number =>
+            Math.min(Math.max(value, min), max);
+
+        const toPercentage = (angle: number): number => {
+            const clamped = clamp(angle, fullRelaxedLowerLimit, fullFlexedHigherLimit);
+            return (clamped - fullRelaxedLowerLimit) /
+                (fullFlexedHigherLimit - fullRelaxedLowerLimit);
+        };
+
+        const percentage1 = toPercentage(angle1);
+        const percentage2 = toPercentage(angle2);
+        const percentage3 = toPercentage(angle3);
+
+        return (percentage1 + percentage2 + percentage3) / 3;
+    }
+
+    // Returns the angle of flexion (in radians) of a joint (= 3 3D points)
+    function angleBetweenPoints3D(
+        // a: Point3D,
+        // b: Point3D,
+        // c: Point3D
+        sample: finger3DSample
+        ): number {
+        // Build vectors "BA" and "BC" for the math formula
+        const v1x = sample.point1.x - sample.point2.x;
+        const v1y = sample.point1.y - sample.point2.y;
+        const v1z = sample.point1.z - sample.point2.z;
+
+        const v2x = sample.point3.x - sample.point2.x;
+        const v2y = sample.point3.y - sample.point2.y;
+        const v2z = sample.point3.z - sample.point2.z;
+
+        // Dot product
+        const dot = v1x * v2x + v1y * v2y + v1z * v2z;
+
+        // Vector magnitudes
+        const mag1 = Math.hypot(v1x, v1y, v1z);
+        const mag2 = Math.hypot(v2x, v2y, v2z);
+
+        // Avoid division by zero
+        if (mag1 === 0 || mag2 === 0) return 0;
+
+        // Clamp for numerical stability
+        const cosTheta = Math.min(1, Math.max(-1, dot / (mag1 * mag2)));
+
+        // Angle in radians, substracted to PI to get the internal angle of the joint bending
+        return Math.PI - Math.acos(cosTheta);
     };
 
     useEffect(() => {
