@@ -1,5 +1,5 @@
 import ROSLIB from 'roslib';
-import { ROS_CONFIG, CONTROLLER_JOINTS_CONFIG, type ControllerJointConfig } from '../../../Constants/rosConfig.ts';
+import { ROS_CONFIG, type ControllerJointConfig } from '../../../Constants/rosConfig.ts';
 import type { JointControlState } from '../../../Constants/robotTypes.ts';
 import { RosBridgeService } from '../ros.service.ts';
 
@@ -96,7 +96,7 @@ export class JointStateHandler {
 
   static getInstance(controllerConfigs?: ControllerJointConfig[]): JointStateHandler {
     if (!JointStateHandler.instance) {
-      JointStateHandler.instance = new JointStateHandler(controllerConfigs ?? CONTROLLER_JOINTS_CONFIG);
+      JointStateHandler.instance = new JointStateHandler(controllerConfigs ?? []);
     } else if (controllerConfigs) {
       JointStateHandler.instance.setControllerConfigs(controllerConfigs);
     }

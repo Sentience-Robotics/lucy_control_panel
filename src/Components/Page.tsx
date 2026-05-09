@@ -1,83 +1,66 @@
-import React from "react";
-import type { ReactNode } from "react";
-import { Layout, Typography } from "antd";
+import React from 'react';
+import type { ReactNode } from 'react';
+import { Layout, Typography } from 'antd';
+import {
+    UI_ACCENT_GREEN,
+    UI_ACCENT_TEXT_SHADOW,
+    UI_BG_BLACK,
+    UI_BORDER_MUTED,
+    UI_BORDER_SOFT,
+    UI_ERROR_RED,
+    UI_INPUT_SURFACE,
+    UI_PANEL_BG,
+    UI_PAGE_HEADER_BORDER_BOTTOM,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SECONDARY_MUTED,
+    uiAccentRgba,
+} from '../Constants/uiTheme.ts';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
 interface PageProps {
-  children: ReactNode;
-  title?: string;
-  headerContent?: ReactNode;
-  showHeader?: boolean;
-  contentStyle?: React.CSSProperties;
-  removeScrollbars?: boolean;
-  className?: string;
+    children: ReactNode;
+    title?: string;
+    headerContent?: ReactNode;
+    showHeader?: boolean;
+    contentStyle?: React.CSSProperties;
+    removeScrollbars?: boolean;
+    className?: string;
 }
 
 export const Page: React.FC<PageProps> = ({
-  children,
-  title,
-  headerContent,
-  showHeader = false,
-  contentStyle = {},
-  removeScrollbars = true,
-  className = ''
+    children,
+    title,
+    headerContent,
+    showHeader = false,
+    contentStyle = {},
+    removeScrollbars = true,
+    className = '',
 }) => {
-  const defaultContentStyle: React.CSSProperties = {
-    backgroundColor: '#000',
-    minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
-    padding: '24px',
-    ...contentStyle
-  };
+    const defaultContentStyle: React.CSSProperties = {
+        backgroundColor: UI_BG_BLACK,
+        minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
+        padding: '24px',
+        ...contentStyle,
+    };
 
-  return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: '#000', overflow: 'hidden' }} className={className}>
-      {showHeader && (
-        <Header
-          style={{
-            backgroundColor: '#0a0a0a',
-            borderBottom: '2px solid #333',
-            padding: '0 24px',
-            height: 'auto',
-            lineHeight: 'normal',
-            paddingTop: 16,
-            paddingBottom: 16
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            {title && (
-              <Title
-                level={2}
-                style={{
-                  margin: 0,
-                  color: '#00ff41',
-                  fontFamily: 'monospace',
-                  textShadow: '0 0 10px #00ff41',
-                  fontSize: '18px'
-                }}
-              >
-                ▲ {title}
-              </Title>
-            )}
-            {headerContent && <div style={{ width: '100%' }}>{headerContent}</div>}
-          </div>
-        </Header>
-      )}
+    const tuiGlobalCss = `
+        /*
+          Prevent horizontal jump when Ant Design modals lock body scroll (scrollbar disappears).
+          Keeps space for the vertical scrollbar so flex rows / right-aligned content stay put.
+        */
+        html {
+          scrollbar-gutter: stable;
+        }
 
-      <Content style={defaultContentStyle}>
-        {children}
-      </Content>
-
-      <style>{`
         ${removeScrollbars ? `
-        /* Remove scrollbars */
         html, body {
           overflow: hidden !important;
         }
         ` : ''}
 
-        /* TUI Theme - Remove all rounded corners */
         .ant-btn,
         .ant-btn-primary,
         .ant-btn-default,
@@ -97,40 +80,39 @@ export const Page: React.FC<PageProps> = ({
           border-radius: 0 !important;
         }
 
-        /* Clean Button Glow Effects */
         .ant-btn {
           transition: all 0.3s ease !important;
           position: relative !important;
         }
 
         .ant-btn-primary {
-          background-color: #00ff41 !important;
-          border-color: #00ff41 !important;
-          box-shadow: 0 0 8px rgba(0, 255, 65, 0.3) !important;
+          background-color: ${UI_ACCENT_GREEN} !important;
+          border-color: ${UI_ACCENT_GREEN} !important;
+          box-shadow: 0 0 8px ${uiAccentRgba(0.3)} !important;
         }
 
         .ant-btn-primary:hover {
-          background-color: #00ff41 !important;
-          border-color: #00ff41 !important;
-          box-shadow: 0 0 15px rgba(0, 255, 65, 0.6) !important;
+          background-color: ${UI_ACCENT_GREEN} !important;
+          border-color: ${UI_ACCENT_GREEN} !important;
+          box-shadow: 0 0 15px ${uiAccentRgba(0.6)} !important;
           transform: translateY(-1px) !important;
         }
 
         .ant-btn-primary:active {
           transform: translateY(0) !important;
-          box-shadow: 0 0 8px rgba(0, 255, 65, 0.4) !important;
+          box-shadow: 0 0 8px ${uiAccentRgba(0.4)} !important;
         }
 
         .ant-btn-default {
           background-color: transparent !important;
-          border-color: #444 !important;
-          color: #fff !important;
+          border-color: ${UI_BORDER_SOFT} !important;
+          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
         }
 
         .ant-btn-default:hover {
-          border-color: #00ff41 !important;
-          color: #00ff41 !important;
-          box-shadow: 0 0 12px rgba(0, 255, 65, 0.3) !important;
+          border-color: ${UI_ACCENT_GREEN} !important;
+          color: ${UI_ACCENT_GREEN} !important;
+          box-shadow: 0 0 12px ${uiAccentRgba(0.3)} !important;
           transform: translateY(-1px) !important;
         }
 
@@ -138,64 +120,62 @@ export const Page: React.FC<PageProps> = ({
           transform: translateY(0) !important;
         }
 
-        /* TUI Color Theme with Glow Effects */
         .ant-slider-track {
-          background-color: #00ff41 !important;
+          background-color: ${UI_ACCENT_GREEN} !important;
         }
 
         .ant-slider-handle {
-          border-color: #00ff41 !important;
+          border-color: ${UI_ACCENT_GREEN} !important;
         }
 
         .ant-slider-handle:focus {
-          border-color: #00ff41 !important;
-          box-shadow: 0 0 0 5px rgba(0, 255, 65, 0.2) !important;
+          border-color: ${UI_ACCENT_GREEN} !important;
+          box-shadow: 0 0 0 5px ${uiAccentRgba(0.2)} !important;
         }
 
         .ant-input-number {
-          background-color: #1a1a1a !important;
-          border-color: #444 !important;
-          color: #fff !important;
+          background-color: ${UI_INPUT_SURFACE} !important;
+          border-color: ${UI_BORDER_SOFT} !important;
+          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
           transition: all 0.3s ease !important;
         }
 
         .ant-input-number:hover {
-          border-color: #00ff41 !important;
-          box-shadow: 0 0 15px rgba(0, 255, 65, 0.3) !important;
+          border-color: ${UI_ACCENT_GREEN} !important;
+          box-shadow: 0 0 15px ${uiAccentRgba(0.3)} !important;
         }
 
         .ant-input-number:focus-within {
-          border-color: #00ff41 !important;
-          box-shadow: 0 0 20px rgba(0, 255, 65, 0.5) !important;
+          border-color: ${UI_ACCENT_GREEN} !important;
+          box-shadow: 0 0 20px ${uiAccentRgba(0.5)} !important;
         }
 
         .ant-input-number-input {
           background-color: transparent !important;
-          color: #fff !important;
+          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
         }
 
         .ant-input-number-handler-wrap {
-          background-color: #333 !important;
+          background-color: ${UI_BORDER_MUTED} !important;
           transition: all 0.3s ease !important;
         }
 
         .ant-input-number-handler {
-          border-color: #444 !important;
-          color: #fff !important;
+          border-color: ${UI_BORDER_SOFT} !important;
+          color: ${UI_TEXT_PRIMARY_ON_DARK} !important;
           transition: all 0.2s ease !important;
         }
 
         .ant-input-number-handler:hover {
-          color: #00ff41 !important;
-          background-color: rgba(0, 255, 65, 0.1) !important;
-          box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.2) !important;
+          color: ${UI_ACCENT_GREEN} !important;
+          background-color: ${uiAccentRgba(0.1)} !important;
+          box-shadow: inset 0 0 10px ${uiAccentRgba(0.2)} !important;
         }
 
-        /* Custom range slider styling */
         input[type="range"] {
           -webkit-appearance: none;
           appearance: none;
-          background: #333;
+          background: ${UI_BORDER_MUTED};
           cursor: pointer;
           border-radius: 0;
         }
@@ -205,7 +185,7 @@ export const Page: React.FC<PageProps> = ({
           appearance: none;
           height: 16px;
           width: 16px;
-          background: #00ff41;
+          background: ${UI_ACCENT_GREEN};
           cursor: pointer;
           border: none;
           border-radius: 0;
@@ -214,13 +194,12 @@ export const Page: React.FC<PageProps> = ({
         input[type="range"]::-moz-range-thumb {
           height: 16px;
           width: 16px;
-          background: #00ff41;
+          background: ${UI_ACCENT_GREEN};
           cursor: pointer;
           border: none;
           border-radius: 0;
         }
 
-        /* Common animations */
         @keyframes pulse {
           0% { opacity: 1; }
           50% { opacity: 0.5; }
@@ -244,52 +223,49 @@ export const Page: React.FC<PageProps> = ({
           animation: glitch 0.3s infinite;
         }
 
-        /* TUI Text Styles */
         .tui-title {
-          color: #00ff41;
+          color: ${UI_ACCENT_GREEN};
           font-family: 'monospace';
-          text-shadow: 0 0 10px #00ff41;
+          text-shadow: ${UI_ACCENT_TEXT_SHADOW};
           font-weight: bold;
         }
 
         .tui-text {
-          color: #fff;
+          color: ${UI_TEXT_PRIMARY_ON_DARK};
           font-family: 'monospace';
         }
 
         .tui-text-muted {
-          color: #666;
+          color: ${UI_TEXT_SECONDARY_MUTED};
           font-family: 'monospace';
         }
 
         .tui-text-danger {
-          color: #ff4d4f;
+          color: ${UI_ERROR_RED};
           font-family: 'monospace';
         }
 
         .tui-text-success {
-          color: #00ff41;
+          color: ${UI_ACCENT_GREEN};
           font-family: 'monospace';
         }
 
-        /* TUI Container Styles */
         .tui-container {
-          background-color: #1a1a1a;
-          border: 1px solid #444;
+          background-color: ${UI_INPUT_SURFACE};
+          border: 1px solid ${UI_BORDER_SOFT};
           padding: 16px;
         }
 
         .tui-container-dark {
-          background-color: #0a0a0a;
-          border: 2px solid #333;
+          background-color: ${UI_PANEL_BG};
+          border: 2px solid ${UI_BORDER_MUTED};
           padding: 20px;
         }
 
-        /* TUI Button Toggle Styles with Glow */
         .tui-toggle {
           display: inline-flex;
-          border: 1px solid #444;
-          background-color: #1a1a1a;
+          border: 1px solid ${UI_BORDER_SOFT};
+          background-color: ${UI_INPUT_SURFACE};
           font-family: 'monospace';
           font-size: 12px;
           transition: all 0.3s ease;
@@ -298,15 +274,15 @@ export const Page: React.FC<PageProps> = ({
         }
 
         .tui-toggle:hover {
-          border-color: #00ff41;
-          box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+          border-color: ${UI_ACCENT_GREEN};
+          box-shadow: 0 0 15px ${uiAccentRgba(0.3)};
         }
 
         .tui-toggle-button {
           padding: 4px 12px;
           border: none;
           background-color: transparent;
-          color: #666;
+          color: ${UI_TEXT_SECONDARY_MUTED};
           font-family: 'monospace';
           font-size: 12px;
           font-weight: bold;
@@ -317,23 +293,22 @@ export const Page: React.FC<PageProps> = ({
         }
 
         .tui-toggle-button:hover {
-          color: #00ff41;
-          text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+          color: ${UI_ACCENT_GREEN};
+          text-shadow: 0 0 8px ${uiAccentRgba(0.6)};
         }
 
         .tui-toggle-button.active {
-          background-color: #00ff41;
-          color: #000;
-          box-shadow: 0 0 15px rgba(0, 255, 65, 0.6);
+          background-color: ${UI_ACCENT_GREEN};
+          color: ${UI_TEXT_ON_ACCENT};
+          box-shadow: 0 0 15px ${uiAccentRgba(0.6)};
           animation: buttonPulse 2s infinite;
         }
 
         .tui-toggle-divider {
           width: 1px;
-          background-color: #444;
+          background-color: ${UI_BORDER_SOFT};
         }
 
-        /* Animated Robot Status Icons */
         @keyframes robotPulse {
           0%, 100% {
             transform: scale(1);
@@ -368,10 +343,10 @@ export const Page: React.FC<PageProps> = ({
 
         @keyframes buttonPulse {
           0%, 100% {
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.6);
+            box-shadow: 0 0 15px ${uiAccentRgba(0.6)};
           }
           50% {
-            box-shadow: 0 0 25px rgba(0, 255, 65, 0.9), 0 0 35px rgba(0, 255, 65, 0.5);
+            box-shadow: 0 0 25px ${uiAccentRgba(0.9)}, 0 0 35px ${uiAccentRgba(0.5)};
           }
         }
 
@@ -392,7 +367,45 @@ export const Page: React.FC<PageProps> = ({
           animation: glitch 0.5s infinite;
           filter: hue-rotate(180deg);
         }
-      `}</style>
-    </Layout>
-  );
+    `;
+
+    return (
+        <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK, overflow: 'hidden' }} className={className}>
+            {showHeader && (
+                <Header
+                    style={{
+                        backgroundColor: UI_PANEL_BG,
+                        borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
+                        padding: '0 24px',
+                        height: 'auto',
+                        lineHeight: 'normal',
+                        paddingTop: 16,
+                        paddingBottom: 16,
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        {title && (
+                            <Title
+                                level={2}
+                                style={{
+                                    margin: 0,
+                                    color: UI_ACCENT_GREEN,
+                                    fontFamily: 'monospace',
+                                    textShadow: UI_ACCENT_TEXT_SHADOW,
+                                    fontSize: '18px',
+                                }}
+                            >
+                                ▲ {title}
+                            </Title>
+                        )}
+                        {headerContent && <div style={{ width: '100%' }}>{headerContent}</div>}
+                    </div>
+                </Header>
+            )}
+
+            <Content style={defaultContentStyle}>{children}</Content>
+
+            <style>{tuiGlobalCss}</style>
+        </Layout>
+    );
 };
