@@ -6,8 +6,10 @@ import { RobotControlPanel } from './Pages/RobotControlPanel';
 import { Stream } from "./Pages/Stream.tsx";
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
+import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
+import { UI_ACCENT_GREEN, UI_BORDER_STRONG, UI_PANEL_BG } from './Constants/uiTheme.ts';
 
 const Robot3DViewer = lazy(() => import('./Pages/Robot3DViewer').then(module => ({ default: module.default })));
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
@@ -53,10 +55,10 @@ function App() {
                 theme={{
                     algorithm: theme.darkAlgorithm,
                     token: {
-                        colorPrimary: '#00ff41',
+                        colorPrimary: UI_ACCENT_GREEN,
                         colorBgBase: '#000000',
-                        colorBgContainer: '#0a0a0a',
-                        colorBorder: '#333333',
+                        colorBgContainer: UI_PANEL_BG,
+                        colorBorder: UI_BORDER_STRONG,
                         colorText: '#ffffff',
                         colorTextSecondary: '#888888',
                         fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
@@ -73,10 +75,10 @@ function App() {
             theme={{
                 algorithm: theme.darkAlgorithm,
                 token: {
-                    colorPrimary: '#00ff41',
+                    colorPrimary: UI_ACCENT_GREEN,
                     colorBgBase: '#000000',
-                    colorBgContainer: '#0a0a0a',
-                    colorBorder: '#333333',
+                    colorBgContainer: UI_PANEL_BG,
+                    colorBorder: UI_BORDER_STRONG,
                     colorText: '#ffffff',
                     colorTextSecondary: '#888888',
                     fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
@@ -84,10 +86,10 @@ function App() {
                 components: {
                     Layout: {
                         bodyBg: '#000000',
-                        headerBg: '#0a0a0a',
+                        headerBg: UI_PANEL_BG,
                     },
                     Card: {
-                        colorBgContainer: '#0a0a0a',
+                        colorBgContainer: UI_PANEL_BG,
                     },
                     Button: {
                         colorBgContainer: 'transparent',
@@ -96,6 +98,7 @@ function App() {
             }}
         >
             <Router>
+                <ActiveHardwareRosProvider>
                 <Navigation />
                 <Routes>
                     <Route path="/" element={<RobotControlPanel />} />
@@ -112,6 +115,7 @@ function App() {
                     <Route path="/stream" element={<Stream />} />
                     <Route path="*" element={<NotFound />} />
                 </Routes>
+                </ActiveHardwareRosProvider>
             </Router>
         </ConfigProvider>
     );

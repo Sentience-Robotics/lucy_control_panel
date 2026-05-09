@@ -7,17 +7,7 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import {
-    Typography,
-    Space,
-    Button,
-    Statistic,
-    Row,
-    Col,
-    Alert,
-    Spin,
-    Input,
-} from 'antd';
+import { Typography, Space, Button, Row, Col, Alert, Spin } from 'antd';
 import {
     ReloadOutlined,
     ThunderboltOutlined,
@@ -40,12 +30,11 @@ import {
 } from '@dnd-kit/sortable';
 
 /* Services */
-import ROSLIB from 'roslib';
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
-import { RosBridgeService } from '../Services/ros/ros.service';
 
 /* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
+import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Utils */
 // import { UrdfParser } from '../Utils/urdfParser.utils.ts';
@@ -61,9 +50,10 @@ import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
-import { ConnectedClientsHandler } from "../Services/ros/handlers/ConnectedClients.handler";
 import { MovableModal } from '../Components/MovableModal';
-import { CONTROLLER_JOINTS_CONFIG, CONTROLLER_JOINTS_TOPIC, CONTROLLER_JOINTS_MESSAGE_TYPE, type ControllerJointConfig } from '../Constants/rosConfig';
+import { ControlPanelHeaderStats, LucyControlPanelHeader } from '../Components/LucyControlPanelHeader.tsx';
+import type { ControllerJointConfig } from '../Constants/rosConfig';
+import { UI_ACCENT_BOX_SHADOW_STRONG, UI_ACCENT_GREEN, UI_BORDER_SOFT } from '../Constants/uiTheme.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -72,45 +62,23 @@ const { Text } = Typography;
 const REFRESH_RATE = 300;
 
 export const RobotControlPanel: React.FC = () => {
+    const { isConnected, isConnecting, isReconnecting } = useRosConnection();
+
     const {
-        connectionStatus,
-        isConnected,
-        isConnecting,
-        isReconnecting,
-        isDisconnected,
-        connect,
-        reconnect,
-        disconnect
-    } = useRosConnection();
+        controllerConfigsFromActive,
+        activeHardwareLoading,
+        activeHardwareError,
+        refetchActiveHardware,
+    } = useActiveHardwareRos();
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
     const jointsRef = useRef<JointControlState[]>(joints);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(true);
-    const [categoryOrder, setCategoryOrder] = useState<string[]>(() =>
-        [...new Set(CONTROLLER_JOINTS_CONFIG.map((c) => c.defaultCategory))]
-    );
+    const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
-
-    // ROS URL state
-    const ROS_URL_KEY = 'lucy_ros_url';
-    const defaultRosUrl = useMemo(() => {
-        if (typeof window === 'undefined') {
-            throw new Error('Window is undefined');
-        }
-
-        // localStorage
-        const stored = localStorage.getItem(ROS_URL_KEY);
-        if (stored) { return stored; }
-
-        // Dynamic WSS URL from current origin
-        return import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_URL ||
-            `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`;
-    }, []);
-    const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
-    const [connectionError, setConnectionError] = useState<string | null>(null);
 
     // Floating stream window state
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
@@ -153,22 +121,60 @@ export const RobotControlPanel: React.FC = () => {
         return joints;
     }, []);
 
-    const loadJointsFromConfig = useCallback(() => {
-        try {
-            setError(null);
-            const initial = buildJointsFromControllerConfig(CONTROLLER_JOINTS_CONFIG);
-            setJoints(initial);
-            setCategoryOrder([...new Set(initial.map((j) => j.category).filter(Boolean))] as string[]);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load robot configuration');
-        } finally {
-            setLoading(false);
-        }
-    }, [buildJointsFromControllerConfig]);
-
     useEffect(() => {
-        loadJointsFromConfig();
-    }, [loadJointsFromConfig]);
+        if (!isConnected) {
+            setLoading(false);
+            setError(null);
+            JointStateHandler.getInstance([]);
+            setJoints([]);
+            setCategoryOrder([]);
+            return;
+        }
+
+        if (activeHardwareLoading) {
+            setLoading(true);
+            setError(null);
+            return;
+        }
+
+        setLoading(false);
+
+        if (activeHardwareError) {
+            setError(activeHardwareError);
+            return;
+        }
+
+        const ctrls = controllerConfigsFromActive;
+        if (!ctrls || ctrls.length === 0) {
+            setError('Active hardware config has no joint controllers (check boards / actuators).');
+            return;
+        }
+
+        setError(null);
+        JointStateHandler.getInstance(ctrls);
+        setJoints((prev) => {
+            const byName = new Map(prev.map((j) => [j.name, j]));
+            const next = buildJointsFromControllerConfig(ctrls);
+            return next.map((j) => {
+                const existing = byName.get(j.name);
+                return existing
+                    ? { ...j, currentValue: existing.currentValue, targetValue: existing.targetValue }
+                    : j;
+            });
+        });
+        setCategoryOrder((prevOrder) => {
+            const nextCats = [...new Set(ctrls.map((c) => c.defaultCategory))];
+            const preserved = prevOrder.filter((c) => nextCats.includes(c));
+            const extras = nextCats.filter((c) => !preserved.includes(c));
+            return [...preserved, ...extras];
+        });
+    }, [
+        isConnected,
+        activeHardwareLoading,
+        activeHardwareError,
+        controllerConfigsFromActive,
+        buildJointsFromControllerConfig,
+    ]);
 
     useEffect(() => {
         jointsRef.current = joints;
@@ -185,53 +191,6 @@ export const RobotControlPanel: React.FC = () => {
 
         return () => clearInterval(interval);
     }, [isSending]);
-
-    const [countState, setCountState] = useState<number>(0);
-
-    useEffect(() => {
-        const handler = new ConnectedClientsHandler((count: number) => {
-            setCountState(count);
-        });
-
-        return () => {
-            handler.unsubscribe();
-        };
-    }, []);
-
-    // Optional: subscribe to controller joints from ROS to keep panel in sync with ros2_control
-    useEffect(() => {
-        if (!isConnected) return;
-        const conn = RosBridgeService.getInstance().rosConnection;
-        if (!conn) return;
-        const topic = new ROSLIB.Topic({
-            ros: conn,
-            name: CONTROLLER_JOINTS_TOPIC,
-            messageType: CONTROLLER_JOINTS_MESSAGE_TYPE,
-        });
-        const onMessage = (msg: ROSLIB.Message) => {
-            try {
-                const raw = (msg as unknown as { data?: string }).data;
-                if (typeof raw !== 'string') return;
-                const data = JSON.parse(raw) as { controllers?: ControllerJointConfig[] };
-                if (!data.controllers || !Array.isArray(data.controllers)) return;
-                JointStateHandler.getInstance(data.controllers);
-                setJoints((prev) => {
-                    const byName = new Map(prev.map((j) => [j.name, j]));
-                    const next = buildJointsFromControllerConfig(data.controllers as ControllerJointConfig[]);
-                    return next.map((j) => {
-                        const existing = byName.get(j.name);
-                        return existing ? { ...j, currentValue: existing.currentValue, targetValue: existing.targetValue } : j;
-                    });
-                });
-            } catch {
-                // ignore malformed messages
-            }
-        };
-        topic.subscribe(onMessage);
-        return () => {
-            topic.unsubscribe(onMessage);
-        };
-    }, [isConnected, buildJointsFromControllerConfig]);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
@@ -313,54 +272,7 @@ export const RobotControlPanel: React.FC = () => {
         setActiveId(null);
     }, []);
 
-    const handleConnect = async () => {
-        setConnectionError(null);
-        try {
-            if (isConnected) {
-                disconnect();
-            } else {
-                await connect(rosUrl);
-                localStorage.setItem(ROS_URL_KEY, rosUrl);
-            }
-        } catch (error) {
-            setConnectionError(error instanceof Error ? error.message : 'Connection failed');
-        }
-    };
-
-    const handleReconnect = async () => {
-        setConnectionError(null);
-        try {
-            await reconnect(rosUrl);
-            localStorage.setItem(ROS_URL_KEY, rosUrl);
-        } catch (error) {
-            setConnectionError(error instanceof Error ? error.message : 'Reconnection failed');
-        }
-    };
-
-    const getConnectionStatusText = () => {
-        switch (connectionStatus) {
-            case 'connected': return 'CONNECTED';
-            case 'connecting': return 'CONNECTING...';
-            case 'reconnecting': return 'RECONNECTING...';
-            case 'disconnected': return 'DISCONNECTED';
-            default: return 'UNKNOWN';
-        }
-    };
-
-    const getConnectionStatusColor = () => {
-        if (countState > 1) {
-            return '#ffa500';
-        }
-        switch (connectionStatus) {
-            case 'connected': return '#00ff41';
-            case 'connecting': return '#ffa500';
-            case 'reconnecting': return '#ffa500';
-            case 'disconnected': return '#ff4d4f';
-            default: return '#666';
-        }
-    };
-
-    if (loading) {
+    if (isConnected && loading) {
         return (
             <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Spin size="large" />
@@ -369,7 +281,7 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
-    if (error) {
+    if (isConnected && error) {
         return (
             <Page>
                 <Alert
@@ -378,7 +290,7 @@ export const RobotControlPanel: React.FC = () => {
                     type="error"
                     showIcon
                     action={
-                        <Button size="small" onClick={loadJointsFromConfig}>
+                        <Button size="small" onClick={() => void refetchActiveHardware()}>
                             Retry
                         </Button>
                     }
@@ -388,114 +300,12 @@ export const RobotControlPanel: React.FC = () => {
     }
 
     const headerContent = (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div>
-                <Space align="center">
-                    <Text
-                        style={{
-                            margin: 0,
-                            color: '#00ff41',
-                            fontFamily: 'monospace',
-                            textShadow: '0 0 10px #00ff41',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                        }}
-                    >
-                        ▲ LUCY CONTROL PANEL
-                    </Text>
-                </Space>
-            </div>
-
-            <div>
-                <Space>
-                    <Row gutter={12}>
-                        <Col>
-                            <Statistic
-                                title={<Text style={{ color: '#666', fontSize: '10px' }}>TOTAL JOINTS</Text>}
-                                value={joints.length}
-                                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                            />
-                        </Col>
-                        <Col>
-                            <Statistic
-                                title={<Text style={{ color: '#666', fontSize: '10px' }}>CATEGORIES</Text>}
-                                value={Object.keys(categorizedJoints).length}
-                                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                            />
-                        </Col>
-                        <Col>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: '4px 10px',
-                                    borderRadius: 16,
-                                    backgroundColor: '#0d0d0d',
-                                    border: '1px solid #333'
-                                }}>
-                                    <span style={{
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: '50%',
-                                        backgroundColor: getConnectionStatusColor(),
-                                        boxShadow: `0 0 8px ${getConnectionStatusColor()}`
-                                    }} />
-                                    <Text style={{
-                                        color: getConnectionStatusColor(),
-                                        fontFamily: 'monospace',
-                                        fontSize: 12
-                                    }}>
-                                        ROS BRIDGE: {countState > 0 ? countState : ''} {getConnectionStatusText()}
-                                    </Text>
-                                </div>
-                                <Input
-                                    size="small"
-                                    placeholder="ROS Bridge URL"
-                                    value={rosUrl}
-                                    onChange={(e) => setRosUrl(e.target.value)}
-                                    disabled={isConnecting || isReconnecting}
-                                    style={{
-                                        width: 200,
-                                        backgroundColor: '#0d0d0d',
-                                        borderColor: '#333',
-                                        color: '#fff',
-                                        fontFamily: 'monospace',
-                                        fontSize: 12
-                                    }}
-                                />
-                                <Button
-                                    size="small"
-                                    onClick={handleConnect}
-                                    disabled={isConnecting || isReconnecting}
-                                    style={{
-                                        backgroundColor: isConnected ? 'transparent' : '#00ff41',
-                                        color: isConnected ? '#fff' : '#000',
-                                        borderColor: isConnected ? '#444' : '#00ff41',
-                                        boxShadow: isConnected ? 'none' : '0 0 8px #00ff41',
-                                    }}
-                                >
-                                    {isConnected ? 'DISCONNECT' : 'CONNECT'}
-                                </Button>
-                                <Button
-                                    size="small"
-                                    onClick={handleReconnect}
-                                    disabled={isDisconnected || isConnecting || isReconnecting}
-                                    style={{
-                                        backgroundColor: (isConnected || isReconnecting) ? '#ffa500' : 'transparent',
-                                        color: (isConnected || isReconnecting) ? '#000' : '#fff',
-                                        borderColor: (isConnected || isReconnecting) ? '#ffa500' : '#444',
-                                        boxShadow: (isConnected || isReconnecting) ? '0 0 8px #ffa500' : 'none',
-                                    }}
-                                >
-                                    {isReconnecting ? 'RECONNECTING...' : 'RECONNECT'}
-                                </Button>
-                            </div>
-                        </Col>
-                    </Row>
-                </Space>
-            </div>
-        </div>
+        <LucyControlPanelHeader>
+            <ControlPanelHeaderStats
+                jointCount={joints.length}
+                categoryCount={Object.keys(categorizedJoints).length}
+            />
+        </LucyControlPanelHeader>
     );
 
     return (
@@ -505,140 +315,146 @@ export const RobotControlPanel: React.FC = () => {
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
-            {connectionError && (
+            {!isConnected ? (
                 <Alert
-                    message="Connection Error"
-                    description={connectionError}
-                    type="error"
+                    type="info"
                     showIcon
-                    closable
-                    onClose={() => setConnectionError(null)}
+                    message={
+                        isConnecting || isReconnecting ? 'Connecting to ROS bridge…' : 'Connect to ROS bridge'
+                    }
+                    description={
+                        isConnecting || isReconnecting
+                            ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
+                            : 'Use CONNECT in the header'
+                    }
                     style={{ marginBottom: 12 }}
                 />
-            )}
+            ) : (
+                <>
+                    <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
+                        <Col flex="auto">
+                            <Space wrap>
+                                <Button
+                                    icon={<ReloadOutlined />}
+                                    onClick={handleResetAll}
+                                    style={{
+                                        backgroundColor: 'transparent',
+                                        borderColor: '#444',
+                                        color: '#fff',
+                                    }}
+                                >
+                                    RESET ALL
+                                </Button>
 
-            <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
-                <Col flex="auto">
-                    <Space wrap>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={handleResetAll}
-                            style={{
-                                backgroundColor: 'transparent',
-                                borderColor: '#444',
-                                color: '#fff',
-                            }}
-                        >
-                            RESET ALL
-                        </Button>
+                                <PoseManager
+                                    joints={joints}
+                                    onLoadPose={handleLoadPose}
+                                />
+                                <Button
+                                    onClick={() => setIsStreamVisible(v => !v)}
+                                    style={{
+                                        backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : 'transparent',
+                                        color: isStreamVisible ? '#000' : '#fff',
+                                        borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                        boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                    }}
+                                >
+                                    {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
+                                </Button>
+                                <Button
+                                    onClick={() => setIsWebcamActive(v => !v)}
+                                    style={{
+                                        backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : 'transparent',
+                                        color: isWebcamActive ? '#000' : '#fff',
+                                        borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                        boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                    }}
+                                >
+                                    {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
+                                </Button>
+                            </Space>
+                        </Col>
 
-                        <PoseManager
-                            joints={joints}
-                            onLoadPose={handleLoadPose}
-                        />
-                        <Button
-                            onClick={() => setIsStreamVisible(v => !v)}
-                            style={{
-                                backgroundColor: isStreamVisible ? '#00ff41' : 'transparent',
-                                color: isStreamVisible ? '#000' : '#fff',
-                                borderColor: isStreamVisible ? '#00ff41' : '#444',
-                                boxShadow: isStreamVisible ? '0 0 10px #00ff41' : 'none',
-                            }}
-                        >
-                            {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                        </Button>
-                        <Button
-                            onClick={() => setIsWebcamActive(v => !v)}
-                            style={{
-                                backgroundColor: isWebcamActive ? '#00ff41' : 'transparent',
-                                color: isWebcamActive ? '#000' : '#fff',
-                                borderColor: isWebcamActive ? '#00ff41' : '#444',
-                                boxShadow: isWebcamActive ? '0 0 10px #00ff41' : 'none',
-                            }}
-                        >
-                            {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
-                        </Button>
-                    </Space>
-                </Col>
+                        <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
+                            <Col>
+                                <ToggleSwitch
+                                    isOn={isSending}
+                                    onToggle={() => setIsSending(v => !v)}
+                                    title="Send instructions"
+                                    rightIcon={<ThunderboltOutlined />}
+                                    width={180}
+                                    height={32}
+                                />
+                            </Col>
 
-                <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
-                    <Col>
-                        <ToggleSwitch
-                            isOn={isSending}
-                            onToggle={() => setIsSending(v => !v)}
-                            title="Send instructions"
-                            rightIcon={<ThunderboltOutlined />}
-                            width={180}
-                            height={32}
-                        />
-                    </Col>
+                            <Col>
+                                <ToggleSwitch
+                                    isOn={showDegrees}
+                                    onToggle={() => setShowDegrees(v => !v)}
+                                    title="Angle units"
+                                    textOn="DEGREES"
+                                    textOff="RADIANS"
+                                    width={180}
+                                    height={32}
+                                />
+                            </Col>
+                        </Row>
+                    </Row>
 
-                    <Col>
-                        <ToggleSwitch
-                            isOn={showDegrees}
-                            onToggle={() => setShowDegrees(v => !v)}
-                            title="Angle units"
-                            textOn="DEGREES"
-                            textOff="RADIANS"
-                            width={180}
-                            height={32}
-                        />
-                    </Col>
-                </Row>
-            </Row>
-
-            <DndContext
-                sensors={sensors}
-                collisionDetection={rectIntersection}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-            >
-                <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                            gridAutoRows: '1fr',
-                            gap: '12px',
-                            width: '100%',
-                            alignItems: 'stretch',
-                        }}
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={rectIntersection}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
                     >
-                        {categoryOrder.map((category) => {
-                            if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
-                                return null;
-                            }
+                        <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                                    gridAutoRows: '1fr',
+                                    gap: '12px',
+                                    width: '100%',
+                                    alignItems: 'stretch',
+                                }}
+                            >
+                                {categoryOrder.map((category) => {
+                                    if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
+                                        return null;
+                                    }
 
-                            return (
-                                <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <DraggableCategory
-                                        id={category}
-                                        category={category}
-                                        joints={categorizedJoints[category]}
-                                        onJointValueChange={handleJointValueChange}
-                                        onResetCategory={handleResetCategory}
+                                    return (
+                                        <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                            <DraggableCategory
+                                                id={category}
+                                                category={category}
+                                                joints={categorizedJoints[category]}
+                                                onJointValueChange={handleJointValueChange}
+                                                onResetCategory={handleResetCategory}
+                                                showDegrees={showDegrees}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </SortableContext>
+
+                        <DragOverlay>
+                            {activeId ? (
+                                <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
+                                    <JointCategory
+                                        category={activeId}
+                                        joints={categorizedJoints[activeId] || []}
+                                        onJointValueChange={() => { }}
+                                        onResetCategory={() => { }}
                                         showDegrees={showDegrees}
                                     />
                                 </div>
-                            );
-                        })}
-                    </div>
-                </SortableContext>
-
-                <DragOverlay>
-                    {activeId ? (
-                        <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
-                            <JointCategory
-                                category={activeId}
-                                joints={categorizedJoints[activeId] || []}
-                                onJointValueChange={() => { }}
-                                onResetCategory={() => { }}
-                                showDegrees={showDegrees}
-                            />
-                        </div>
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
+                </>
+            )}
 
             <StreamPlayerModal
                 isVisible={isStreamVisible}
