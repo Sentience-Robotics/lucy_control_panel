@@ -1,4 +1,5 @@
 import React from 'react';
+import { UI_TEXT_SECONDARY_MUTED } from '../Constants/uiTheme.ts';
 
 interface StreamMetricsProps {
     fps: number;
@@ -16,16 +17,16 @@ export const StreamMetrics: React.FC<StreamMetricsProps> = ({
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ 
-                color: '#666', 
+                color: UI_TEXT_SECONDARY_MUTED, 
                 fontFamily: 'monospace', 
                 fontSize,
                 fontWeight: 'bold'
             }}>
                 {fps > 0 ? `${fps}${showLabels ? ' FPS' : ''}` : `--${showLabels ? ' FPS' : ''}`}
             </span>
-            <span style={{ color: '#666', fontSize: fontSize - 1 }}>|</span>
+            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: fontSize - 1 }}>|</span>
             <span style={{ 
-                color: '#666', 
+                color: UI_TEXT_SECONDARY_MUTED, 
                 fontFamily: 'monospace', 
                 fontSize,
                 fontWeight: 'bold'

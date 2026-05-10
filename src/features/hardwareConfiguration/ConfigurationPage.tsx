@@ -1,52 +1,75 @@
-import {
-    Alert,
-    Button,
-    Card,
-    Modal,
-    Select,
-    Space,
-    Table,
-    Tag,
-    Typography,
-} from 'antd';
-import { DeleteOutlined, PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Page } from '../../Components/Page.tsx';
+import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
 import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigManager.tsx';
 import { LucyControlPanelHeader } from '../../Components/LucyControlPanelHeader.tsx';
 import { UNPARSED_VALIDATION_KEY, GENERAL_VALIDATION_KEY } from '../../Utils/hardwareConfigServerErrors.ts';
 import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Constants/uiTheme.ts';
 import './configuration.switch.css';
+import { ActivateConfigureWorkflowModal } from './components/ActivateConfigureWorkflowModal.tsx';
 import { useHardwareConfiguration } from './hooks/useHardwareConfiguration.tsx';
 import { freePhysicalPinsOnBoard } from './model/documentHelpers.ts';
 
 const { Text } = Typography;
 
 const ConfigurationPage = () => {
-    const [modal, contextHolder] = Modal.useModal();
-    const hw = useHardwareConfiguration(modal);
+    const hw = useHardwareConfiguration();
+    const editorLocked = hw.editorLocked;
 
     const headerContent = (
         <LucyControlPanelHeader>
-            <Space wrap>
-                <Tag title="Top-level robot_name from the loaded hardware YAML">
-                    <span style={{ fontWeight: 600 }}>ROBOT:</span> {hw.hardwareRobotName || '—'}
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'auto auto',
+                    columnGap: 12,
+                    rowGap: 6,
+                    alignItems: 'center',
+                }}
+            >
+                <span style={{ gridColumn: 1, gridRow: 1 }} aria-hidden />
+                <div style={{ gridColumn: 2, gridRow: 1 }}>
+                    <HardwareConfigPresetHeaderTag
+                        variant="loaded"
+                        label="LOADED"
+                        value={hw.resolvedName || ''}
+                        title="Configuration YAML currently open in the editor"
+                    />
+                </div>
+                <Tag
+                    title="ROS package wired on lucy_config_pipeline (from config/get)"
+                    style={{ gridColumn: 1, gridRow: 2, margin: 0 }}
+                >
+                    <span style={{ fontWeight: 600 }}>ROBOT PACKAGE:</span> {hw.serverRobotPackage || '—'}
                 </Tag>
-                <Tag color="cyan" title="Current active hardware configuration from config/list">
-                    <span style={{ fontWeight: 600 }}>ACTIVE:</span> {hw.serverActiveConfigName || '—'}
-                </Tag>
-                {hw.resolvedName ? (
-                    <Tag>
-                        <span style={{ fontWeight: 600 }}>LOADED:</span> {hw.resolvedName}
-                    </Tag>
-                ) : null}
-                {hw.isDirty ? <Tag color="orange">UNSAVED EDITS</Tag> : null}
-            </Space>
+                <div style={{ gridColumn: 2, gridRow: 2 }}>
+                    <HardwareConfigPresetHeaderTag
+                        variant="active"
+                        label="ACTIVE"
+                        value={hw.serverActiveConfigName || ''}
+                        title="Current active hardware configuration from config/list"
+                    />
+                </div>
+                <span style={{ gridColumn: 1, gridRow: 3 }} aria-hidden />
+                <div style={{ gridColumn: 2, gridRow: 3 }}>
+                    <HardwareConfigPresetHeaderTag
+                        variant="flashed"
+                        label="FLASHED"
+                        value={hw.serverFlashedConfigName || ''}
+                        title={
+                            hw.serverFlashedAt
+                                ? `Last successful pipeline flash (UTC): ${hw.serverFlashedAt}`
+                                : 'Preset last written to boards via configure_pipeline flash (from active_meta / config/get)'
+                        }
+                    />
+                </div>
+            </div>
         </LucyControlPanelHeader>
     );
 
     return (
         <Page showHeader headerContent={headerContent} contentStyle={{ padding: 12, position: 'relative' }} removeScrollbars={false}>
-            {contextHolder}
             {hw.contextHolderMessage}
 
             <div
@@ -61,6 +84,13 @@ const ConfigurationPage = () => {
                 }}
             >
                 <Space wrap align="center">
+                    <Button
+                        icon={<ReloadOutlined />}
+                        disabled={!hw.loadedSnapshot || editorLocked}
+                        onClick={hw.handleRevert}
+                    >
+                        REVERT
+                    </Button>
                     <HardwareYamlConfigManager
                         isConnected={hw.isConnected}
                         yamlDoc={hw.yamlDoc}
@@ -72,41 +102,36 @@ const ConfigurationPage = () => {
                         sensorPressureCount={hw.pressureSensorRows.length}
                         savedConfigNames={hw.savedConfigNames}
                         activeConfigName={hw.serverActiveConfigName}
+                        flashedConfigName={hw.serverFlashedConfigName}
                         configListLoading={hw.configListLoading}
                         toolbarTargetConfig={hw.loadConfigName}
                         onToolbarTargetConfigChange={hw.setLoadConfigName}
                         onRefreshConfigList={hw.refreshConfigListForModal}
                         onSaveConfig={hw.saveConfigByName}
                         onLoadConfig={(name) => hw.loadHardwareConfig(name, { successToast: false })}
+                        deleteConfigByName={hw.deleteConfigByName}
+                        deletingConfig={hw.deleting}
+                        workflowLocked={editorLocked}
                     />
-                    <Button icon={<ReloadOutlined />} disabled={!hw.loadedSnapshot} onClick={hw.handleRevert}>
-                        REVERT
-                    </Button>
+                    {hw.isDirty ? <Tag color="orange">UNSAVED EDITS</Tag> : null}
                 </Space>
                 <Space wrap align="center">
-                    <Button
-                        type="primary"
-                        icon={<ThunderboltOutlined />}
-                        loading={hw.activating}
-                        disabled={!hw.canActivateConfig}
-                        onClick={hw.handleActivateClick}
-                        style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                    >
-                        ACTIVATE
-                    </Button>
-                    <Button
-                        danger
-                        icon={<DeleteOutlined />}
-                        loading={hw.deleting}
-                        disabled={!hw.canDeleteConfig}
-                        onClick={hw.handleDeleteClick}
-                    >
-                        DELETE
-                    </Button>
-                    <Text type="secondary" style={{ fontFamily: 'monospace' }}>
-                        <span style={{ fontWeight: 600 }}>TARGET:</span>{' '}
-                        <Text code>{hw.selectedTargetConfigName || '—'}</Text>
-                    </Text>
+                    <HardwareConfigPresetHeaderTag
+                        variant="target"
+                        label="TARGET"
+                        value={hw.selectedTargetConfigName || ''}
+                    />
+                    <Tooltip title="Activate & configure the TARGET preset on the robot">
+                        <Button
+                            type="primary"
+                            icon={<ThunderboltOutlined />}
+                            loading={hw.workflowRunning}
+                            onClick={hw.openActivateModal}
+                            style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                        >
+                            ACTIVATE
+                        </Button>
+                    </Tooltip>
                 </Space>
             </div>
 
@@ -171,8 +196,37 @@ const ConfigurationPage = () => {
                 />
             ) : null}
 
+            <ActivateConfigureWorkflowModal
+                open={hw.activateModalOpen}
+                onClose={hw.closeActivateModal}
+                isDirty={hw.isDirty}
+                selectedTargetConfigName={hw.selectedTargetConfigName}
+                serverActiveConfigName={hw.serverActiveConfigName}
+                serverRobotPackage={hw.serverRobotPackage}
+                pipelineBoardOptions={hw.pipelineBoardOptions}
+                activateModalBoards={hw.activateModalBoards}
+                onActivateModalBoardsChange={hw.setActivateModalBoards}
+                activateModalBuildOnly={hw.activateModalBuildOnly}
+                onActivateModalBuildOnlyChange={hw.setActivateModalBuildOnly}
+                activateModalActivateOnly={hw.activateModalActivateOnly}
+                onActivateModalActivateOnlyChange={hw.setActivateModalActivateOnly}
+                onRun={hw.runWorkflowFromModal}
+                onAbort={hw.abortWorkflow}
+                workflowRunning={hw.workflowRunning}
+                workflowSteps={hw.workflowSteps}
+                workflowOverallPercent={hw.workflowOverallPercent}
+                workflowDetailLine={hw.workflowDetailLine}
+                canRun={hw.modalCanRun && hw.isConnected}
+            />
+
             {hw.yamlDoc ? (
-                <>
+                <div
+                    style={
+                        editorLocked
+                            ? { pointerEvents: 'none', opacity: 0.55, transition: 'opacity 0.2s ease' }
+                            : undefined
+                    }
+                >
                     <Card title="BOARDS (READ-ONLY)" size="small" style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}>
                         <Table size="small" dataSource={hw.boardRows} columns={hw.boardColumns} pagination={false} />
                     </Card>
@@ -187,7 +241,11 @@ const ConfigurationPage = () => {
                                     size="small"
                                     placeholder="BOARD"
                                     style={{ minWidth: 200 }}
-                                    disabled={!hw.yamlDoc || hw.boardsEligibleForNewActuator.length === 0}
+                                    disabled={
+                                        editorLocked ||
+                                        !hw.yamlDoc ||
+                                        hw.boardsEligibleForNewActuator.length === 0
+                                    }
                                     value={hw.addActuatorBoard}
                                     options={hw.boardsEligibleForNewActuator.map((b) => ({
                                         value: b,
@@ -201,7 +259,7 @@ const ConfigurationPage = () => {
                                     type="default"
                                     size="small"
                                     className="hardware-config-add-btn"
-                                    disabled={!hw.yamlDoc || !hw.addActuatorBoard}
+                                    disabled={editorLocked || !hw.yamlDoc || !hw.addActuatorBoard}
                                     onClick={hw.handleAddActuator}
                                     style={{ minWidth: 132 }}
                                     title={
@@ -244,7 +302,11 @@ const ConfigurationPage = () => {
                                     style={{ minWidth: 260 }}
                                     showSearch
                                     optionFilterProp="label"
-                                    disabled={!hw.yamlDoc || hw.actuatorsEligibleForNewPressureSensor.length === 0}
+                                    disabled={
+                                        editorLocked ||
+                                        !hw.yamlDoc ||
+                                        hw.actuatorsEligibleForNewPressureSensor.length === 0
+                                    }
                                     value={hw.addPressureSensorActuatorId}
                                     allowClear
                                     options={hw.actuatorsEligibleForNewPressureSensor}
@@ -254,7 +316,7 @@ const ConfigurationPage = () => {
                                     type="default"
                                     size="small"
                                     className="hardware-config-add-btn"
-                                    disabled={!hw.yamlDoc || !hw.addPressureSensorActuatorId}
+                                    disabled={editorLocked || !hw.yamlDoc || !hw.addPressureSensorActuatorId}
                                     onClick={hw.handleAddPressureSensor}
                                     style={{ minWidth: 118 }}
                                     title={
@@ -284,7 +346,7 @@ const ConfigurationPage = () => {
                             columns={hw.pressureSensorColumns}
                         />
                     </Card>
-                </>
+                </div>
             ) : null}
         </Page>
     );

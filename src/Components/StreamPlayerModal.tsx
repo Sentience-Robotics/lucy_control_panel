@@ -5,22 +5,28 @@ import { StreamMetrics } from "./StreamMetrics.tsx";
 import { MovableModal } from './MovableModal.tsx';
 import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
 import type { StreamSource } from '../Constants/rosConfig';
+import {
+    UI_ACCENT_ORANGE,
+    UI_BORDER_MUTED,
+    UI_CHROME_SURFACE,
+    UI_INPUT_SURFACE,
+} from '../Constants/uiTheme.ts';
 
 const WARNING_BADGE_STYLE: React.CSSProperties = {
-    color: '#ffa500',
+    color: UI_ACCENT_ORANGE,
     fontFamily: 'monospace',
     fontSize: 10,
     padding: '2px 6px',
-    backgroundColor: '#1a1a1a',
-    border: '1px solid #ffa500',
+    backgroundColor: UI_INPUT_SURFACE,
+    border: `1px solid ${UI_ACCENT_ORANGE}`,
     borderRadius: 4
 };
 
 const SELECT_POPUP_STYLE = {
     popup: {
         root: {
-            backgroundColor: '#0d0d0d',
-            borderColor: '#333',
+            backgroundColor: UI_CHROME_SURFACE,
+            borderColor: UI_BORDER_MUTED,
         }
     }
 };

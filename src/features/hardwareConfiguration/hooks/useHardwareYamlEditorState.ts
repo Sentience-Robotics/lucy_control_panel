@@ -8,7 +8,7 @@ export interface HardwareYamlEditorStateParams {
 }
 
 /**
- * Working copy of the hardware YAML, load/save lifecycle flags, and validation metadata from the server.
+ * Working copy of the hardware YAML, load/save lifecycle flags, and validation metadata from the system.
  */
 export function useHardwareYamlEditorState({
     isConnected,

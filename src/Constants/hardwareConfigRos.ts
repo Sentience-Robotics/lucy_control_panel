@@ -2,6 +2,11 @@
 
 export type HardwareConfigServiceSuffix = 'get' | 'save' | 'list' | 'activate' | 'delete';
 
+/** ROS 2 action interface string as exposed by rosbridge / roslib. */
+export const CONFIGURE_PIPELINE_ACTION_INTERFACE = 'lucy_msgs/action/ConfigurePipeline';
+/** Matches `configure_pipeline` endpoint advertised by lucy_config_pipeline. */
+export const CONFIGURE_PIPELINE_SERVER_NAME = '/configure_pipeline';
+
 export function hardwareConfigServiceUri(which: HardwareConfigServiceSuffix): string {
     return `/config/${which}`;
 }

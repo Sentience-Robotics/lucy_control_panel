@@ -28,19 +28,19 @@ class RosBridgeService {
         });
 
         ros.on('connection', () => {
-            logger('Connected to ROS websocket server.');
+            logger('Connected to ROS bridge.');
             this.clearConnectionTimeout();
             this.setConnectionStatus('connected');
         });
 
         ros.on('error', (error: any) => {
-            logger(`Error connecting to ROS websocket server: ${error}`);
+            logger(`Error connecting to ROS bridge: ${error}`);
             this.clearConnectionTimeout();
             this.setConnectionStatus('disconnected');
         });
 
         ros.on('close', () => {
-            logger('Connection to ROS websocket server closed.');
+            logger('ROS bridge connection closed.');
             this.clearConnectionTimeout();
             this.setConnectionStatus('disconnected');
         });

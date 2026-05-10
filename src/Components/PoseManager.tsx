@@ -21,6 +21,19 @@ import {
   ClockCircleOutlined
 } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
+import {
+    UI_ACCENT_GREEN,
+    UI_BORDER_MUTED,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_INPUT_SURFACE,
+    UI_LIST_ROW_BG,
+    UI_MODAL_MASK_BG,
+    UI_PANEL_BG,
+    UI_PRIMARY_GREEN_BUTTON_STYLE,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SUBTLE,
+} from '../Constants/uiTheme.ts';
 import { storageService, type SavedPose } from '../Services/storage.service.ts';
 
 const { Text, Title } = Typography;
@@ -136,9 +149,9 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
           icon={<SaveOutlined />}
           onClick={() => setSaveModalVisible(true)}
           style={{
-            backgroundColor: 'transparent',
-            borderColor: '#444',
-            color: '#fff'
+            backgroundColor: UI_COLOR_TRANSPARENT,
+            borderColor: UI_BORDER_SOFT,
+            color: UI_TEXT_PRIMARY_ON_DARK
           }}
         >
           SAVE POSE
@@ -148,19 +161,19 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
           icon={<FolderOpenOutlined />}
           onClick={() => setLoadModalVisible(true)}
           style={{
-            backgroundColor: 'transparent',
-            borderColor: '#444',
-            color: '#fff'
+            backgroundColor: UI_COLOR_TRANSPARENT,
+            borderColor: UI_BORDER_SOFT,
+            color: UI_TEXT_PRIMARY_ON_DARK
           }}
         >
-          LOAD POSE {poseCount > 0 && <span style={{ color: '#00ff41' }}>({poseCount})</span>}
+          LOAD POSE {poseCount > 0 && <span style={{ color: UI_ACCENT_GREEN }}>({poseCount})</span>}
         </Button>
       </Space>
 
       {/* Save Pose Modal */}
       <Modal
         title={
-          <Title level={4} style={{ color: '#00ff41', margin: 0 }}>
+          <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
             <SaveOutlined /> Save Current Pose
           </Title>
         }
@@ -175,15 +188,15 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
         cancelText="Cancel"
         style={{ top: 100 }}
         styles={{
-          mask: { backgroundColor: 'rgba(0, 0, 0, 0.8)' }
+          mask: { backgroundColor: UI_MODAL_MASK_BG }
         }}
         className="dark-modal"
       >
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Text style={{ color: '#fff' }}>
+          <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
             Enter a name for your pose. This will save the current position of all {joints.length} joints.
             <br />
-            <Text style={{ color: '#888', fontSize: '12px' }}>
+            <Text style={{ color: UI_TEXT_SUBTLE, fontSize: '12px' }}>
               You can save multiple poses with different names. Duplicate names will automatically get a number suffix.
             </Text>
           </Text>
@@ -196,14 +209,14 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
             maxLength={50}
             autoFocus
             style={{
-              backgroundColor: '#1a1a1a',
-              borderColor: '#444',
-              color: '#fff'
+              backgroundColor: UI_INPUT_SURFACE,
+              borderColor: UI_BORDER_SOFT,
+              color: UI_TEXT_PRIMARY_ON_DARK
             }}
           />
 
           <div>
-            <Text style={{ color: '#888', fontSize: '12px', marginBottom: 8, display: 'block' }}>
+            <Text style={{ color: UI_TEXT_SUBTLE, fontSize: '12px', marginBottom: 8, display: 'block' }}>
               Quick suggestions:
             </Text>
             <Space wrap>
@@ -214,9 +227,9 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
                   type="dashed"
                   onClick={() => setPoseName(preset)}
                   style={{
-                    borderColor: '#444',
-                    color: '#888',
-                    backgroundColor: 'transparent'
+                    borderColor: UI_BORDER_SOFT,
+                    color: UI_TEXT_SUBTLE,
+                    backgroundColor: UI_COLOR_TRANSPARENT
                   }}
                 >
                   {preset}
@@ -225,13 +238,15 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
             </Space>
           </div>
 
-          <Card size="small" style={{ backgroundColor: '#0a0a0a', borderColor: '#333' }}>
+          <Card size="small" style={{ backgroundColor: UI_PANEL_BG, borderColor: UI_BORDER_MUTED }}>
             <Row gutter={16}>
               <Col span={12}>
-                <Text strong style={{ color: '#fff' }}>Joints to save:</Text> <Text style={{ color: '#00ff41' }}>{joints.length}</Text>
+                <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Joints to save:</Text>{' '}
+                <Text style={{ color: UI_ACCENT_GREEN }}>{joints.length}</Text>
               </Col>
               <Col span={12}>
-                <Text strong style={{ color: '#fff' }}>Timestamp:</Text> <Text style={{ color: '#00ff41' }}>{formatTimestamp(Date.now())}</Text>
+                <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Timestamp:</Text>{' '}
+                <Text style={{ color: UI_ACCENT_GREEN }}>{formatTimestamp(Date.now())}</Text>
               </Col>
             </Row>
           </Card>
@@ -241,7 +256,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
       {/* Load Pose Modal */}
       <Modal
         title={
-          <Title level={4} style={{ color: '#00ff41', margin: 0 }}>
+          <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
             <FolderOpenOutlined /> Load Saved Pose
           </Title>
         }
@@ -251,9 +266,9 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
             key="close"
             onClick={() => setLoadModalVisible(false)}
             style={{
-              backgroundColor: 'transparent',
-              borderColor: '#444',
-              color: '#fff'
+              backgroundColor: UI_COLOR_TRANSPARENT,
+              borderColor: UI_BORDER_SOFT,
+              color: UI_TEXT_PRIMARY_ON_DARK,
             }}
           >
             Close
@@ -263,13 +278,13 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
         width={700}
         style={{ top: 50 }}
         styles={{
-          mask: { backgroundColor: 'rgba(0, 0, 0, 0.8)' }
+          mask: { backgroundColor: UI_MODAL_MASK_BG }
         }}
         className="dark-modal"
       >
         {savedPoses.length === 0 ? (
-          <Card style={{ textAlign: 'center', backgroundColor: '#0a0a0a', borderColor: '#333' }}>
-            <Text style={{ color: '#888' }}>
+          <Card style={{ textAlign: 'center', backgroundColor: UI_PANEL_BG, borderColor: UI_BORDER_MUTED }}>
+            <Text style={{ color: UI_TEXT_SUBTLE }}>
               No saved poses found. Save your first pose to get started!
             </Text>
           </Card>
@@ -280,11 +295,11 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
               <List.Item
                 key={pose.id}
                 style={{
-                  backgroundColor: '#0c0c0c',
+                  backgroundColor: UI_LIST_ROW_BG,
                   marginBottom: 8,
                   borderRadius: 4,
                   padding: 12,
-                  border: '1px solid #333'
+                  border: `1px solid ${UI_BORDER_MUTED}`
                 }}
                 actions={[
                   <Tooltip title="Load this pose">
@@ -293,7 +308,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
                       icon={<DownloadOutlined />}
                       onClick={() => handleLoadPose(pose.id)}
                       loading={loading}
-                      style={{ backgroundColor: '#00ff41', borderColor: '#00ff41', color: '#000' }}
+                      style={{ ...UI_PRIMARY_GREEN_BUTTON_STYLE }}
                     >
                       Load
                     </Button>
@@ -318,17 +333,17 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
               >
                 <List.Item.Meta
                   title={
-                    <Text strong style={{ fontSize: 16, color: '#00ff41' }}>
+                    <Text strong style={{ fontSize: 16, color: UI_ACCENT_GREEN }}>
                       {pose.name}
                     </Text>
                   }
                   description={
                     <Space direction="vertical" size="small">
                       <Space>
-                        <ClockCircleOutlined style={{ color: '#888' }} />
-                        <Text style={{ color: '#888' }}>{formatTimestamp(pose.timestamp)}</Text>
+                        <ClockCircleOutlined style={{ color: UI_TEXT_SUBTLE }} />
+                        <Text style={{ color: UI_TEXT_SUBTLE }}>{formatTimestamp(pose.timestamp)}</Text>
                       </Space>
-                      <Text style={{ color: '#888' }}>
+                      <Text style={{ color: UI_TEXT_SUBTLE }}>
                         {getJointCount(pose.joints)} joints stored
                       </Text>
                     </Space>

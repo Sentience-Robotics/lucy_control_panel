@@ -1,4 +1,10 @@
 import React from 'react';
+import {
+    UI_ACCENT_GREEN,
+    UI_CHROME_SURFACE,
+    UI_TEXT_ON_ACCENT,
+    UI_TOGGLE_TRACK_BORDER,
+} from '../Constants/uiTheme.ts';
 
 export interface ToggleSwitchProps {
     isOn: boolean;
@@ -28,7 +34,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
             <span style={{
                 fontFamily: 'monospace',
                 fontSize: 11,
-                color: '#00ff41',
+                color: UI_ACCENT_GREEN,
                 letterSpacing: 0.5,
                 textTransform: 'uppercase',
                 opacity: 0.8
@@ -48,12 +54,12 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                     position: 'relative',
                     padding: 2,
                     borderRadius: 18,
-                    backgroundColor: '#0d0d0d',
-                    border: '1px solid #2a2a2a',
+                    backgroundColor: UI_CHROME_SURFACE,
+                    border: `1px solid ${UI_TOGGLE_TRACK_BORDER}`,
                     cursor: 'pointer',
                     userSelect: 'none',
                     outline: 'none',
-                    color: '#00ff41',
+                    color: UI_ACCENT_GREEN,
                 }}
             >
                 <div
@@ -64,8 +70,8 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                         width: `calc(50% - 4px)`,
                         height: `calc(100% - 4px)`,
                         borderRadius: 16,
-                        backgroundColor: '#00ff41',
-                        boxShadow: isOn ? '0 0 12px #00ff41' : 'none',
+                        backgroundColor: UI_ACCENT_GREEN,
+                        boxShadow: isOn ? `0 0 12px ${UI_ACCENT_GREEN}` : 'none',
                         transition: 'left 160ms ease, box-shadow 160ms ease',
                     }}
                 />
@@ -82,7 +88,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                         fontWeight: 600,
                         letterSpacing: 0.5,
                         zIndex: 1,
-                        color: isOn ? '#00ff41' : '#000',
+                        color: isOn ? UI_ACCENT_GREEN : UI_TEXT_ON_ACCENT,
                         opacity: isOn ? 0.9 : 1,
                     }}
                 >
@@ -102,7 +108,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
                         fontWeight: 600,
                         letterSpacing: 0.5,
                         zIndex: 1,
-                        color: isOn ? '#000' : '#00ff41',
+                        color: isOn ? UI_TEXT_ON_ACCENT : UI_ACCENT_GREEN,
                     }}
                 >
                     {rightIcon}

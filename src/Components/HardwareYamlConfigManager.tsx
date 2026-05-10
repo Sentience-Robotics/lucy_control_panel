@@ -6,15 +6,18 @@ import {
     Input,
     List,
     Modal,
+    Popconfirm,
     Row,
     Space,
     Tooltip,
     Typography,
     message,
 } from 'antd';
+import { HardwareConfigPresetRoleTag } from './HardwareConfigPresetTag.tsx';
 import {
     AimOutlined,
     CloudDownloadOutlined,
+    DeleteOutlined,
     DownloadOutlined,
     FolderOpenOutlined,
     ReloadOutlined,
@@ -25,8 +28,13 @@ import {
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_CARD_SURFACE_STYLE,
+    UI_COLOR_TRANSPARENT,
+    UI_INPUT_SURFACE,
+    UI_LIST_ROW_BG,
+    UI_MODAL_MASK_BG,
     UI_PRIMARY_GREEN_BUTTON_STYLE,
-    UI_WARNING_AMBER,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
 
 const { Text, Title } = Typography;
@@ -44,14 +52,20 @@ export interface HardwareYamlConfigManagerProps {
     sensorPressureCount: number;
     savedConfigNames: string[];
     activeConfigName: string;
+    /** Last pipeline-flashed preset (from config/get / active_meta); shown in load list. */
+    flashedConfigName: string;
     configListLoading: boolean;
-    /** Selection used by ACTIVATE / DELETE toolbar on the parent page */
+    /** Selection used by ACTIVATE workflow on the parent page */
     toolbarTargetConfig: string;
     onToolbarTargetConfigChange: (configName: string) => void;
     onRefreshConfigList: () => void | Promise<void>;
+    deleteConfigByName: (configName: string) => Promise<boolean>;
+    deletingConfig: boolean;
     onSaveConfig: (trimmedName: string) => Promise<boolean>;
     /** Named configuration file, or empty string for active */
     onLoadConfig: (configName: string) => Promise<boolean>;
+    /** Blocks save/load UI (e.g. while ConfigurePipeline is running). */
+    workflowLocked?: boolean;
 }
 
 export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps> = ({
@@ -65,12 +79,16 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
     sensorPressureCount,
     savedConfigNames,
     activeConfigName,
+    flashedConfigName,
     configListLoading,
     toolbarTargetConfig,
     onToolbarTargetConfigChange,
     onRefreshConfigList,
+    deleteConfigByName,
+    deletingConfig,
     onSaveConfig,
     onLoadConfig,
+    workflowLocked = false,
 }) => {
     const [saveModalVisible, setSaveModalVisible] = useState(false);
     const [loadModalVisible, setLoadModalVisible] = useState(false);
@@ -97,76 +115,82 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
             try {
                 const ok = await onLoadConfig(configKey);
                 if (ok) {
-                    message.success(
-                        configKey.trim()
-                            ? `LOADED CONFIGURATION "${configKey.trim()}"`
-                            : `LOADED ACTIVE CONFIGURATION (${activeConfigName || 'robot'})`,
-                    );
+                    message.success(`LOADED CONFIGURATION "${configKey.trim()}"`);
                     setLoadModalVisible(false);
                 }
             } finally {
                 setBusyLoadId(null);
             }
         },
-        [onLoadConfig, activeConfigName],
+        [onLoadConfig],
     );
 
     const modalStyles = {
-        mask: { backgroundColor: 'rgba(0, 0, 0, 0.8)' },
+        mask: { backgroundColor: UI_MODAL_MASK_BG },
     };
 
     const inputDarkStyle = {
-        backgroundColor: '#1a1a1a',
-        borderColor: '#444',
-        color: '#fff',
+        backgroundColor: UI_INPUT_SURFACE,
+        borderColor: UI_BORDER_SOFT,
+        color: UI_TEXT_PRIMARY_ON_DARK,
     };
 
     const outlineBtnStyle = {
-        backgroundColor: 'transparent',
+        backgroundColor: UI_COLOR_TRANSPARENT,
         borderColor: UI_BORDER_SOFT,
-        color: '#fff',
+        color: UI_TEXT_PRIMARY_ON_DARK,
     };
 
     const activeTrim = activeConfigName.trim();
-    const namedRows = activeTrim
-        ? savedConfigNames.filter((n) => n.trim() !== activeTrim)
-        : [...savedConfigNames];
+    const flashedTrim = flashedConfigName.trim();
 
-    const activeRows = [
-        {
-            key: '__active__',
-            title: 'ACTIVE CONFIGURATION (ON ROBOT)',
-            subtitle: `RESOLVED NAME: ${activeConfigName || '—'}`,
-            loadArg: '',
+    const canDeletePresetFile = useCallback(
+        (presetName: string) => {
+            const n = presetName.trim();
+            if (!n || workflowLocked || !isConnected || deletingConfig) return false;
+            if (n === 'default') return false;
+            if (n === activeTrim) return false;
+            return true;
         },
-        ...namedRows.map((n) => ({
-            key: n,
-            title: n.toUpperCase(),
-            subtitle: 'NAMED CONFIGURATION UNDER CONFIGS/',
-            loadArg: n,
-        })),
-    ];
+        [activeTrim, deletingConfig, isConnected, workflowLocked],
+    );
+
+    const sortedUnique = [...new Set(savedConfigNames.map((s) => s.trim()).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b),
+    );
+
+    /** Active preset first when known; otherwise alphabetical. Includes active name even if missing from list yet. */
+    let orderedPresets: string[];
+    if (activeTrim && sortedUnique.includes(activeTrim)) {
+        orderedPresets = [activeTrim, ...sortedUnique.filter((n) => n !== activeTrim)];
+    } else if (activeTrim) {
+        orderedPresets = [activeTrim, ...sortedUnique];
+    } else {
+        orderedPresets = sortedUnique;
+    }
+
+    const presetRows = orderedPresets.map((name) => ({ key: name, name }));
 
     return (
         <>
             <Space>
                 <Button
-                    icon={<SaveOutlined />}
-                    disabled={!isConnected || !yamlDoc || !isDirty}
-                    onClick={() => setSaveModalVisible(true)}
-                    style={outlineBtnStyle}
-                >
-                    SAVE CONFIG
-                </Button>
-
-                <Button
                     icon={<FolderOpenOutlined />}
-                    disabled={!isConnected}
+                    disabled={workflowLocked || !isConnected}
                     onClick={() => setLoadModalVisible(true)}
                     style={outlineBtnStyle}
                 >
                     LOAD CONFIG{' '}
                     {savedConfigCount > 0 ? <span style={{ color: UI_ACCENT_GREEN }}>({savedConfigCount})</span> : null}
+                </Button>
+
+                <Button
+                    icon={<SaveOutlined />}
+                    disabled={workflowLocked || !isConnected || !yamlDoc || !isDirty}
+                    onClick={() => setSaveModalVisible(true)}
+                    style={outlineBtnStyle}
+                >
+                    SAVE CONFIG
                 </Button>
             </Space>
 
@@ -209,7 +233,7 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                     />
 
                     <div>
-                        <Text style={{ color: '#888', fontSize: 12, marginBottom: 8, display: 'block' }}>
+                        <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12, marginBottom: 8, display: 'block' }}>
                             QUICK SUGGESTIONS:
                         </Text>
                         <Space wrap>
@@ -220,9 +244,9 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                                     type="dashed"
                                     onClick={() => setConfigNameInput(suggestion)}
                                     style={{
-                                        borderColor: '#444',
-                                        color: '#888',
-                                        backgroundColor: 'transparent',
+                                        borderColor: UI_BORDER_SOFT,
+                                        color: UI_TEXT_SUBTLE,
+                                        backgroundColor: UI_COLOR_TRANSPARENT,
                                     }}
                                 >
                                     {suggestion.toUpperCase()}
@@ -234,19 +258,19 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                     <Card size="small" style={{ ...UI_CARD_SURFACE_STYLE }}>
                         <Row gutter={16}>
                             <Col span={8}>
-                                <Text strong style={{ color: '#fff' }}>
+                                <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
                                     ROBOT_NAME:
                                 </Text>{' '}
                                 <Text style={{ color: UI_ACCENT_GREEN }}>{hardwareRobotName || '—'}</Text>
                             </Col>
                             <Col span={8}>
-                                <Text strong style={{ color: '#fff' }}>
+                                <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
                                     ACTUATORS:
                                 </Text>{' '}
                                 <Text style={{ color: UI_ACCENT_GREEN }}>{actuatorCount}</Text>
                             </Col>
                             <Col span={8}>
-                                <Text strong style={{ color: '#fff' }}>
+                                <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
                                     PRESSURE SENSORS:
                                 </Text>{' '}
                                 <Text style={{ color: UI_ACCENT_GREEN }}>{sensorPressureCount}</Text>
@@ -263,11 +287,11 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                     </Title>
                 }
                 open={loadModalVisible}
-                footer={[
-                    <Button key="close" onClick={() => setLoadModalVisible(false)} style={outlineBtnStyle}>
+                footer={
+                    <Button onClick={() => setLoadModalVisible(false)} style={outlineBtnStyle}>
                         CLOSE
-                    </Button>,
-                ]}
+                    </Button>
+                }
                 onCancel={() => setLoadModalVisible(false)}
                 width={720}
                 style={{ top: 50 }}
@@ -275,14 +299,10 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                 className="dark-modal"
             >
                 <Space direction="vertical" style={{ width: '100%', marginBottom: 12 }} size="small">
-                    <Text style={{ color: '#888', fontSize: 12 }}>
-                        TOOLBAR TARGET FOR ACTIVATE / DELETE:{' '}
-                        <Text style={{ color: UI_ACCENT_GREEN }}>{toolbarTargetConfig.trim() || '—'}</Text>
-                    </Text>
                     <Button
                         size="small"
                         icon={<ReloadOutlined spin={configListLoading} />}
-                        disabled={!isConnected || configListLoading}
+                        disabled={workflowLocked || !isConnected || configListLoading}
                         onClick={() => void onRefreshConfigList()}
                         style={outlineBtnStyle}
                     >
@@ -292,19 +312,31 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
 
                 {!isConnected ? (
                     <Card style={{ textAlign: 'center', ...UI_CARD_SURFACE_STYLE }}>
-                        <Text style={{ color: '#888' }}>CONNECT TO ROS BRIDGE FIRST.</Text>
+                        <Text style={{ color: UI_TEXT_SUBTLE }}>CONNECT TO ROS BRIDGE FIRST.</Text>
                     </Card>
                 ) : (
                     <List
-                        dataSource={activeRows}
+                        dataSource={presetRows}
+                        locale={{
+                            emptyText: (
+                                <Text type="secondary">
+                                    NO PRESETS FROM CONFIG/LIST — TRY REFRESH OR CHECK ROBOT CONNECTION.
+                                </Text>
+                            ),
+                        }}
                         renderItem={(row) => {
-                            const isActiveRow = row.key === '__active__';
-                            const rowBusy = busyLoadId !== null && busyLoadId === row.loadArg;
+                            const name = row.name;
+                            const rowBusy = busyLoadId !== null && busyLoadId === name;
+                            const isRobotActive = Boolean(activeTrim) && name === activeTrim;
+                            const isFlashedPreset = Boolean(flashedTrim) && name === flashedTrim;
+                            const isActivateTarget = name === toolbarTargetConfig.trim();
+                            const showRowDelete = !isRobotActive;
+
                             return (
                                 <List.Item
                                     key={row.key}
                                     style={{
-                                        backgroundColor: '#0c0c0c',
+                                        backgroundColor: UI_LIST_ROW_BG,
                                         marginBottom: 8,
                                         borderRadius: 4,
                                         padding: 12,
@@ -316,53 +348,78 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                                                 type="primary"
                                                 icon={<DownloadOutlined />}
                                                 loading={loadingConfig && rowBusy}
-                                                disabled={loadingConfig && busyLoadId !== row.loadArg}
-                                                onClick={() => void handleLoadConfig(row.loadArg)}
+                                                disabled={
+                                                    workflowLocked || (loadingConfig && busyLoadId !== name)
+                                                }
+                                                onClick={() => void handleLoadConfig(name)}
                                                 style={UI_PRIMARY_GREEN_BUTTON_STYLE}
                                             >
                                                 LOAD
                                             </Button>
                                         </Tooltip>,
-                                        <Tooltip key="target" title="ONLY SET ACTIVATE / DELETE TARGET (NO FETCH)">
+                                        <Tooltip key="target" title="SET AS TARGET FOR ACTIVATE WORKFLOW">
                                             <Button
                                                 icon={<AimOutlined />}
-                                                disabled={loadingConfig}
+                                                disabled={workflowLocked || loadingConfig}
                                                 onClick={() => {
-                                                    const targetName = isActiveRow ? activeConfigName.trim() : row.loadArg;
-                                                    onToolbarTargetConfigChange(targetName);
-                                                    message.info(
-                                                        isActiveRow && !targetName
-                                                            ? 'TOOLBAR TARGET: ACTIVE CONFIGURATION'
-                                                            : `TOOLBAR TARGET: "${targetName}"`,
-                                                    );
+                                                    onToolbarTargetConfigChange(name);
+                                                    message.info(`TOOLBAR TARGET: "${name}"`);
                                                 }}
                                                 style={outlineBtnStyle}
                                             >
                                                 TARGET
                                             </Button>
                                         </Tooltip>,
+                                        ...(showRowDelete
+                                            ? [
+                                                  <Popconfirm
+                                                      key="del-preset"
+                                                      title="DELETE ?"
+                                                      okText="DELETE"
+                                                      cancelText="CANCEL"
+                                                      okButtonProps={{ danger: true }}
+                                                      onConfirm={() => void deleteConfigByName(name)}
+                                                  >
+                                                      <Button
+                                                          type="text"
+                                                          size="small"
+                                                          danger
+                                                          icon={<DeleteOutlined />}
+                                                          aria-label={`Delete configuration ${name}`}
+                                                          disabled={
+                                                              !canDeletePresetFile(name) ||
+                                                              workflowLocked ||
+                                                              loadingConfig
+                                                          }
+                                                      />
+                                                  </Popconfirm>,
+                                              ]
+                                            : []),
                                     ]}
                                 >
                                     <List.Item.Meta
                                         title={
-                                            <Space size={8}>
+                                            <Space size={8} wrap>
                                                 <Text strong style={{ fontSize: 16, color: UI_ACCENT_GREEN }}>
-                                                    {row.title}
+                                                    {name.toUpperCase()}
                                                 </Text>
-                                                {(isActiveRow
-                                                    ? Boolean(activeConfigName.trim()) &&
-                                                      activeConfigName.trim() === toolbarTargetConfig.trim()
-                                                    : row.loadArg === toolbarTargetConfig.trim()) ? (
-                                                    <Text style={{ color: UI_WARNING_AMBER, fontSize: 11 }}>TARGET</Text>
+                                                {isRobotActive ? (
+                                                    <HardwareConfigPresetRoleTag variant="active" />
+                                                ) : null}
+                                                {isFlashedPreset ? (
+                                                    <HardwareConfigPresetRoleTag variant="flashed" />
+                                                ) : null}
+                                                {isActivateTarget ? (
+                                                    <HardwareConfigPresetRoleTag variant="target" />
                                                 ) : null}
                                             </Space>
                                         }
                                         description={
-                                            <Space direction="vertical" size={4}>
-                                                <Space>
-                                                    <CloudDownloadOutlined style={{ color: '#888' }} />
-                                                    <Text style={{ color: '#888' }}>{row.subtitle}</Text>
-                                                </Space>
+                                            <Space size={4}>
+                                                <CloudDownloadOutlined style={{ color: UI_TEXT_SUBTLE }} />
+                                                <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12 }}>
+                                                    config/hardware/configs/{name}.yaml
+                                                </Text>
                                             </Space>
                                         }
                                     />

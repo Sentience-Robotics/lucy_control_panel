@@ -1,7 +1,7 @@
 /**
  * ROS transport only: hardware YAML validation and URDF cross-checks run on the
  * `lucy_config_services` node (`config/get`, `config/save`). The frontend displays
- * returned `message` / `validation_errors` / `urdf_warnings` without rewriting server text.
+ * returned `message` / `validation_errors` / `urdf_warnings` without rewriting backend text.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import ROSLIB from 'roslib';
@@ -55,8 +55,12 @@ function normalizeGetConfig(raw: any): GetConfigResponse {
     return {
         success,
         message: typeof raw?.message === 'string' ? raw.message : '',
+        robot_package: typeof raw?.robot_package === 'string' ? raw.robot_package : '',
         config_name: typeof raw?.config_name === 'string' ? raw.config_name : '',
         config_yaml: typeof raw?.config_yaml === 'string' ? raw.config_yaml : '',
+        flashed_config_name:
+            typeof raw?.flashed_config_name === 'string' ? raw.flashed_config_name : '',
+        flashed_at: typeof raw?.flashed_at === 'string' ? raw.flashed_at : '',
     };
 }
 
@@ -142,12 +146,12 @@ export class HardwareConfigHandler {
         return normalizeListConfigs(raw);
     }
 
-    static async activateConfig(configName: string): Promise<ActivateConfigResponse> {
+    static async activateConfig(configName: string, robotPackage: string): Promise<ActivateConfigResponse> {
         const raw = await callService(
             hardwareConfigServiceUri('activate'),
             HARDWARE_CONFIG_SERVICE_TYPES.activate,
             {
-                robot_package: '',
+                robot_package: robotPackage.trim(),
                 config_name: configName,
             },
         );

@@ -53,7 +53,14 @@ import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
 import { ControlPanelHeaderStats, LucyControlPanelHeader } from '../Components/LucyControlPanelHeader.tsx';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
-import { UI_ACCENT_BOX_SHADOW_STRONG, UI_ACCENT_GREEN, UI_BORDER_SOFT } from '../Constants/uiTheme.ts';
+import {
+    UI_ACCENT_BOX_SHADOW_STRONG,
+    UI_ACCENT_GREEN,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+} from '../Constants/uiTheme.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -276,7 +283,9 @@ export const RobotControlPanel: React.FC = () => {
         return (
             <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Spin size="large" />
-                <Text style={{ color: '#fff', marginLeft: 16 }}>Loading robot configuration...</Text>
+                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
+                    Loading robot configuration...
+                </Text>
             </Page>
         );
     }
@@ -338,9 +347,9 @@ export const RobotControlPanel: React.FC = () => {
                                     icon={<ReloadOutlined />}
                                     onClick={handleResetAll}
                                     style={{
-                                        backgroundColor: 'transparent',
-                                        borderColor: '#444',
-                                        color: '#fff',
+                                        backgroundColor: UI_COLOR_TRANSPARENT,
+                                        borderColor: UI_BORDER_SOFT,
+                                        color: UI_TEXT_PRIMARY_ON_DARK,
                                     }}
                                 >
                                     RESET ALL
@@ -353,8 +362,8 @@ export const RobotControlPanel: React.FC = () => {
                                 <Button
                                     onClick={() => setIsStreamVisible(v => !v)}
                                     style={{
-                                        backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : 'transparent',
-                                        color: isStreamVisible ? '#000' : '#fff',
+                                        backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                        color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
                                         borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
                                         boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
                                     }}
@@ -364,8 +373,8 @@ export const RobotControlPanel: React.FC = () => {
                                 <Button
                                     onClick={() => setIsWebcamActive(v => !v)}
                                     style={{
-                                        backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : 'transparent',
-                                        color: isWebcamActive ? '#000' : '#fff',
+                                        backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                        color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
                                         borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
                                         boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
                                     }}
