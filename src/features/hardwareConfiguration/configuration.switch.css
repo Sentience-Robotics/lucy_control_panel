@@ -1,0 +1,33 @@
+/* Add actuator / sensor (Card extra): always black label + icon; disabled avoids faded white text. */
+.hardware-config-add-btn.ant-btn {
+    color: #000 !important;
+    font-weight: 600;
+}
+.hardware-config-add-btn.ant-btn .anticon {
+    color: #000 !important;
+}
+.hardware-config-add-btn.ant-btn:not(:disabled):not(.ant-btn-disabled) {
+    background-color: #00ff41 !important;
+    border-color: #00ff41 !important;
+    color: #000 !important;
+}
+.hardware-config-add-btn.ant-btn:disabled,
+.hardware-config-add-btn.ant-btn.ant-btn-disabled {
+    background-color: #555 !important;
+    border-color: #666 !important;
+    color: #000 !important;
+    opacity: 1 !important;
+}
+
+/* Hardware config tables: sharp rectangular track + square white thumb. */
+.ant-switch.hardware-config-ant-switch {
+    border-radius: 0 !important;
+}
+
+.ant-switch.hardware-config-ant-switch .ant-switch-inner {
+    border-radius: 0 !important;
+}
+
+.ant-switch.hardware-config-ant-switch .ant-switch-handle::before {
+    border-radius: 0 !important;
+}

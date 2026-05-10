@@ -25,7 +25,7 @@ Returns (or lazily creates) the singleton instance.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `controllerConfigs` | `ControllerJointConfig[]` (optional) | Overrides the active controller config. Falls back to `CONTROLLER_JOINTS_CONFIG` on first call. |
+| `controllerConfigs` | `ControllerJointConfig[]` (optional) | Overrides the active controller config. On first `getInstance()` call with no argument, uses `[]` (no trajectory topics until configs are passed). |
 
 ```typescript
 const handler = JointStateHandler.getInstance();
@@ -111,7 +111,7 @@ publishJointStates(joints)
 |---|---|
 | `ROSLIB` | WebSocket/topic primitives |
 | `RosBridgeService` | Provides the active `ros` connection and status events |
-| `CONTROLLER_JOINTS_CONFIG` | Static controller-to-joints mapping from `rosConfig.ts` |
+| `ControllerJointConfig` (type) | Controller topic + joint names + category (from `rosConfig.ts`) |
 | `JointControlState` | Joint value shape from `robotTypes.ts` |
 
 ---
