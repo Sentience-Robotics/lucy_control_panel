@@ -3,6 +3,14 @@ import { Card, Slider, InputNumber, Typography, Space, Tag } from 'antd';
 import type { JointControlState } from '../Constants/robotTypes';
 
 import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
+import {
+    UI_BORDER_MUTED,
+    UI_BORDER_SOFT,
+    UI_INPUT_SURFACE,
+    UI_LIST_ROW_BG,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SECONDARY_MUTED,
+} from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
@@ -84,15 +92,15 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       size="small"
       style={{
         marginBottom: 8,
-        backgroundColor: '#0c0c0c',
-        borderColor: '#333',
-        color: '#fff'
+        backgroundColor: UI_LIST_ROW_BG,
+        borderColor: UI_BORDER_MUTED,
+        color: UI_TEXT_PRIMARY_ON_DARK
       }}
       bodyStyle={{ padding: 12 }}
     >
       <Space direction="vertical" style={{ width: '100%' }} size="small">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text strong style={{ color: '#fff', fontSize: '12px' }}>
+          <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
             {joint.name.replace(/_link_joint$/, '').replace(/i01\./, '')}
           </Text>
           <Tag color={getJointTypeColor(joint.type)}>
@@ -124,14 +132,14 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             size="small"
             style={{
               width: 80,
-              backgroundColor: '#1a1a1a',
-              borderColor: '#444'
+              backgroundColor: UI_INPUT_SURFACE,
+              borderColor: UI_BORDER_SOFT
             }}
             addonAfter={showDegrees ? '°' : 'rad'}
           />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#666' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
           <Text type="secondary" style={{ fontSize: '10px' }}>
             Min: {minDisplay}{showDegrees ? '°' : 'rad'}
           </Text>

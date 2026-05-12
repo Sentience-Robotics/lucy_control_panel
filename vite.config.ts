@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
         ? { protocol: "wss", clientPort: parseInt(env.VITE_PORT || "5000") }
         : undefined,
       proxy: {
-        // Proxy WS upgrades from the browser path /rosbridge -> rosbridge ws server
+        // Proxy WS upgrades from the browser path /rosbridge -> local rosbridge
         '^/rosbridge': {
           target: 'ws://127.0.0.1:9090',
           ws: true,

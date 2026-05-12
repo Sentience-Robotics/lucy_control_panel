@@ -1,21 +1,21 @@
-/* Add actuator / sensor (Card extra): always black label + icon; disabled avoids faded white text. */
+/* Palette via document vars — set in TS (mountUiThemeCssVars). */
 .hardware-config-add-btn.ant-btn {
-    color: #000 !important;
+    color: var(--ui-text-on-accent) !important;
     font-weight: 600;
 }
 .hardware-config-add-btn.ant-btn .anticon {
-    color: #000 !important;
+    color: var(--ui-text-on-accent) !important;
 }
 .hardware-config-add-btn.ant-btn:not(:disabled):not(.ant-btn-disabled) {
-    background-color: #00ff41 !important;
-    border-color: #00ff41 !important;
-    color: #000 !important;
+    background-color: var(--ui-accent-green) !important;
+    border-color: var(--ui-accent-green) !important;
+    color: var(--ui-text-on-accent) !important;
 }
 .hardware-config-add-btn.ant-btn:disabled,
 .hardware-config-add-btn.ant-btn.ant-btn-disabled {
-    background-color: #555 !important;
-    border-color: #666 !important;
-    color: #000 !important;
+    background-color: var(--ui-switch-disabled-bg) !important;
+    border-color: var(--ui-switch-disabled-border) !important;
+    color: var(--ui-text-on-accent) !important;
     opacity: 1 !important;
 }
 
@@ -29,5 +29,10 @@
 }
 
 .ant-switch.hardware-config-ant-switch .ant-switch-handle::before {
+    border-radius: 0 !important;
+}
+
+/* Activate modal board picker — square checkbox boxes */
+.hardware-config-ant-checkbox-group.ant-checkbox-group .ant-checkbox .ant-checkbox-inner {
     border-radius: 0 !important;
 }

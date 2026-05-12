@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { JointControlState } from '../Constants/robotTypes';
 import { JointCategory } from './JointCategory';
+import { UI_ACCENT_GREEN, uiAccentRgba } from '../Constants/uiTheme.ts';
 
 interface DraggableCategoryProps {
   id: string;
@@ -56,8 +57,8 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
                         zIndex: 10,
                         cursor: isBeingDragged ? 'grabbing' : 'grab',
                         padding: '6px 8px',
-                        backgroundColor: 'rgba(0, 255, 65, 0.1)',
-                        border: '1px solid #00ff41',
+                        backgroundColor: uiAccentRgba(0.1),
+                        border: `1px solid ${UI_ACCENT_GREEN}`,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -66,15 +67,15 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
                     }}
                     title="Drag to reorder category"
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(0, 255, 65, 0.2)';
+                        e.currentTarget.style.backgroundColor = uiAccentRgba(0.2);
                         e.currentTarget.style.transform = 'scale(1.05)';
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(0, 255, 65, 0.1)';
+                        e.currentTarget.style.backgroundColor = uiAccentRgba(0.1);
                         e.currentTarget.style.transform = 'scale(1)';
                     }}
                 >
-                    <DragOutlined style={{ color: '#00ff41', fontSize: 14 }} />
+                    <DragOutlined style={{ color: UI_ACCENT_GREEN, fontSize: 14 }} />
                 </div>
 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

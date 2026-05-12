@@ -5,25 +5,33 @@ import { StreamPlayer } from '../Components/StreamPlayer';
 import { StreamMetrics } from '../Components/StreamMetrics';
 import type { StreamSource } from '../Constants/rosConfig';
 import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
+import {
+    UI_ACCENT_GREEN,
+    UI_ACCENT_ORANGE,
+    UI_ACCENT_TEXT_SHADOW,
+    UI_BORDER_MUTED,
+    UI_CHROME_SURFACE,
+    UI_INPUT_SURFACE,
+} from '../Constants/uiTheme.ts';
 
 const Text = Typography;
 
 const SELECT_POPUP_STYLE = {
     popup: {
         root: {
-            backgroundColor: '#0d0d0d',
-            borderColor: '#333',
+            backgroundColor: UI_CHROME_SURFACE,
+            borderColor: UI_BORDER_MUTED,
         }
     }
 };
 
 const WARNING_BADGE_STYLE: React.CSSProperties = {
-    color: '#ffa500',
+    color: UI_ACCENT_ORANGE,
     fontFamily: 'monospace',
     fontSize: 10,
     padding: '2px 6px',
-    backgroundColor: '#1a1a1a',
-    border: '1px solid #ffa500',
+    backgroundColor: UI_INPUT_SURFACE,
+    border: `1px solid ${UI_ACCENT_ORANGE}`,
     borderRadius: 4
 };
 
@@ -56,9 +64,9 @@ export const Stream: React.FC = () => {
                     <Text
                         style={{
                             margin: 0,
-                            color: '#00ff41',
+                            color: UI_ACCENT_GREEN,
                             fontFamily: 'monospace',
-                            textShadow: '0 0 10px #00ff41',
+                            textShadow: UI_ACCENT_TEXT_SHADOW,
                             fontSize: '18px',
                             fontWeight: 'bold',
                         }}

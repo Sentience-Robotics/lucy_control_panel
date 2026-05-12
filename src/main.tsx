@@ -1,6 +1,10 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
+import { mountUiThemeCssVars, UI_BG_BLACK } from './Constants/uiTheme.ts'
+
+mountUiThemeCssVars()
+document.body.style.backgroundColor = UI_BG_BLACK
 
 const rootElement = document.getElementById('root');
 

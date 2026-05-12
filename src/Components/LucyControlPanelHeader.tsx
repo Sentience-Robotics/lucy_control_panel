@@ -5,10 +5,16 @@ import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClien
 import {
     UI_ACCENT_BOX_SHADOW_SOFT,
     UI_ACCENT_GREEN,
+    UI_ACCENT_ORANGE,
     UI_ACCENT_TEXT_SHADOW,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
+    UI_CHROME_SURFACE,
+    UI_COLOR_TRANSPARENT,
     UI_ERROR_RED,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -98,19 +104,19 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
 
     const getConnectionStatusColor = () => {
         if (countState > 1) {
-            return '#ffa500';
+            return UI_ACCENT_ORANGE;
         }
         switch (connectionStatus) {
             case 'connected':
                 return UI_ACCENT_GREEN;
             case 'connecting':
-                return '#ffa500';
+                return UI_ACCENT_ORANGE;
             case 'reconnecting':
-                return '#ffa500';
+                return UI_ACCENT_ORANGE;
             case 'disconnected':
                 return UI_ERROR_RED;
             default:
-                return '#666';
+                return UI_TEXT_SECONDARY_MUTED;
         }
     };
 
@@ -163,7 +169,7 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                                 gap: 8,
                                 padding: '4px 10px',
                                 borderRadius: 16,
-                                backgroundColor: '#0d0d0d',
+                                backgroundColor: UI_CHROME_SURFACE,
                                 border: `1px solid ${UI_BORDER_MUTED}`,
                             }}
                         >
@@ -194,9 +200,9 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                             disabled={isConnecting || isReconnecting}
                             style={{
                                 width: 200,
-                                backgroundColor: '#0d0d0d',
+                                backgroundColor: UI_CHROME_SURFACE,
                                 borderColor: UI_BORDER_MUTED,
-                                color: '#fff',
+                                color: UI_TEXT_PRIMARY_ON_DARK,
                                 fontFamily: 'monospace',
                                 fontSize: 12,
                             }}
@@ -206,8 +212,8 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                             onClick={() => void handleConnect()}
                             disabled={isConnecting || isReconnecting}
                             style={{
-                                backgroundColor: isConnected ? 'transparent' : UI_ACCENT_GREEN,
-                                color: isConnected ? '#fff' : '#000',
+                                backgroundColor: isConnected ? UI_COLOR_TRANSPARENT : UI_ACCENT_GREEN,
+                                color: isConnected ? UI_TEXT_PRIMARY_ON_DARK : UI_TEXT_ON_ACCENT,
                                 borderColor: isConnected ? UI_BORDER_SOFT : UI_ACCENT_GREEN,
                                 boxShadow: isConnected ? 'none' : UI_ACCENT_BOX_SHADOW_SOFT,
                             }}
@@ -219,10 +225,12 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                             onClick={() => void handleReconnect()}
                             disabled={isDisconnected || isConnecting || isReconnecting}
                             style={{
-                                backgroundColor: isConnected || isReconnecting ? '#ffa500' : 'transparent',
-                                color: isConnected || isReconnecting ? '#000' : '#fff',
-                                borderColor: isConnected || isReconnecting ? '#ffa500' : UI_BORDER_SOFT,
-                                boxShadow: isConnected || isReconnecting ? '0 0 8px #ffa500' : 'none',
+                                backgroundColor:
+                                    isConnected || isReconnecting ? UI_ACCENT_ORANGE : UI_COLOR_TRANSPARENT,
+                                color: isConnected || isReconnecting ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                borderColor: isConnected || isReconnecting ? UI_ACCENT_ORANGE : UI_BORDER_SOFT,
+                                boxShadow:
+                                    isConnected || isReconnecting ? `0 0 8px ${UI_ACCENT_ORANGE}` : 'none',
                             }}
                         >
                             {isReconnecting ? 'RECONNECTING...' : 'RECONNECT'}
@@ -264,11 +272,11 @@ export const ControlPanelHeaderStats: React.FC<{ jointCount: number; categoryCou
         }}
     >
         <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#666', fontSize: 10 }}>TOTAL JOINTS </span>
+            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>TOTAL JOINTS </span>
             <span style={{ color: UI_ACCENT_GREEN, fontSize: 16 }}>{jointCount}</span>
         </span>
         <span style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#666', fontSize: 10 }}>CATEGORIES </span>
+            <span style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10 }}>CATEGORIES </span>
             <span style={{ color: UI_ACCENT_GREEN, fontSize: 16 }}>{categoryCount}</span>
         </span>
     </div>
