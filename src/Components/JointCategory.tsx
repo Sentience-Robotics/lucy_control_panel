@@ -3,6 +3,14 @@ import { Card, Typography, Space, Button, Badge } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
 import { JointControl } from './JointControl';
+import {
+    UI_BORDER_MUTED,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_PANEL_BG,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+} from '../Constants/uiTheme.ts';
 
 const { Title } = Typography;
 
@@ -37,8 +45,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
         <Card
             style={{
                 marginBottom: 16,
-                backgroundColor: '#0a0a0a',
-                borderColor: '#333',
+                backgroundColor: UI_PANEL_BG,
+                borderColor: UI_BORDER_MUTED,
                 borderLeft: `2px solid ${categoryColor}`,
                 height: '100%',
                 display: 'flex',
@@ -82,7 +90,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     count={joints.length}
                     style={{
                         backgroundColor: categoryColor,
-                        color: '#000',
+                        color: UI_TEXT_ON_ACCENT,
                         fontWeight: 'bold'
                     }}
                 />
@@ -96,9 +104,9 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 handleResetCategory();
                 }}
                 style={{
-                backgroundColor: 'transparent',
-                borderColor: '#444',
-                color: '#fff'
+                backgroundColor: UI_COLOR_TRANSPARENT,
+                borderColor: UI_BORDER_SOFT,
+                color: UI_TEXT_PRIMARY_ON_DARK
                 }}
                 title={`Reset all ${category} joints to their rest value`}
             >

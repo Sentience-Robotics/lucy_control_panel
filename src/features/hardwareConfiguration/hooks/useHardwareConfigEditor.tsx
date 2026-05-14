@@ -9,7 +9,7 @@ import { useHardwareYamlEditorState } from './useHardwareYamlEditorState.ts';
 export type { HardwareConfigEditorParams } from './hardwareConfigEditorParams.ts';
 
 /**
- * Composes YAML snapshot state, derived tables, local mutations, ROS server ops, and Ant Design columns for the hardware configuration page.
+ * Composes YAML snapshot state, derived tables, local mutations, ROS hardware-config ops, and Ant Design columns for the hardware configuration page.
  */
 export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
     const { isConnected } = useRosConnection();
@@ -32,11 +32,8 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
     });
 
     const server = useHardwareConfigServerOps({
-        modal: params.modal,
         messageApi: params.messageApi,
         isConnected,
-        isDirty: yaml.isDirty,
-        serverActiveConfigName: params.serverActiveConfigName,
         loadConfigName: yaml.loadConfigName,
         setLoadConfigName: yaml.setLoadConfigName,
         yamlDoc: yaml.yamlDoc,
@@ -54,6 +51,8 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
         clearServerValidation: yaml.clearServerValidation,
         refreshSavedConfigs: params.refreshSavedConfigs,
         refetchActiveHardware: params.refetchActiveHardware,
+        recordServerRobotPackage: params.recordServerRobotPackage,
+        recordServerFlashedMeta: params.recordServerFlashedMeta,
     });
 
     const { serverErrorRows, boardColumns, actuatorColumns, pressureSensorColumns } = useHardwareConfigEditorColumns({

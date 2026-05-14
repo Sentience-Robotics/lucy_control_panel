@@ -1,19 +1,13 @@
-import { ExclamationCircleOutlined } from '@ant-design/icons';
-import type { ModalStaticFunctions } from 'antd/es/modal/confirm';
 import type { MessageInstance } from 'antd/es/message/interface';
 import { useCallback, useState } from 'react';
-import { UI_ERROR_RED, UI_WARNING_AMBER } from '../../../Constants/uiTheme.ts';
 import type { ActiveHardwareFetchResult } from '../../../contexts/ActiveHardwareRosContext.tsx';
 import { HardwareConfigHandler } from '../../../Services/ros/handlers/HardwareConfig.handler.ts';
 import { mapStructuredValidationErrors } from '../../../Utils/hardwareConfigServerErrors.ts';
 import { parseHardwareConfigYaml, stringifyHardwareConfigYaml } from '../../../Utils/hardwareConfigYaml.ts';
 
 export interface HardwareConfigServerOpsParams {
-    modal: Pick<ModalStaticFunctions, 'confirm'>;
     messageApi: MessageInstance;
     isConnected: boolean;
-    isDirty: boolean;
-    serverActiveConfigName: string;
     loadConfigName: string;
     setLoadConfigName: (v: string | ((p: string) => string)) => void;
     yamlDoc: Record<string, unknown> | null;
@@ -31,17 +25,16 @@ export interface HardwareConfigServerOpsParams {
     clearServerValidation: () => void;
     refreshSavedConfigs: () => Promise<string | undefined>;
     refetchActiveHardware: () => Promise<ActiveHardwareFetchResult>;
+    recordServerRobotPackage: (robotPackage: string) => void;
+    recordServerFlashedMeta: (flashedConfigName: string, flashedAtIso: string) => void;
 }
 
 /**
  * Load / save / revert / activate / delete flows against the ROS hardware-config service.
  */
 export function useHardwareConfigServerOps({
-    modal,
     messageApi,
     isConnected,
-    isDirty,
-    serverActiveConfigName,
     loadConfigName,
     setLoadConfigName,
     yamlDoc,
@@ -59,8 +52,9 @@ export function useHardwareConfigServerOps({
     clearServerValidation,
     refreshSavedConfigs,
     refetchActiveHardware,
+    recordServerRobotPackage,
+    recordServerFlashedMeta,
 }: HardwareConfigServerOpsParams) {
-    const [activating, setActivating] = useState(false);
     const [deleting, setDeleting] = useState(false);
 
     const loadHardwareConfig = useCallback(
@@ -96,6 +90,8 @@ export function useHardwareConfigServerOps({
                     messageApi.error(res.message || 'Load failed');
                     return false;
                 }
+                recordServerRobotPackage(res.robot_package ?? '');
+                recordServerFlashedMeta(res.flashed_config_name ?? '', res.flashed_at ?? '');
                 const doc = parseHardwareConfigYaml(res.config_yaml || '');
                 setYamlDoc(doc);
                 setLoadedSnapshot(structuredClone(doc));
@@ -125,94 +121,38 @@ export function useHardwareConfigServerOps({
             setLoadConfigName,
             setIsDirty,
             setLoading,
+            recordServerRobotPackage,
+            recordServerFlashedMeta,
         ],
     );
 
-    const runActivateConfig = useCallback(async () => {
-        const name = loadConfigName.trim();
-        if (!name) return;
-        setActivating(true);
-        try {
-            const r = await HardwareConfigHandler.activateConfig(name);
-            if (!r.success) {
-                messageApi.error(r.message || 'Activate failed');
-                return;
+    const deleteConfigByName = useCallback(
+        async (configName: string): Promise<boolean> => {
+            const name = configName.trim();
+            if (!name) return false;
+            setDeleting(true);
+            try {
+                const r = await HardwareConfigHandler.deleteConfig(name);
+                if (!r.success) {
+                    messageApi.error(r.message || 'Delete failed');
+                    return false;
+                }
+                messageApi.success(`Deleted configuration "${name}".`);
+                const targetWasDeleted = loadConfigName.trim() === name;
+                const activeAfterList = await refreshSavedConfigs();
+                if (targetWasDeleted) {
+                    setLoadConfigName(activeAfterList ?? '');
+                }
+                return true;
+            } catch (e) {
+                messageApi.error(e instanceof Error ? e.message : 'Delete failed');
+                return false;
+            } finally {
+                setDeleting(false);
             }
-            const backup = r.backup_name?.trim();
-            messageApi.success(
-                backup
-                    ? `Activated "${name}". Previous active backed up as "${backup}".`
-                    : `Activated "${name}".`,
-            );
-            await refreshSavedConfigs();
-            await refetchActiveHardware();
-        } catch (e) {
-            messageApi.error(e instanceof Error ? e.message : 'Activate failed');
-        } finally {
-            setActivating(false);
-        }
-    }, [loadConfigName, messageApi, refreshSavedConfigs, refetchActiveHardware]);
-
-    const handleActivateClick = useCallback(() => {
-        const name = loadConfigName.trim();
-        if (!name) return;
-        const bits = [
-            `Copies the saved configuration "${name}" to active.yaml on the robot.`,
-            serverActiveConfigName && serverActiveConfigName !== name
-                ? `Currently active configuration: ${serverActiveConfigName}.`
-                : null,
-            isDirty
-                ? 'You have unsaved editor changes — SAVE writes them to this configuration file first. Activate uses whatever is already saved on the server.'
-                : null,
-        ].filter(Boolean);
-        modal.confirm({
-            title: `ACTIVATE CONFIGURATION "${name}"?`,
-            icon: <ExclamationCircleOutlined style={{ color: UI_WARNING_AMBER }} />,
-            content: <span>{bits.join(' ')}</span>,
-            okText: 'ACTIVATE',
-            cancelText: 'CANCEL',
-            okType: 'danger',
-            onOk: runActivateConfig,
-        });
-    }, [loadConfigName, serverActiveConfigName, isDirty, modal, runActivateConfig]);
-
-    const runDeleteConfig = useCallback(async () => {
-        const name = loadConfigName.trim();
-        if (!name) return;
-        setDeleting(true);
-        try {
-            const r = await HardwareConfigHandler.deleteConfig(name);
-            if (!r.success) {
-                messageApi.error(r.message || 'Delete failed');
-                return;
-            }
-            messageApi.success(`Deleted configuration "${name}".`);
-            const targetWasDeleted = loadConfigName.trim() === name;
-            const activeAfterList = await refreshSavedConfigs();
-            if (targetWasDeleted) {
-                setLoadConfigName(activeAfterList ?? '');
-            }
-        } catch (e) {
-            messageApi.error(e instanceof Error ? e.message : 'Delete failed');
-        } finally {
-            setDeleting(false);
-        }
-    }, [loadConfigName, messageApi, refreshSavedConfigs, setLoadConfigName]);
-
-    const handleDeleteClick = useCallback(() => {
-        const name = loadConfigName.trim();
-        if (!name) return;
-        modal.confirm({
-            title: `DELETE "${name}"?`,
-            icon: <ExclamationCircleOutlined style={{ color: UI_ERROR_RED }} />,
-            content:
-                'THIS REMOVES THE TARGETED CONFIG (IF IT IS NOT THE ACTIVE CONFIGURATION OR "DEFAULT")',
-            okText: 'DELETE',
-            cancelText: 'CANCEL',
-            okButtonProps: { danger: true },
-            onOk: runDeleteConfig,
-        });
-    }, [loadConfigName, modal, runDeleteConfig]);
+        },
+        [loadConfigName, messageApi, refreshSavedConfigs, setLoadConfigName],
+    );
 
     const handleRevert = useCallback(() => {
         if (!loadedSnapshot) {
@@ -293,29 +233,14 @@ export function useHardwareConfigServerOps({
     }, [refreshSavedConfigs]);
 
     const selectedTargetConfigName = loadConfigName.trim();
-    const canActivateConfig =
-        isConnected &&
-        Boolean(selectedTargetConfigName) &&
-        selectedTargetConfigName !== serverActiveConfigName &&
-        !activating;
-    const canDeleteConfig =
-        isConnected &&
-        Boolean(selectedTargetConfigName) &&
-        selectedTargetConfigName !== 'default' &&
-        selectedTargetConfigName !== serverActiveConfigName &&
-        !deleting;
 
     return {
         loadHardwareConfig,
         handleRevert,
         saveConfigByName,
         refreshConfigListForModal,
-        handleActivateClick,
-        handleDeleteClick,
-        activating,
+        deleteConfigByName,
         deleting,
         selectedTargetConfigName,
-        canActivateConfig,
-        canDeleteConfig,
     };
 }

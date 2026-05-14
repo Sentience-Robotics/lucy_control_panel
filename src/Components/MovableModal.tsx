@@ -1,5 +1,13 @@
 import React, { useRef, useState, type ReactNode } from 'react';
 import { Button, Space } from 'antd';
+import {
+    UI_ACCENT_GREEN,
+    UI_BORDER_DIM,
+    UI_BORDER_MUTED,
+    UI_GRADIENT_MODAL_HEADER,
+    UI_MODAL_SURFACE,
+    UI_SHADOW_ELEVATED,
+} from '../Constants/uiTheme.ts';
 
 interface MediapipeHandTrackerModalProps {
     children: ReactNode;
@@ -98,10 +106,10 @@ export function MovableModal({
                 width: w,
                 height: h,
                 zIndex: 1000,
-                backgroundColor: '#0b0b0b',
-                border: '1px solid #333',
+                backgroundColor: UI_MODAL_SURFACE,
+                border: `1px solid ${UI_BORDER_MUTED}`,
                 borderRadius: 8,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                boxShadow: UI_SHADOW_ELEVATED,
                 overflow: 'hidden',
                 userSelect: 'none',
             }}
@@ -115,13 +123,13 @@ export function MovableModal({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0 8px',
-                    background: 'linear-gradient(180deg, #121212, #0b0b0b)',
-                    borderBottom: '1px solid #222',
+                    background: UI_GRADIENT_MODAL_HEADER,
+                    borderBottom: `1px solid ${UI_BORDER_DIM}`,
                     cursor: 'move',
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <span style={{ color: '#00ff41', fontFamily: 'monospace', fontSize: 12 }}>
+                    <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
                         {modalName}
                     </span>
                     {header}
@@ -144,7 +152,7 @@ export function MovableModal({
                     width: 14,
                     height: 14,
                     cursor: 'nwse-resize',
-                    background: 'linear-gradient(135deg, transparent 50%, #333 50%)',
+                    background: `linear-gradient(135deg, transparent 50%, ${UI_BORDER_MUTED} 50%)`,
                 }}
             />
         </div>

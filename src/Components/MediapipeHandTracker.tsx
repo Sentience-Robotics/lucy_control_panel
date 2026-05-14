@@ -4,6 +4,13 @@ import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import {
+    UI_CANVAS_LIME,
+    UI_CANVAS_RED,
+    UI_OVERLAY_BACKDROP_SOFT,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_VIDEO_OVERLAY_CYAN,
+} from "../Constants/uiTheme.ts";
 
 interface MediapipeHandTrackerProps {
     width?: number;
@@ -80,10 +87,29 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         if (results.multiHandLandmarks) {
             for (const landmarks of results.multiHandLandmarks) {
                 drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                    color: "#00FF00",
+                    color: UI_CANVAS_LIME,
                     lineWidth: 4,
                 });
+<<<<<<< HEAD
                 drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: 2 });
+=======
+                drawLandmarks(ctx, landmarks, { color: UI_CANVAS_RED, lineWidth: 2 });
+                //TODO Temporary poc, move index from top to bottom
+                // Get the index fingertip (landmark #8)
+                const indexTipLandmark = landmarks[8];
+                if (indexTipLandmark) {
+                    const x = indexTipLandmark.x * videoWidth;
+                    const y = indexTipLandmark.y * videoHeight;
+
+                    setIndexTip({ x, y });
+                    moveRobotIndex?.(y);
+
+                    ctx.beginPath();
+                    ctx.arc(x, y, 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = UI_VIDEO_OVERLAY_CYAN;
+                    ctx.fill();
+                }
+>>>>>>> 0b92249 (feat(configuration): activate workflow with build and flash)
             }
         }
 
@@ -246,8 +272,8 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                         bottom: "20px",
                         left: "50%",
                         transform: "translateX(-50%)",
-                        background: "rgba(0,0,0,0.6)",
-                        color: "white",
+                        background: UI_OVERLAY_BACKDROP_SOFT,
+                        color: UI_TEXT_PRIMARY_ON_DARK,
                         padding: "10px 20px",
                         borderRadius: "10px",
                         fontFamily: "monospace",
