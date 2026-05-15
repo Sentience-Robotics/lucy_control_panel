@@ -1,17 +1,9 @@
 import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark} from "@mediapipe/hands";
-import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark} from "@mediapipe/hands";
 import React, { useEffect, useRef, useState } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
-import {
-    UI_CANVAS_LIME,
-    UI_CANVAS_RED,
-    UI_OVERLAY_BACKDROP_SOFT,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_VIDEO_OVERLAY_CYAN,
-} from "../Constants/uiTheme.ts";
 
 interface MediapipeHandTrackerProps {
     width?: number;
@@ -69,10 +61,8 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     const [indexTip, setIndexTip] = useState<{ x: number; y: number } | null>(null);
     const lastProcessTimeRef = useRef<number>(0);
 
-
-
     const onResults = (results: Results) => {
-        if (!webcamRef.current?.video || !canvasRef.current) { return; }
+        if (!webcamRef.current?.video || !canvasRef.current) return;
 
         const videoWidth = webcamRef.current.video.videoWidth;
         const videoHeight = webcamRef.current.video.videoHeight;
@@ -80,7 +70,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         canvasRef.current.height = videoHeight;
 
         const ctx = canvasRef.current.getContext("2d");
-        if (!ctx) { return; }
+        if (!ctx) return;
 
         ctx.save();
         ctx.clearRect(0, 0, videoWidth, videoHeight);
@@ -89,37 +79,22 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         if (results.multiHandLandmarks) {
             for (const landmarks of results.multiHandLandmarks) {
                 drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                    color: UI_CANVAS_LIME,
+                    color: "#00FF00",
                     lineWidth: 4,
                 });
-                drawLandmarks(ctx, landmarks, { color: UI_CANVAS_RED, lineWidth: 2 });
-                //TODO Temporary poc, move index from top to bottom
-                // Get the index fingertip (landmark #8)
-                const indexTipLandmark = landmarks[8];
-                if (indexTipLandmark) {
-                    const x = indexTipLandmark.x * videoWidth;
-                    const y = indexTipLandmark.y * videoHeight;
-
-                    setIndexTip({ x, y });
-                    moveRobotIndex?.(y);
-
-                    ctx.beginPath();
-                    ctx.arc(x, y, 8, 0, 2 * Math.PI);
-                    ctx.fillStyle = UI_VIDEO_OVERLAY_CYAN;
-                    ctx.fill();
-                }
+                drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: 2 });
             }
         }
-
+        // calls the processHands() function once a second
         const now = Date.now();
         if (now - lastProcessTimeRef.current >= 1000) {
             lastProcessTimeRef.current = now;
             processHands(results.multiHandLandmarks);
         }
 
-
         ctx.restore();
     };
+
 
     function processHands(hands: NormalizedLandmark[][]) {
     hands.forEach((hand, handIndex) => {
@@ -200,12 +175,6 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         // Angle in radians, substracted to PI to get the internal angle of the joint bending
         return Math.PI - Math.acos(cosTheta);
     };
-
-
-
-
-
-
 
     useEffect(() => {
         const hands = new Hands({
