@@ -4,11 +4,12 @@ import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 
 interface MediapipeHandTrackerProps {
     width?: number;
     height?: number;
-    moveRobotIndex?: (x: number) => void;
+    moveRobotIndex: (x: number, jointName: string) => void;
 }
 
 const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
@@ -17,22 +18,27 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     moveRobotIndex
 }) => {
     type Point3D = { x: number; y: number; z: number };
-    type finger3D = {tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D};
-    type finger3DSample = {point1: Point3D, point2: Point3D, point3: Point3D};
+    type Finger3D = {tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointName: string};
+    type Finger3DSample = {point1: Point3D, point2: Point3D, point3: Point3D};
+    type Finger3DIndex = {TIP: number, DIP: number, PIP: number, MCP: number}
+    type FingerIndex = { name: string, idx: Finger3DIndex }
 
-    // const THUMB_FINGER = {
+
+    // const THUMB_FINGER: finger3DIndex = {
     //     TIP: 4,
     //     DIP: 3,
     //     PIP: 2,
-    //     MCP: 1
+    //     MCP: 1,
+    //     jointName: 
     // };
 
-    const INDEX_FINGER = {
-        TIP: 8,
-        DIP: 7,
-        PIP: 6,
-        MCP: 5
-    };
+    // const INDEX_FINGER: finger3DIndex = {
+    //     TIP: 8,
+    //     DIP: 7,
+    //     PIP: 6,
+    //     MCP: 5,
+    //     jointName: 'i01.rightHand.index_link_joint'
+    // };
 
     // const MIDDLE_FINGER = {
     //     TIP: 12,
@@ -55,10 +61,51 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     //     MCP: 17
     // };
 
+    const Fingers: Array<FingerIndex> = [
+        {
+            name: "i01.side.thumb_link_joint", idx: {
+                TIP: 4,
+                DIP: 3,
+                PIP: 2,
+                MCP: 1
+            }
+        },
+        {
+            name: "i01.side.index_link_joint", idx: {
+                TIP: 8,
+                DIP: 7,
+                PIP: 6,
+                MCP: 5
+            }
+        },
+        {
+            name: "i01.side.majeure_link_joint", idx: {
+                TIP: 12,
+                DIP: 11,
+                PIP: 10,
+                MCP: 9
+            }
+        },
+        {
+            name: "i01.side.ringFinger_link_joint", idx: {
+                TIP: 16,
+                DIP: 15,
+                PIP: 14,
+                MCP: 13
+            }
+        },
+        {
+            name: "i01.side.pinky_link_joint", idx: {
+                TIP: 20,
+                DIP: 19,
+                PIP: 18,
+                MCP: 17
+            }
+        },
+    ]
 
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [indexTip, setIndexTip] = useState<{ x: number; y: number } | null>(null);
     const lastProcessTimeRef = useRef<number>(0);
 
     const onResults = (results: Results) => {
@@ -96,30 +143,47 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     };
 
 
+    // function processHands(hands: NormalizedLandmark[][]) {
+    // hands.forEach((hand, _handIndex) => {
+    //     hand.forEach((finger) => {
+    //         console.log(finger);
+    //     })
+    //     processFinger({tip: hand[INDEX_FINGER.TIP], 
+    //         dip: hand[INDEX_FINGER.DIP], 
+    //         pip: hand[INDEX_FINGER.PIP], 
+    //         mcp: hand[INDEX_FINGER.MCP], 
+    //         wrist: hand[0],
+    //         jointName: 'i01.rightHand.index_link_joint'
+    //     });
+    // });
+    // };
+
     function processHands(hands: NormalizedLandmark[][]) {
-    hands.forEach((hand, handIndex) => {
-        processFinger({tip: hand[INDEX_FINGER.TIP], 
-            dip: hand[INDEX_FINGER.DIP], 
-            pip: hand[INDEX_FINGER.PIP], 
-            mcp: hand[INDEX_FINGER.MCP], 
-            wrist: hand[0],
-        }, `Index finger of hand ${handIndex}: `);
-        
-    });
+        hands.forEach((hand, handIndex) => {
+            for (let i = 0; i < 5; i++) {
+                processFinger({
+                    tip: hand[Fingers[i].idx.TIP],
+                    dip: hand[Fingers[i].idx.DIP],
+                    pip: hand[Fingers[i].idx.PIP],
+                    mcp: hand[Fingers[i].idx.MCP],
+                    wrist: hand[0],
+                    jointName: Fingers[i].name.replace("side", handIndex === 0 ? "leftHand" : "rightHand")
+                });
+            }
+        });
     };
 
-    function processFinger(finger: finger3D, message: string) {
-        const sample1: finger3DSample = {point1: finger.tip, point2: finger.dip, point3: finger.pip};
-        const sample2: finger3DSample = {point1: finger.dip, point2: finger.pip, point3: finger.mcp};
-        const sample3: finger3DSample = {point1: finger.pip, point2: finger.mcp, point3: finger.wrist};
+    function processFinger(finger: Finger3D) {
+        const sample1: Finger3DSample = {point1: finger.tip, point2: finger.dip, point3: finger.pip};
+        const sample2: Finger3DSample = {point1: finger.dip, point2: finger.pip, point3: finger.mcp};
+        const sample3: Finger3DSample = {point1: finger.pip, point2: finger.mcp, point3: finger.wrist};
 
         const angle1: number = angleBetweenPoints3D(sample1);
         const angle2: number = angleBetweenPoints3D(sample2);
         const angle3: number = angleBetweenPoints3D(sample3);
         const flex: number = flexingPercentage(angle1, angle2, angle3);
 
-        console.log(message, `angle1: ${angle1}, angle2: ${angle2}, angle3: ${angle3}`);
-        console.log(message, `flexing percentage: ${flex}`);
+        moveRobotIndex(flex, finger.jointName);
     };
 
     // Returns a value between O (fully relaxed) and 1 (fully flexed) using the 3 joint angles in a finger
@@ -148,7 +212,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         // a: Point3D,
         // b: Point3D,
         // c: Point3D
-        sample: finger3DSample
+        sample: Finger3DSample
         ): number {
         // Build vectors "BA" and "BC" for the math formula
         const v1x = sample.point1.x - sample.point2.x;
@@ -237,25 +301,6 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                     height,
                 }}
             />
-
-            {/* TODO remove this debug info */}
-            {indexTip && (
-                <div
-                    style={{
-                        position: "absolute",
-                        bottom: "20px",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        background: UI_OVERLAY_BACKDROP_SOFT,
-                        color: UI_TEXT_PRIMARY_ON_DARK,
-                        padding: "10px 20px",
-                        borderRadius: "10px",
-                        fontFamily: "monospace",
-                    }}
-                >
-                    Index tip: x={indexTip.x.toFixed(1)} | y={indexTip.y.toFixed(1)}
-                </div>
-            )}
         </div>
     )
 }

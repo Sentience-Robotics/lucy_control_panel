@@ -209,6 +209,18 @@ export const RobotControlPanel: React.FC = () => {
         );
     }, []);
 
+    const handleTeleopJoint = (y: number, jointName: string) => {
+        setJoints((prevJoints) =>
+            prevJoints.map((joint) => {
+                const clampedX = Math.max(joint.minValue, y * joint.maxValue);
+                if (joint.name === jointName) {
+                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
+                }
+                return joint;
+            })
+        );
+    }
+
     const handleResetCategory = useCallback((category: string) => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
@@ -480,18 +492,7 @@ export const RobotControlPanel: React.FC = () => {
                 {isWebcamActive && (
                     <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
                         <MediapipeHandTracker
-                            moveRobotIndex={(y) => {
-                                //TODO Temporary poc, map x to index joint
-                                setJoints((prevJoints) =>
-                                    prevJoints.map((joint) => {
-                                        const clampedX = Math.max(0, Math.min(2, y / 300));
-                                        if (joint.name === 'right_index_joint') {
-                                            return { ...joint, currentValue: clampedX, targetValue: clampedX };
-                                        }
-                                        return joint;
-                                    })
-                                );
-                            }} />
+                            moveRobotIndex={handleTeleopJoint} />
                     </Suspense>
                 )}
             </MovableModal>
