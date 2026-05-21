@@ -7,10 +7,11 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Row, Col, Alert, Spin } from 'antd';
+import { Typography, Space, Button, Row, Col, Alert, Spin, message } from 'antd';
 import {
     ReloadOutlined,
     ThunderboltOutlined,
+    StopOutlined,
 } from '@ant-design/icons';
 import {
     DndContext,
@@ -31,23 +32,22 @@ import {
 
 /* Services */
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
+import { storageService } from '../Services/storage.service';
+import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
 /* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
-/* Utils */
-// import { UrdfParser } from '../Utils/urdfParser.utils.ts';
-
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
-// import { RobotPathResolver } from '../Constants/robotConfig';
 
 /* Components */
 import { Page } from '../Components/Page';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
+import { AnimationManager } from '../Components/AnimationManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
@@ -67,6 +67,7 @@ const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTrack
 const { Text } = Typography;
 
 const REFRESH_RATE = 300;
+const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting, isReconnecting } = useRosConnection();
@@ -86,6 +87,8 @@ export const RobotControlPanel: React.FC = () => {
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
+    const [isAnimating, setIsAnimating] = useState(false);
+    const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Floating stream window state
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
@@ -261,6 +264,56 @@ export const RobotControlPanel: React.FC = () => {
         []
     );
 
+    const handleStopAnimation = useCallback(() => {
+        if (animationTimeoutRef.current) {
+            clearTimeout(animationTimeoutRef.current);
+        }
+        setIsAnimating(false);
+        message.info('Animation stopped');
+    }, []);
+
+    const handlePlayAnimation = useCallback(async (animation: SavedAnimation) => {
+        if (isAnimating) {
+            handleStopAnimation();
+        }
+
+        setIsAnimating(true);
+        message.success(`Playing animation: "${animation.name}"`);
+
+        const poses = (await Promise.all(
+            animation.poseIds.map(id => storageService.loadPose(id))
+        )).filter((p): p is SavedPose => p !== null);
+
+        if (poses.length < animation.poseIds.length) {
+            message.error('Some poses in the animation could not be found.');
+            setIsAnimating(false);
+            return;
+        }
+
+        let currentIndex = 0;
+        const playNextFrame = () => {
+            handleLoadPose(poses[currentIndex].joints);
+            currentIndex++;
+
+            if (currentIndex >= poses.length) {
+                if (animation.loop) {
+                    currentIndex = 0;
+                } else {
+                    setIsAnimating(false);
+                    message.success('Animation finished');
+                    return;
+                }
+            }
+
+            animationTimeoutRef.current = setTimeout(
+                playNextFrame,
+                BASE_ANIMATION_INTERVAL / animation.speed
+            );
+        };
+
+        playNextFrame();
+    }, [isAnimating, handleLoadPose, handleStopAnimation]);
+
     const handleDragStart = useCallback((event: DragStartEvent) => {
         setActiveId(event.active.id as string);
     }, []);
@@ -359,6 +412,16 @@ export const RobotControlPanel: React.FC = () => {
                                     joints={joints}
                                     onLoadPose={handleLoadPose}
                                 />
+                                <AnimationManager onPlayAnimation={handlePlayAnimation} />
+                                {isAnimating && (
+                                    <Button
+                                        danger
+                                        icon={<StopOutlined />}
+                                        onClick={handleStopAnimation}
+                                    >
+                                        STOP ANIMATION
+                                    </Button>
+                                )}
                                 <Button
                                     onClick={() => setIsStreamVisible(v => !v)}
                                     style={{
