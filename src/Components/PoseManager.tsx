@@ -18,7 +18,8 @@ import {
   FolderOpenOutlined,
   DeleteOutlined,
   DownloadOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -34,7 +35,7 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
-import { storageService, type SavedPose } from '../Services/storage.service.ts';
+import { storageService, type SavedPose, PoseInUseError } from '../Services/storage.service.ts';
 
 const { Text, Title } = Typography;
 
@@ -74,12 +75,12 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
   }, []);
 
   useEffect(() => {
-    loadSavedPoses(); // Load poses on component mount to get count
+    void loadSavedPoses(); // Load poses on component mount to get count
   }, [loadSavedPoses]);
 
   useEffect(() => {
     if (loadModalVisible) {
-      loadSavedPoses();
+      void loadSavedPoses();
     }
   }, [loadModalVisible, loadSavedPoses]);
 
@@ -129,8 +130,38 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
       message.success(`Pose "${poseName}" deleted`);
       await loadSavedPoses(); // Refresh the list and count
     } catch (error) {
-      message.error('Failed to delete pose');
-      console.error('Error deleting pose:', error);
+      if (error instanceof Error && error.name === 'PoseInUseError') {
+          const inUseError = error as PoseInUseError;
+          Modal.confirm({
+              title: 'Pose is in use',
+              icon: <ExclamationCircleOutlined />,
+              content: (
+                  <div>
+                      <p>This pose is linked to the following animations:</p>
+                      <ul>
+                          {inUseError.animationNames.map(name => <li key={name}>{name}</li>)}
+                      </ul>
+                      <p>If you delete this pose, these animations will also be deleted. Are you sure you want to proceed?</p>
+                  </div>
+              ),
+              okText: 'Yes, delete pose and animations',
+              okType: 'danger',
+              cancelText: 'Cancel',
+              onOk: async () => {
+                  try {
+                      await storageService.deletePose(poseId, true);
+                      message.success(`Pose "${poseName}" and linked animations deleted`);
+                      await loadSavedPoses();
+                  } catch (e) {
+                      message.error('Failed to delete pose');
+                      console.error('Error forcefully deleting pose:', e);
+                  }
+              }
+          });
+      } else {
+          message.error('Failed to delete pose');
+          console.error('Error deleting pose:', error);
+      }
     }
   }, [loadSavedPoses]);
 
@@ -178,7 +209,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
           </Title>
         }
         open={saveModalVisible}
-        onOk={handleSavePose}
+        onOk={() => void handleSavePose()}
         onCancel={() => {
           setSaveModalVisible(false);
           setPoseName('');
@@ -205,7 +236,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
             placeholder="Enter pose name (e.g., 'Greeting', 'Resting Position')"
             value={poseName}
             onChange={(e) => setPoseName(e.target.value)}
-            onPressEnter={handleSavePose}
+            onPressEnter={() => void handleSavePose()}
             maxLength={50}
             autoFocus
             style={{
@@ -306,7 +337,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
                     <Button
                       type="primary"
                       icon={<DownloadOutlined />}
-                      onClick={() => handleLoadPose(pose.id)}
+                      onClick={() => void handleLoadPose(pose.id)}
                       loading={loading}
                       style={{ ...UI_PRIMARY_GREEN_BUTTON_STYLE }}
                     >
@@ -316,7 +347,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
                   <Popconfirm
                     title="Delete this pose?"
                     description={`Are you sure you want to delete "${pose.name}"? This action cannot be undone.`}
-                    onConfirm={() => handleDeletePose(pose.id, pose.name)}
+                    onConfirm={() => void handleDeletePose(pose.id, pose.name)}
                     okText="Delete"
                     cancelText="Cancel"
                     okButtonProps={{ danger: true }}
