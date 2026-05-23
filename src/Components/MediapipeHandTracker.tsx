@@ -23,44 +23,6 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     type Finger3DIndex = {TIP: number, DIP: number, PIP: number, MCP: number}
     type FingerIndex = { name: string, idx: Finger3DIndex }
 
-
-    // const THUMB_FINGER: finger3DIndex = {
-    //     TIP: 4,
-    //     DIP: 3,
-    //     PIP: 2,
-    //     MCP: 1,
-    //     jointName: 
-    // };
-
-    // const INDEX_FINGER: finger3DIndex = {
-    //     TIP: 8,
-    //     DIP: 7,
-    //     PIP: 6,
-    //     MCP: 5,
-    //     jointName: 'i01.rightHand.index_link_joint'
-    // };
-
-    // const MIDDLE_FINGER = {
-    //     TIP: 12,
-    //     DIP: 11,
-    //     PIP: 10,
-    //     MCP: 9
-    // };
-
-    // const RING_FINGER = {
-    //     TIP: 16,
-    //     DIP: 15,
-    //     PIP: 14,
-    //     MCP: 13
-    // };
-
-    // const PINKY_FINGER = {
-    //     TIP: 20,
-    //     DIP: 19,
-    //     PIP: 18,
-    //     MCP: 17
-    // };
-
     const Fingers: Array<FingerIndex> = [
         {
             name: "i01.side.thumb_link_joint", idx: {
@@ -141,22 +103,6 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
 
         ctx.restore();
     };
-
-
-    // function processHands(hands: NormalizedLandmark[][]) {
-    // hands.forEach((hand, _handIndex) => {
-    //     hand.forEach((finger) => {
-    //         console.log(finger);
-    //     })
-    //     processFinger({tip: hand[INDEX_FINGER.TIP], 
-    //         dip: hand[INDEX_FINGER.DIP], 
-    //         pip: hand[INDEX_FINGER.PIP], 
-    //         mcp: hand[INDEX_FINGER.MCP], 
-    //         wrist: hand[0],
-    //         jointName: 'i01.rightHand.index_link_joint'
-    //     });
-    // });
-    // };
 
     function processHands(hands: NormalizedLandmark[][]) {
         hands.forEach((hand, handIndex) => {
