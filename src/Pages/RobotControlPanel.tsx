@@ -7,11 +7,12 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Row, Col, Alert, Spin, message } from 'antd';
+import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, Modal, message } from 'antd';
 import {
     ReloadOutlined,
     ThunderboltOutlined,
     StopOutlined,
+    InfoCircleOutlined,
 } from '@ant-design/icons';
 import {
     DndContext,
@@ -32,6 +33,7 @@ import {
 
 /* Services */
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
+import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
@@ -58,13 +60,17 @@ import {
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
+    UI_ERROR_RED,
+    UI_MODAL_MASK_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SUBTLE,
+    UI_WARNING_AMBER,
 } from '../Constants/uiTheme.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 const REFRESH_RATE = 300;
 const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
@@ -89,6 +95,7 @@ export const RobotControlPanel: React.FC = () => {
     const [isSending, setIsSending] = useState(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [showControlTakenModal, setShowControlTakenModal] = useState(false);
 
     // Floating stream window state
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
@@ -191,6 +198,30 @@ export const RobotControlPanel: React.FC = () => {
     }, [joints]);
 
     useEffect(() => {
+        if (!isConnected) return;
+        const unsubscribe = ControlModeHandler.getInstance().onControlTakenByOther(() => {
+            setIsSending(false);
+            setShowControlTakenModal(true);
+        });
+        return unsubscribe;
+    }, [isConnected]);
+
+    // Mirror joint positions published by the controlling client.
+    // joints.length is in deps so we re-subscribe once hardware configs are loaded.
+    useEffect(() => {
+        if (isSending || !isConnected || joints.length === 0) return;
+        const unsubscribe = JointStateHandler.getInstance().subscribeToPositions((updates) => {
+            setJoints((prev) =>
+                prev.map((j) => {
+                    const u = updates.find((x) => x.name === j.name);
+                    return u ? { ...j, currentValue: u.value, targetValue: u.value } : j;
+                })
+            );
+        });
+        return unsubscribe;
+    }, [isSending, isConnected, joints.length]);
+
+    useEffect(() => {
         if (!isSending) {
             return;
         }
@@ -201,6 +232,16 @@ export const RobotControlPanel: React.FC = () => {
 
         return () => clearInterval(interval);
     }, [isSending]);
+
+    const handleControlRobotToggle = useCallback((next: boolean) => {
+        setIsSending(next);
+        setShowControlTakenModal(false);
+        if (next) {
+            ControlModeHandler.getInstance().takeControl();
+        } else {
+            ControlModeHandler.getInstance().releaseControl();
+        }
+    }, []);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
@@ -461,14 +502,19 @@ export const RobotControlPanel: React.FC = () => {
 
                         <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
                             <Col>
-                                <ToggleSwitch
-                                    isOn={isSending}
-                                    onToggle={() => setIsSending(v => !v)}
-                                    title="Send instructions"
-                                    rightIcon={<ThunderboltOutlined />}
-                                    width={180}
-                                    height={32}
-                                />
+                                <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 4 }}>
+                                    <ToggleSwitch
+                                        isOn={isSending}
+                                        onToggle={handleControlRobotToggle}
+                                        title="Control Robot"
+                                        rightIcon={<ThunderboltOutlined />}
+                                        width={180}
+                                        height={32}
+                                    />
+                                    <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
+                                        <InfoCircleOutlined style={{ color: '#888888', fontSize: 12, cursor: 'help', marginTop: 2 }} />
+                                    </Tooltip>
+                                </div>
                             </Col>
 
                             <Col>
@@ -559,6 +605,58 @@ export const RobotControlPanel: React.FC = () => {
                     </Suspense>
                 )}
             </MovableModal>
+
+            {/* Another client took control */}
+            <Modal
+                title={
+                    <Title level={4} style={{ color: UI_WARNING_AMBER, margin: 0 }}>
+                        <ThunderboltOutlined /> Someone else took control
+                    </Title>
+                }
+                open={showControlTakenModal}
+                onCancel={() => setShowControlTakenModal(false)}
+                footer={[
+                    <Button
+                        key="retake"
+                        icon={<ThunderboltOutlined />}
+                        onClick={() => {
+                            setShowControlTakenModal(false);
+                            handleControlRobotToggle(true);
+                        }}
+                        style={{
+                            backgroundColor: UI_ACCENT_GREEN,
+                            borderColor: UI_ACCENT_GREEN,
+                            color: UI_TEXT_ON_ACCENT,
+                        }}
+                    >
+                        Retake Control
+                    </Button>,
+                    <Button
+                        key="close"
+                        onClick={() => setShowControlTakenModal(false)}
+                        style={{
+                            backgroundColor: UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        Close
+                    </Button>,
+                ]}
+                style={{ top: 200 }}
+                styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
+                className="dark-modal"
+            >
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+                        Another connected client turned Control Robot <Text style={{ color: UI_ACCENT_GREEN }}>ON</Text> and now has exclusive control.
+                    </Text>
+                    <Text style={{ color: UI_TEXT_SUBTLE }}>
+                        Your Control Robot was automatically turned <Text style={{ color: UI_ERROR_RED }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.
+                    </Text>
+                </Space>
+            </Modal>
+
         </Page>
     );
 };
