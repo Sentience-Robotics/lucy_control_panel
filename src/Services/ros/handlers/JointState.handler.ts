@@ -114,6 +114,40 @@ export class JointStateHandler {
   }
 
   /**
+   * Subscribe to incoming joint trajectory messages (published by another client).
+   * Calls `callback` each time a message arrives on any controller topic.
+   * Returns a cleanup function that unsubscribes all listeners.
+   */
+  subscribeToPositions(
+    callback: (updates: { name: string; value: number }[]) => void
+  ): () => void {
+    const ros = RosBridgeService.getInstance().rosConnection;
+    if (!ros || this.controllerConfigs.length === 0) return () => {};
+
+    const subs: ROSLIB.Topic[] = [];
+    for (const cfg of this.controllerConfigs) {
+      const sub = new ROSLIB.Topic({
+        ros,
+        name: cfg.topic,
+        messageType: ROS_CONFIG.jointStateTopic.messageType,
+      });
+      sub.subscribe((msg: ROSLIB.Message) => {
+        const traj = msg as unknown as {
+          joint_names: string[];
+          points: { positions: number[] }[];
+        };
+        if (!traj.points?.length || !traj.joint_names?.length) return;
+        const updates = traj.joint_names
+          .map((name, i) => ({ name, value: traj.points[0].positions[i] }))
+          .filter((u) => u.value !== undefined);
+        if (updates.length > 0) callback(updates);
+      });
+      subs.push(sub);
+    }
+    return () => subs.forEach((s) => s.unsubscribe());
+  }
+
+  /**
    * Publish current joint positions to ros2_control.
    * Groups joints by controller and publishes one JointTrajectory per controller.
    * Joint order and names follow controller config (required by JointTrajectoryController).
