@@ -96,6 +96,7 @@ export const RobotControlPanel: React.FC = () => {
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
+    const retakeCountRef = useRef(0);
 
     // Floating stream window state
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
@@ -607,55 +608,70 @@ export const RobotControlPanel: React.FC = () => {
             </MovableModal>
 
             {/* Another client took control */}
-            <Modal
-                title={
-                    <Title level={4} style={{ color: UI_WARNING_AMBER, margin: 0 }}>
-                        <ThunderboltOutlined /> Someone else took control
-                    </Title>
-                }
-                open={showControlTakenModal}
-                onCancel={() => setShowControlTakenModal(false)}
-                footer={[
-                    <Button
-                        key="retake"
-                        icon={<ThunderboltOutlined />}
-                        onClick={() => {
-                            setShowControlTakenModal(false);
-                            handleControlRobotToggle(true);
-                        }}
-                        style={{
-                            backgroundColor: UI_ACCENT_GREEN,
-                            borderColor: UI_ACCENT_GREEN,
-                            color: UI_TEXT_ON_ACCENT,
-                        }}
+            {(() => {
+                const fighting = retakeCountRef.current >= 3;
+                return (
+                    <Modal
+                        title={
+                            <Title level={4} style={{ color: UI_WARNING_AMBER, margin: 0 }}>
+                                <ThunderboltOutlined /> {fighting ? 'Stop fighting!' : 'Someone else took control'}
+                            </Title>
+                        }
+                        open={showControlTakenModal}
+                        onCancel={() => { retakeCountRef.current = 0; setShowControlTakenModal(false); }}
+                        footer={[
+                            <Button
+                                key="retake"
+                                icon={<ThunderboltOutlined />}
+                                onClick={() => {
+                                    retakeCountRef.current += 1;
+                                    setShowControlTakenModal(false);
+                                    handleControlRobotToggle(true);
+                                }}
+                                style={{
+                                    backgroundColor: UI_ACCENT_GREEN,
+                                    borderColor: UI_ACCENT_GREEN,
+                                    color: UI_TEXT_ON_ACCENT,
+                                }}
+                            >
+                                {fighting ? 'I WILL WIN THIS BATTLE' : 'Retake Control'}
+                            </Button>,
+                            <Button
+                                key="close"
+                                onClick={() => {
+                                    retakeCountRef.current = 0;
+                                    setShowControlTakenModal(false);
+                                }}
+                                style={{
+                                    backgroundColor: UI_COLOR_TRANSPARENT,
+                                    borderColor: UI_BORDER_SOFT,
+                                    color: UI_TEXT_PRIMARY_ON_DARK,
+                                }}
+                            >
+                                {fighting ? "Let's calm down" : 'Dismiss'}
+                            </Button>,
+                        ]}
+                        style={{ top: 200 }}
+                        styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
+                        className="dark-modal"
                     >
-                        Retake Control
-                    </Button>,
-                    <Button
-                        key="close"
-                        onClick={() => setShowControlTakenModal(false)}
-                        style={{
-                            backgroundColor: UI_COLOR_TRANSPARENT,
-                            borderColor: UI_BORDER_SOFT,
-                            color: UI_TEXT_PRIMARY_ON_DARK,
-                        }}
-                    >
-                        Close
-                    </Button>,
-                ]}
-                style={{ top: 200 }}
-                styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
-                className="dark-modal"
-            >
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
-                        Another connected client turned Control Robot <Text style={{ color: UI_ACCENT_GREEN }}>ON</Text> and now has exclusive control.
-                    </Text>
-                    <Text style={{ color: UI_TEXT_SUBTLE }}>
-                        Your Control Robot was automatically turned <Text style={{ color: UI_ERROR_RED }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.
-                    </Text>
-                </Space>
-            </Modal>
+                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                            <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+                                {fighting
+                                    ? 'You and another client keep taking control from each other. Maybe… talk it out?'
+                                    : <>Another connected client turned Control Robot <Text style={{ color: UI_ACCENT_GREEN }}>ON</Text> and now has exclusive control.</>
+                                }
+                            </Text>
+                            <Text style={{ color: UI_TEXT_SUBTLE }}>
+                                {fighting
+                                    ? 'The robot is confused. You should be too.'
+                                    : <>Your Control Robot was automatically turned <Text style={{ color: UI_ERROR_RED }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.</>
+                                }
+                            </Text>
+                        </Space>
+                    </Modal>
+                );
+            })()}
 
         </Page>
     );
