@@ -28,6 +28,13 @@ export class ConnectedClientsHandler {
         });
 
         this.ros = RosBridgeService.getInstance().rosConnection;
+
+        if (RosBridgeService.getInstance().connectionStatus === 'connected') {
+            if (!this.connectedClientsTopic) {
+                this.initializeTopic(callback);
+            }
+            this.getConnectedClientsCount(callback);
+        }
     }
 
     private getConnectedClientsCount(callback: (count: number) => void) {
@@ -38,7 +45,7 @@ export class ConnectedClientsHandler {
         this.connectedClientsService = new ROSLIB.Service({
             ros: this.ros,
             name: '/get_client_count',
-            serviceType: 'camera_ros/srv/GetInt',
+            serviceType: 'lucy_msgs/srv/GetInt',
         });
         const request = new ROSLIB.ServiceRequest({});
         this.connectedClientsService.callService(request, (result: any) => {
@@ -82,5 +89,7 @@ export class ConnectedClientsHandler {
             this.connectedClientsTopic.unsubscribe();
             this.connectedClientsTopic = null;
         }
+        this.unsubscribeFromStatus?.();
+        this.unsubscribeFromStatus = null;
     }
 }
