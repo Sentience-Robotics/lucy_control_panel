@@ -1,0 +1,38 @@
+/* Palette via document vars — set in TS (mountUiThemeCssVars). */
+.hardware-config-add-btn.ant-btn {
+    color: var(--ui-text-on-accent) !important;
+    font-weight: 600;
+}
+.hardware-config-add-btn.ant-btn .anticon {
+    color: var(--ui-text-on-accent) !important;
+}
+.hardware-config-add-btn.ant-btn:not(:disabled):not(.ant-btn-disabled) {
+    background-color: var(--ui-accent-green) !important;
+    border-color: var(--ui-accent-green) !important;
+    color: var(--ui-text-on-accent) !important;
+}
+.hardware-config-add-btn.ant-btn:disabled,
+.hardware-config-add-btn.ant-btn.ant-btn-disabled {
+    background-color: var(--ui-switch-disabled-bg) !important;
+    border-color: var(--ui-switch-disabled-border) !important;
+    color: var(--ui-text-on-accent) !important;
+    opacity: 1 !important;
+}
+
+/* Hardware config tables: sharp rectangular track + square white thumb. */
+.ant-switch.hardware-config-ant-switch {
+    border-radius: 0 !important;
+}
+
+.ant-switch.hardware-config-ant-switch .ant-switch-inner {
+    border-radius: 0 !important;
+}
+
+.ant-switch.hardware-config-ant-switch .ant-switch-handle::before {
+    border-radius: 0 !important;
+}
+
+/* Activate modal board picker — square checkbox boxes */
+.hardware-config-ant-checkbox-group.ant-checkbox-group .ant-checkbox .ant-checkbox-inner {
+    border-radius: 0 !important;
+}

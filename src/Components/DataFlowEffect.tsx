@@ -1,4 +1,5 @@
 import React from 'react';
+import { UI_ACCENT_GREEN } from '../Constants/uiTheme.ts';
 
 interface DataFlowEffectProps {
   isActive: boolean;
@@ -11,7 +12,7 @@ export const DataFlowEffect: React.FC<DataFlowEffectProps> = ({
   isActive,
   direction = 'horizontal',
   speed = 2,
-  color = '#00ff41'
+  color = UI_ACCENT_GREEN
 }) => {
   if (!isActive) return null;
 

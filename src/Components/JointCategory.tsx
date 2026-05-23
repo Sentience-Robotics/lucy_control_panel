@@ -3,6 +3,14 @@ import { Card, Typography, Space, Button, Badge } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
 import { JointControl } from './JointControl';
+import {
+    UI_BORDER_MUTED,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_PANEL_BG,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+} from '../Constants/uiTheme.ts';
 
 const { Title } = Typography;
 
@@ -22,17 +30,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     showDegrees
 }) => {
     const categoryColor = useMemo(() => {
-        switch (category) {
-            case 'Head': return '#ff6b6b';
-            case 'Left Hand': return '#4ecdc4';
-            case 'Right Hand': return '#45b7d1';
-            case 'Left Arm': return '#96ceb4';
-            case 'Right Arm': return '#feca57';
-            case 'Torso': return '#ff9ff3';
-            case 'Base': return '#a55eea';
-            default: return '#74b9ff';
-        }
-    }, [category]);
+        return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    }, []);
 
     const handleResetCategory = useCallback(() => {
         onResetCategory(category);
@@ -46,8 +45,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
         <Card
             style={{
                 marginBottom: 16,
-                backgroundColor: '#0a0a0a',
-                borderColor: '#333',
+                backgroundColor: UI_PANEL_BG,
+                borderColor: UI_BORDER_MUTED,
                 borderLeft: `2px solid ${categoryColor}`,
                 height: '100%',
                 display: 'flex',
@@ -91,7 +90,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     count={joints.length}
                     style={{
                         backgroundColor: categoryColor,
-                        color: '#000',
+                        color: UI_TEXT_ON_ACCENT,
                         fontWeight: 'bold'
                     }}
                 />
@@ -105,11 +104,11 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 handleResetCategory();
                 }}
                 style={{
-                backgroundColor: 'transparent',
-                borderColor: '#444',
-                color: '#fff'
+                backgroundColor: UI_COLOR_TRANSPARENT,
+                borderColor: UI_BORDER_SOFT,
+                color: UI_TEXT_PRIMARY_ON_DARK
                 }}
-                title={`Reset all ${category} joints to center position`}
+                title={`Reset all ${category} joints to their rest value`}
             >
                 Reset
             </Button>

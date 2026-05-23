@@ -1,6 +1,35 @@
-import React, { useRef, useState } from 'react';
-import { Button, Space } from 'antd';
-import {StreamPlayer} from "./StreamPlayer.tsx";
+import { useState, useMemo } from 'react';
+import { Select } from 'antd';
+import { StreamPlayer } from "./StreamPlayer.tsx";
+import { StreamMetrics } from "./StreamMetrics.tsx";
+import { MovableModal } from './MovableModal.tsx';
+import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
+import type { StreamSource } from '../Constants/rosConfig';
+import {
+    UI_ACCENT_ORANGE,
+    UI_BORDER_MUTED,
+    UI_CHROME_SURFACE,
+    UI_INPUT_SURFACE,
+} from '../Constants/uiTheme.ts';
+
+const WARNING_BADGE_STYLE: React.CSSProperties = {
+    color: UI_ACCENT_ORANGE,
+    fontFamily: 'monospace',
+    fontSize: 10,
+    padding: '2px 6px',
+    backgroundColor: UI_INPUT_SURFACE,
+    border: `1px solid ${UI_ACCENT_ORANGE}`,
+    borderRadius: 4
+};
+
+const SELECT_POPUP_STYLE = {
+    popup: {
+        root: {
+            backgroundColor: UI_CHROME_SURFACE,
+            borderColor: UI_BORDER_MUTED,
+        }
+    }
+};
 
 interface StreamPlayerModalProps {
     isVisible: boolean;
@@ -10,137 +39,71 @@ interface StreamPlayerModalProps {
     aspectRatio?: number;
 }
 
-export default function StreamPlayerModal({
+export function StreamPlayerModal({
     isVisible,
     onClose,
     initialPosition = { x: 100, y: 100 },
-    initialSize = { w: 640, h: 480 },
-    aspectRatio = 4 / 3
+    initialSize = { w: 480, h: 320 },
+    aspectRatio = 4.5 / 3
 }: StreamPlayerModalProps) {
-    const [{ x, y }, setPos] = useState(initialPosition);
-    const [{ w, h }, setSize] = useState(initialSize);
-    const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-    const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
+    const [frameDelay, setFrameDelay] = useState<number>(0);
+    const [fps, setFps] = useState<number>(0);
+    const [selectedStreamSource, setSelectedStreamSource] = useState<StreamSource>(DEFAULT_STREAM_SOURCE);
+    const [hasEmptyDataWarning, setHasEmptyDataWarning] = useState<boolean>(false);
 
-    if (!isVisible) return null;
-
-    const handleDragStart = (e: React.MouseEvent) => {
-        draggingRef.current = {
-            startX: e.clientX,
-            startY: e.clientY,
-            origX: x,
-            origY: y
-        };
-
-        const onMove = (ev: MouseEvent) => {
-            if (!draggingRef.current) return;
-            const dx = ev.clientX - draggingRef.current.startX;
-            const dy = ev.clientY - draggingRef.current.startY;
-            setPos({
-                x: Math.max(8, draggingRef.current.origX + dx),
-                y: Math.max(8, draggingRef.current.origY + dy)
-            });
-        };
-
-        const onUp = () => {
-            draggingRef.current = null;
-            window.removeEventListener('mousemove', onMove);
-            window.removeEventListener('mouseup', onUp);
-        };
-
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
+    const handleStreamSourceChange = (value: string) => {
+        const source = STREAM_SOURCES.find(s => s.id === value);
+        if (source) {
+            setSelectedStreamSource(source);
+            setHasEmptyDataWarning(false); // Reset warning when switching
+        }
     };
 
-    const handleResizeStart = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        resizingRef.current = {
-            startX: e.clientX,
-            startY: e.clientY,
-            origW: w,
-            origH: h
-        };
-
-        const onMove = (ev: MouseEvent) => {
-            if (!resizingRef.current) return;
-            const dw = ev.clientX - resizingRef.current.startX;
-            const dh = ev.clientY - resizingRef.current.startY;
-
-            // Use the larger delta to maintain aspect ratio
-            const delta = Math.max(dw, dh);
-            const newW = Math.max(260, resizingRef.current.origW + delta);
-            const newH = Math.max(195, newW / aspectRatio);
-
-            setSize({ w: newW, h: newH });
-        };
-
-        const onUp = () => {
-            resizingRef.current = null;
-            window.removeEventListener('mousemove', onMove);
-            window.removeEventListener('mouseup', onUp);
-        };
-
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-    };
+    const selectOptions = useMemo(() => 
+        STREAM_SOURCES.map(source => ({
+            value: source.id,
+            label: source.name
+        })), 
+        []
+    );
 
     return (
-        <div
-            style={{
-                position: 'fixed',
-                left: x,
-                top: y,
-                width: w,
-                height: h,
-                zIndex: 1000,
-                backgroundColor: '#0b0b0b',
-                border: '1px solid #333',
-                borderRadius: 8,
-                boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-                overflow: 'hidden',
-                userSelect: 'none',
-            }}
+        <MovableModal
+            modalName="STREAM"
+            header={
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Select
+                        size="small"
+                        value={selectedStreamSource.id}
+                        onChange={handleStreamSourceChange}
+                        style={{ width: 150 }}
+                        options={selectOptions}
+                        popupMatchSelectWidth={false}
+                        styles={SELECT_POPUP_STYLE}
+                    />
+                    <StreamMetrics fps={fps} frameDelay={frameDelay} />
+                    {hasEmptyDataWarning && (
+                        <span 
+                            style={WARNING_BADGE_STYLE}
+                            title="Topic is not publishing compressed image data. Check ROS configuration."
+                        >
+                            ⚠️ NO DATA
+                        </span>
+                    )}
+                </div>
+            }
+            isVisible={isVisible}
+            onClose={onClose}
+            initialPosition={initialPosition}
+            initialSize={initialSize}
+            aspectRatio={aspectRatio}
         >
-            {/* Header Bar */}
-            <div
-                onMouseDown={handleDragStart}
-                style={{
-                    height: 36,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0 8px',
-                    background: 'linear-gradient(180deg, #121212, #0b0b0b)',
-                    borderBottom: '1px solid #222',
-                    cursor: 'move',
-                }}
-            >
-        <span style={{ color: '#9cf', fontFamily: 'monospace', fontSize: 12 }}>
-          STREAM
-        </span>
-                <Space size={6} align="center">
-                    <Button size="small" danger onClick={onClose}>
-                        Close
-                    </Button>
-                </Space>
-            </div>
-
-            {/* Stream Content */}
-            <StreamPlayer />
-
-            {/* Resize Handle */}
-            <div
-                onMouseDown={handleResizeStart}
-                style={{
-                    position: 'absolute',
-                    right: 0,
-                    bottom: 0,
-                    width: 14,
-                    height: 14,
-                    cursor: 'nwse-resize',
-                    background: 'linear-gradient(135deg, transparent 50%, #333 50%)',
-                }}
+            <StreamPlayer 
+                onFrameDelayChange={setFrameDelay} 
+                onFpsChange={setFps}
+                streamSource={selectedStreamSource}
+                onEmptyDataWarning={setHasEmptyDataWarning}
             />
-        </div>
+        </MovableModal>
     );
 }

@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { type ConnectionStatus, RosBridgeService } from "../Services/ros/ros.service.ts";
 
 interface UseRosConnectionReturn {
@@ -8,8 +8,8 @@ interface UseRosConnectionReturn {
     isReconnecting: boolean;
     isDisconnected: boolean;
     currentUrl: string;
-    connect: (url?: string) => Promise<void>;
-    reconnect: (url?: string) => Promise<void>;
+    connect: (url: string) => Promise<void>;
+    reconnect: (url: string) => Promise<void>;
     disconnect: () => void;
 }
 
@@ -25,7 +25,7 @@ export function useRosConnection(): UseRosConnectionReturn {
         });
     }, [rosService]);
 
-    const connect = useCallback(async (url?: string) => {
+    const connect = useCallback(async (url: string) => {
         try {
             await rosService.connect(url);
         } catch (error) {
@@ -34,7 +34,7 @@ export function useRosConnection(): UseRosConnectionReturn {
         }
     }, [rosService]);
 
-    const reconnect = useCallback(async (url?: string) => {
+    const reconnect = useCallback(async (url: string) => {
         try {
             await rosService.reconnect(url);
         } catch (error) {

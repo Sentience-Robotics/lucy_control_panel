@@ -3,6 +3,19 @@ import { Typography, Button, Space } from 'antd';
 import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../Components/Page';
+import {
+    UI_ACCENT_GREEN,
+    UI_BORDER_MUTED,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_DECORATIVE_CORAL,
+    UI_ERROR_RED,
+    UI_INPUT_SURFACE,
+    UI_PANEL_BG,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SECONDARY_MUTED,
+} from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
@@ -21,11 +34,11 @@ export const NotFound: React.FC = () => {
 ╚══════════════════════════════════════════════════════╝
 
 ██╗  ██╗ ██████╗ ██╗  ██╗    ███████╗██████╗ ██████╗
-██║  ██║██╔═████╗██║  ██║    ██╔════╝██╔══██╗██╔══██╗
-███████║██║██╔██║███████║    █████╗  ██████╔╝██████╔╝
-╚════██║████╔╝██║╚════██║    ██╔══╝  ██╔══██╗██╔══██╗
-     ██║╚██████╔╝     ██║    ███████╗██║  ██║██║  ██║
-     ╚═╝ ╚═════╝      ╚═╝    ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
+ ██║  ██║██╔═████╗██║  ██║    ██╔════╝██╔══██╗██╔══██╗
+ ███████║██║██╔██║███████║    █████╗  ██████╔╝██████╔╝
+ ╚════██║████╔╝██║╚════██║    ██╔══╝  ██╔══██╗██╔══██╗
+      ██║╚██████╔╝     ██║    ███████╗██║  ██║██║  ██║
+      ╚═╝ ╚═════╝      ╚═╝    ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
 
 ┌─────────────────────────────────┐
 │  ⚠  ROBOT LUCY IS CONFUSED  ⚠   │
@@ -98,11 +111,11 @@ export const NotFound: React.FC = () => {
         <div style={{ marginBottom: '20px' }}>
           <Text
             style={{
-              color: '#ff4d4f',
+              color: UI_ERROR_RED,
               fontFamily: 'monospace',
               fontSize: '24px',
               fontWeight: 'bold',
-              textShadow: '0 0 15px #ff4d4f',
+              textShadow: `0 0 15px ${UI_ERROR_RED}`,
               display: 'block',
               marginBottom: '10px'
             }}
@@ -112,7 +125,7 @@ export const NotFound: React.FC = () => {
 
           <Text
             style={{
-              color: '#00ff41',
+              color: UI_ACCENT_GREEN,
               fontFamily: 'monospace',
               fontSize: '14px',
               display: 'block'
@@ -131,8 +144,8 @@ export const NotFound: React.FC = () => {
         {/* ASCII Art */}
         <div
           style={{
-            backgroundColor: '#0a0a0a',
-            border: '2px solid #333',
+            backgroundColor: UI_PANEL_BG,
+            border: `2px solid ${UI_BORDER_MUTED}`,
             padding: '20px',
             marginBottom: '20px',
             maxWidth: '600px',
@@ -141,7 +154,7 @@ export const NotFound: React.FC = () => {
         >
           <pre
             style={{
-              color: '#00ff41',
+              color: UI_ACCENT_GREEN,
               fontFamily: 'monospace',
               fontSize: '12px',
               lineHeight: '1.2',
@@ -157,8 +170,8 @@ export const NotFound: React.FC = () => {
         {/* Glitch Effect Error Messages */}
         <div
           style={{
-            backgroundColor: '#1a1a1a',
-            border: '1px solid #444',
+            backgroundColor: UI_INPUT_SURFACE,
+            border: `1px solid ${UI_BORDER_SOFT}`,
             padding: '16px',
             marginBottom: '20px',
             minHeight: '50px',
@@ -171,7 +184,7 @@ export const NotFound: React.FC = () => {
         >
           <Text
             style={{
-              color: '#ff6b6b',
+              color: UI_DECORATIVE_CORAL,
               fontFamily: 'monospace',
               fontSize: '13px',
               fontStyle: 'italic',
@@ -194,31 +207,31 @@ export const NotFound: React.FC = () => {
           }}
         >
           <div style={{
-            backgroundColor: '#1a1a1a',
-            border: '1px solid #444',
+            backgroundColor: UI_INPUT_SURFACE,
+            border: `1px solid ${UI_BORDER_SOFT}`,
             padding: '12px',
             textAlign: 'center'
           }}>
-            <Text style={{ color: '#666', fontSize: '10px', display: 'block' }}>STATUS</Text>
-            <Text style={{ color: '#ff4d4f', fontFamily: 'monospace', fontSize: '14px' }}>LOST</Text>
+            <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>STATUS</Text>
+            <Text style={{ color: UI_ERROR_RED, fontFamily: 'monospace', fontSize: '14px' }}>LOST</Text>
           </div>
           <div style={{
-            backgroundColor: '#1a1a1a',
-            border: '1px solid #444',
+            backgroundColor: UI_INPUT_SURFACE,
+            border: `1px solid ${UI_BORDER_SOFT}`,
             padding: '12px',
             textAlign: 'center'
           }}>
-            <Text style={{ color: '#666', fontSize: '10px', display: 'block' }}>CODE</Text>
-            <Text style={{ color: '#ff4d4f', fontFamily: 'monospace', fontSize: '14px' }}>404</Text>
+            <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>CODE</Text>
+            <Text style={{ color: UI_ERROR_RED, fontFamily: 'monospace', fontSize: '14px' }}>404</Text>
           </div>
           <div style={{
-            backgroundColor: '#1a1a1a',
-            border: '1px solid #444',
+            backgroundColor: UI_INPUT_SURFACE,
+            border: `1px solid ${UI_BORDER_SOFT}`,
             padding: '12px',
             textAlign: 'center'
           }}>
-            <Text style={{ color: '#666', fontSize: '10px', display: 'block' }}>HOPE</Text>
-            <Text style={{ color: '#00ff41', fontFamily: 'monospace', fontSize: '14px' }}>HIGH</Text>
+            <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>HOPE</Text>
+            <Text style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: '14px' }}>HIGH</Text>
           </div>
         </div>
 
@@ -230,9 +243,9 @@ export const NotFound: React.FC = () => {
             onClick={handleGoHome}
             size="large"
             style={{
-              backgroundColor: '#00ff41',
-              borderColor: '#00ff41',
-              color: '#000',
+              backgroundColor: UI_ACCENT_GREEN,
+              borderColor: UI_ACCENT_GREEN,
+              color: UI_TEXT_ON_ACCENT,
               fontWeight: 'bold',
               fontFamily: 'monospace',
               padding: '8px 24px',
@@ -247,9 +260,9 @@ export const NotFound: React.FC = () => {
             onClick={handleReload}
             size="large"
             style={{
-              backgroundColor: 'transparent',
-              borderColor: '#444',
-              color: '#fff',
+              backgroundColor: UI_COLOR_TRANSPARENT,
+              borderColor: UI_BORDER_SOFT,
+              color: UI_TEXT_PRIMARY_ON_DARK,
               fontFamily: 'monospace',
               padding: '8px 24px',
               height: 'auto'
@@ -263,7 +276,7 @@ export const NotFound: React.FC = () => {
         <div style={{ marginTop: '30px', maxWidth: '500px' }}>
           <Text
             style={{
-              color: '#666',
+              color: UI_TEXT_SECONDARY_MUTED,
               fontFamily: 'monospace',
               fontSize: '11px',
               lineHeight: '1.5',
@@ -274,7 +287,7 @@ export const NotFound: React.FC = () => {
             <br />
             Lucy is probably just recalibrating its navigation systems.
             <br />
-            <span style={{ color: '#00ff41' }}>
+            <span style={{ color: UI_ACCENT_GREEN }}>
               ► Press RETURN HOME to get back on track ◄
             </span>
           </Text>

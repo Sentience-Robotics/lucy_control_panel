@@ -8,6 +8,13 @@ import {isWebGLAvailable, STLLoader} from 'three-stdlib';
 import * as THREE from 'three';
 // import { RobotPathResolver } from '../Constants/robotConfig';
 import { Page } from '../Components/Page';
+import {
+    UI_ACCENT_GREEN,
+    UI_BG_BLACK,
+    UI_BORDER_MUTED,
+    UI_MODAL_MASK_BG,
+    UI_TEXT_PRIMARY_ON_DARK,
+} from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
@@ -35,7 +42,7 @@ const STLMesh: React.FC<STLMeshProps> = ({ meshData, opacity, wireframe }) => {
         >
             <meshStandardMaterial
                 key={`${wireframe}-${opacity}`}
-                color="#00ff41"
+                color={UI_ACCENT_GREEN}
                 transparent
                 opacity={opacity}
                 wireframe={wireframe}
@@ -56,13 +63,15 @@ const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boo
     );
 };
 
-export const Robot3DViewer: React.FC = () => {
+const Robot3DViewer: React.FC = () => {
+    // @ts-expect-error unused
     const [meshes, setMeshes] = useState<MeshData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [wireframe, setWireframe] = useState(false);
     const [opacity, setOpacity] = useState(0.8);
     const [showGrid, setShowGrid] = useState(true);
+    // @ts-expect-error unused
     const loaderRef = useRef(new STLLoader());
 
     const loadRobotModel = async () => {
@@ -178,7 +187,9 @@ export const Robot3DViewer: React.FC = () => {
         return (
             <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Spin size="large" />
-                <Text style={{ color: '#fff', marginLeft: 16 }}>Loading 3D robot model...</Text>
+                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
+                    Loading 3D robot model...
+                </Text>
             </Page>
         );
     }
@@ -204,7 +215,7 @@ export const Robot3DViewer: React.FC = () => {
   const headerContent = (
     <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Text style={{ color: '#fff', fontFamily: 'monospace' }}>WIREFRAME:</Text>
+        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>WIREFRAME:</Text>
         <div className="tui-toggle">
           <button
             onClick={() => setWireframe(false)}
@@ -221,7 +232,7 @@ export const Robot3DViewer: React.FC = () => {
           </button>
         </div>
 
-        <Text style={{ color: '#fff', fontFamily: 'monospace' }}>GRID:</Text>
+        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>GRID:</Text>
         <div className="tui-toggle">
           <button
             onClick={() => setShowGrid(false)}
@@ -255,7 +266,7 @@ export const Robot3DViewer: React.FC = () => {
             near: 0.1,
             far: 1000
           }}
-          style={{ background: '#000' }}
+          style={{ background: UI_BG_BLACK }}
         >
           <ambientLight intensity={0.6} />
           <directionalLight
@@ -264,17 +275,17 @@ export const Robot3DViewer: React.FC = () => {
             castShadow
             shadow-mapSize={[2048, 2048]}
           />
-          <pointLight position={[-10, -10, -5]} intensity={0.5} color="#00ff41" />
+          <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN} />
 
           {showGrid && (
             <Grid
               args={[20, 20]}
               cellSize={1}
               cellThickness={0.5}
-              cellColor="#00ff41"
+              cellColor={UI_ACCENT_GREEN}
               sectionSize={5}
               sectionThickness={1}
-              sectionColor="#ffffff"
+              sectionColor={UI_TEXT_PRIMARY_ON_DARK}
               fadeDistance={30}
               fadeStrength={1}
             />
@@ -301,22 +312,22 @@ export const Robot3DViewer: React.FC = () => {
             position: 'absolute',
             top: 16,
             left: 16,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            border: '1px solid #333',
+            backgroundColor: UI_MODAL_MASK_BG,
+            border: `1px solid ${UI_BORDER_MUTED}`,
             padding: 16,
             fontFamily: 'monospace',
-            color: '#fff',
+            color: UI_TEXT_PRIMARY_ON_DARK,
             fontSize: '12px'
           }}
         >
           <div style={{ marginBottom: 8 }}>
-            <Text style={{ color: '#00ff41' }}>CONTROLS:</Text>
+            <Text style={{ color: UI_ACCENT_GREEN }}>CONTROLS:</Text>
           </div>
           <div>• Mouse: Rotate view</div>
           <div>• Wheel: Zoom in/out</div>
           <div>• Right click + drag: Pan</div>
           <div style={{ marginTop: 8 }}>
-            <Text style={{ color: '#00ff41' }}>MESHES LOADED: {meshes.length}</Text>
+            <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {meshes.length}</Text>
           </div>
         </div>
 
@@ -326,16 +337,16 @@ export const Robot3DViewer: React.FC = () => {
             position: 'absolute',
             bottom: 16,
             left: 16,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            border: '1px solid #333',
+            backgroundColor: UI_MODAL_MASK_BG,
+            border: `1px solid ${UI_BORDER_MUTED}`,
             padding: 16,
             fontFamily: 'monospace',
-            color: '#fff',
+            color: UI_TEXT_PRIMARY_ON_DARK,
             fontSize: '12px',
             minWidth: 200
           }}
         >
-          <Text style={{ color: '#00ff41', marginBottom: 8, display: 'block' }}>
+          <Text style={{ color: UI_ACCENT_GREEN, marginBottom: 8, display: 'block' }}>
             TRANSPARENCY: {Math.round(opacity * 100)}%
           </Text>
           <input
@@ -347,7 +358,7 @@ export const Robot3DViewer: React.FC = () => {
             onChange={(e) => setOpacity(parseFloat(e.target.value))}
             style={{
               width: '100%',
-              background: '#333',
+              background: UI_BORDER_MUTED,
               outline: 'none',
               height: '4px',
               borderRadius: '0'
@@ -357,3 +368,5 @@ export const Robot3DViewer: React.FC = () => {
       </Page>
   );
 };
+
+export default Robot3DViewer;

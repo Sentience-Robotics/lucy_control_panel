@@ -1,19 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, {
+    useState,
+    useRef,
+    useEffect,
+    useCallback,
+    useMemo,
+    lazy,
+    Suspense,
+} from 'react';
+import { Typography, Space, Button, Row, Col, Alert, Spin, message } from 'antd';
 import {
-    Typography,
-    Space,
-    Button,
-    Statistic,
-    Row,
-    Col,
-    Alert,
-    Spin,
-    Input,
-} from 'antd';
-import {
-    CameraOutlined,
     ReloadOutlined,
     ThunderboltOutlined,
+    StopOutlined,
 } from '@ant-design/icons';
 import {
     DndContext,
@@ -33,78 +31,75 @@ import {
 } from '@dnd-kit/sortable';
 
 /* Services */
-import { EnableCameraHandler } from "../Services/ros/handlers/EnableCamera.handler";
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
+import { storageService } from '../Services/storage.service';
+import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
 /* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
-
-/* Utils */
-// import { UrdfParser } from '../Utils/urdfParser.utils.ts';
+import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
-// import { RobotPathResolver } from '../Constants/robotConfig';
 
 /* Components */
 import { Page } from '../Components/Page';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
+import { AnimationManager } from '../Components/AnimationManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
-import StreamPlayerModal from "../Components/StreamPlayerModal";
+import { StreamPlayerModal } from "../Components/StreamPlayerModal";
+import { MovableModal } from '../Components/MovableModal';
+import { ControlPanelHeaderStats, LucyControlPanelHeader } from '../Components/LucyControlPanelHeader.tsx';
+import type { ControllerJointConfig } from '../Constants/rosConfig';
+import {
+    UI_ACCENT_BOX_SHADOW_STRONG,
+    UI_ACCENT_GREEN,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+} from '../Constants/uiTheme.ts';
+
+const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
 const { Text } = Typography;
 
-const REFRESH_RATE = 1000;
+const REFRESH_RATE = 300;
+const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
 
 export const RobotControlPanel: React.FC = () => {
-    const { 
-        connectionStatus, 
-        isConnected, 
-        isConnecting, 
-        isReconnecting, 
-        isDisconnected, 
-        connect, 
-        reconnect, 
-        disconnect 
-    } = useRosConnection();
+    const { isConnected, isConnecting, isReconnecting } = useRosConnection();
+
+    const {
+        controllerConfigsFromActive,
+        activeHardwareLoading,
+        activeHardwareError,
+        refetchActiveHardware,
+    } = useActiveHardwareRos();
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
-    const [loading, setLoading] = useState(true);
+    const jointsRef = useRef<JointControlState[]>(joints);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(true);
-    const [categoryOrder, setCategoryOrder] = useState<string[]>([
-        'Head',
-        'Torso',
-        'Left Arm',
-        'Right Arm',
-        'Left Hand',
-        'Right Hand',
-        'Base',
-    ]);
+    const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
-    const [isCamOn, setIsCamOn] = useState(false);
-
-    // ROS URL state
-    const ROS_URL_KEY = 'lucy_ros_url';
-    const defaultRosUrl = useMemo(() => (
-        typeof window !== 'undefined'
-            ? (localStorage.getItem(ROS_URL_KEY) || import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
-            : (import.meta.env.VITE_ROS_BRIDGE_SERVER_URL || 'ws://localhost:9090')
-    ), []);
-    const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
-    const [connectionError, setConnectionError] = useState<string | null>(null);
+    const [isAnimating, setIsAnimating] = useState(false);
+    const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Floating stream window state
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
 
     const [isStreamVisible, setIsStreamVisible] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return false;
+        if (typeof window === 'undefined') { return false; }
         const saved = localStorage.getItem(STREAM_VISIBLE_KEY);
         return saved ? saved === 'true' : false;
     });
+
+    const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -115,54 +110,85 @@ export const RobotControlPanel: React.FC = () => {
         })
     );
 
-    /* Fixtures for first demo - awaiting servos indications in urdf */
-    const max_hand_angle = 2.617994; // approx 150 degrees in radians
-    const rightHandFixtures: JointControlState[] = [
-        { name: 'right_shoulder_yaw_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_shoulder_roll_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_elbow_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Arm' },
-        { name: 'right_wrist_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_thumb_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_index_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_middle_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_ring_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-        { name: 'right_pinky_joint', currentValue: 0, targetValue: 0, minValue: 0, maxValue: max_hand_angle, type: 'revolute', category: 'Right Hand' },
-    ]
-
-    const loadUrdfData = () => {
-        try {
-            setJoints(rightHandFixtures);
-            setLoading(false);
-            return;
-
-            // setLoading(true);
-            // setError(null);
-            // setHasError(false);
-            //
-            // const response = await fetch(RobotPathResolver.getUrdfPath());
-            // if (!response.ok) {
-            //     throw new Error('Failed to load URDF file');
-            // }
-            //
-            // const urdfContent = await response.text();
-            // const parser = new UrdfParser(urdfContent);
-            // const parsedJoints = parser.parseJoints();
-            // const controlStates = UrdfParser.createJointControlStates(parsedJoints);
-            //
-            // setJoints(controlStates);
-        } catch (err) {
-            setError(
-                err instanceof Error ? err.message : 'Failed to load robot configuration'
-            );
-        } finally {
-            setLoading(false);
+    /** Build initial joint list from controller config (ros2_control joint names). */
+    const buildJointsFromControllerConfig = useCallback((configs: ControllerJointConfig[]): JointControlState[] => {
+        const defaultMin = 0;
+        const defaultMax = Math.PI;
+        const joints: JointControlState[] = [];
+        for (const c of configs) {
+            for (const name of c.joints) {
+                joints.push({
+                    name,
+                    currentValue: 0,
+                    targetValue: 0,
+                    minValue: defaultMin,
+                    maxValue: defaultMax,
+                    type: 'revolute',
+                    category: c.defaultCategory,
+                });
+            }
         }
-    };
+        return joints;
+    }, []);
 
     useEffect(() => {
-        loadUrdfData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+        if (!isConnected) {
+            setLoading(false);
+            setError(null);
+            JointStateHandler.getInstance([]);
+            setJoints([]);
+            setCategoryOrder([]);
+            return;
+        }
+
+        if (activeHardwareLoading) {
+            setLoading(true);
+            setError(null);
+            return;
+        }
+
+        setLoading(false);
+
+        if (activeHardwareError) {
+            setError(activeHardwareError);
+            return;
+        }
+
+        const ctrls = controllerConfigsFromActive;
+        if (!ctrls || ctrls.length === 0) {
+            setError('Active hardware config has no joint controllers (check boards / actuators).');
+            return;
+        }
+
+        setError(null);
+        JointStateHandler.getInstance(ctrls);
+        setJoints((prev) => {
+            const byName = new Map(prev.map((j) => [j.name, j]));
+            const next = buildJointsFromControllerConfig(ctrls);
+            return next.map((j) => {
+                const existing = byName.get(j.name);
+                return existing
+                    ? { ...j, currentValue: existing.currentValue, targetValue: existing.targetValue }
+                    : j;
+            });
+        });
+        setCategoryOrder((prevOrder) => {
+            const nextCats = [...new Set(ctrls.map((c) => c.defaultCategory))];
+            const preserved = prevOrder.filter((c) => nextCats.includes(c));
+            const extras = nextCats.filter((c) => !preserved.includes(c));
+            return [...preserved, ...extras];
+        });
+    }, [
+        isConnected,
+        activeHardwareLoading,
+        activeHardwareError,
+        controllerConfigsFromActive,
+        buildJointsFromControllerConfig,
+    ]);
+
+    useEffect(() => {
+        jointsRef.current = joints;
+    }, [joints]);
 
     useEffect(() => {
         if (!isSending) {
@@ -170,11 +196,11 @@ export const RobotControlPanel: React.FC = () => {
         }
 
         const interval = setInterval(() => {
-            JointStateHandler.getInstance().publishJointStates(joints);
+            JointStateHandler.getInstance().publishJointStates(jointsRef.current);
         }, REFRESH_RATE);
 
         return () => clearInterval(interval);
-    }, [isSending, joints]);
+    }, [isSending]);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
@@ -186,12 +212,25 @@ export const RobotControlPanel: React.FC = () => {
         );
     }, []);
 
+    const handleTeleopJoint = (y: number, jointName: string) => {
+        setJoints((prevJoints) =>
+            prevJoints.map((joint) => {
+                const clampedX = Math.max(joint.minValue, y * joint.maxValue);
+                if (joint.name === jointName) {
+                    return { ...joint, currentValue: clampedX, targetValue: clampedX };
+                }
+                return joint;
+            })
+        );
+    }
+
     const handleResetCategory = useCallback((category: string) => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
                 if (joint.category === category) {
-                    const midValue = (joint.minValue + joint.maxValue) / 2;
-                    return { ...joint, currentValue: midValue, targetValue: midValue };
+                    const rest = joint.restValue ?? 0;
+                    const clamped = Math.max(joint.minValue, Math.min(joint.maxValue, rest));
+                    return { ...joint, currentValue: clamped, targetValue: clamped };
                 }
                 return joint;
             })
@@ -201,8 +240,9 @@ export const RobotControlPanel: React.FC = () => {
     const handleResetAll = useCallback(() => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
-                const midValue = (joint.minValue + joint.maxValue) / 2;
-                return { ...joint, currentValue: midValue, targetValue: midValue };
+                const rest = joint.restValue ?? 0;
+                const clamped = Math.max(joint.minValue, Math.min(joint.maxValue, rest));
+                return { ...joint, currentValue: clamped, targetValue: clamped };
             })
         );
     }, []);
@@ -210,10 +250,11 @@ export const RobotControlPanel: React.FC = () => {
     const categorizedJoints = useMemo(() => {
         const categories: { [key: string]: JointControlState[] } = {};
         joints.forEach((joint) => {
-            if (!categories[joint.category]) {
-                categories[joint.category] = [];
+            const key = joint.category ?? 'Uncategorized';
+            if (!categories[key]) {
+                categories[key] = [];
             }
-            categories[joint.category].push(joint);
+            categories[key].push(joint);
         });
         return categories;
     }, [joints]);
@@ -235,6 +276,56 @@ export const RobotControlPanel: React.FC = () => {
         []
     );
 
+    const handleStopAnimation = useCallback(() => {
+        if (animationTimeoutRef.current) {
+            clearTimeout(animationTimeoutRef.current);
+        }
+        setIsAnimating(false);
+        message.info('Animation stopped');
+    }, []);
+
+    const handlePlayAnimation = useCallback(async (animation: SavedAnimation) => {
+        if (isAnimating) {
+            handleStopAnimation();
+        }
+
+        setIsAnimating(true);
+        message.success(`Playing animation: "${animation.name}"`);
+
+        const poses = (await Promise.all(
+            animation.poseIds.map(id => storageService.loadPose(id))
+        )).filter((p): p is SavedPose => p !== null);
+
+        if (poses.length < animation.poseIds.length) {
+            message.error('Some poses in the animation could not be found.');
+            setIsAnimating(false);
+            return;
+        }
+
+        let currentIndex = 0;
+        const playNextFrame = () => {
+            handleLoadPose(poses[currentIndex].joints);
+            currentIndex++;
+
+            if (currentIndex >= poses.length) {
+                if (animation.loop) {
+                    currentIndex = 0;
+                } else {
+                    setIsAnimating(false);
+                    message.success('Animation finished');
+                    return;
+                }
+            }
+
+            animationTimeoutRef.current = setTimeout(
+                playNextFrame,
+                BASE_ANIMATION_INTERVAL / animation.speed
+            );
+        };
+
+        playNextFrame();
+    }, [isAnimating, handleLoadPose, handleStopAnimation]);
+
     const handleDragStart = useCallback((event: DragStartEvent) => {
         setActiveId(event.active.id as string);
     }, []);
@@ -253,65 +344,18 @@ export const RobotControlPanel: React.FC = () => {
         setActiveId(null);
     }, []);
 
-    function toggleCam(active: boolean) {
-        EnableCameraHandler.getInstance().enableCamera(active);
-        setIsCamOn(active);
-    }
-
-    const handleConnect = async () => {
-        setConnectionError(null);
-        try {
-            if (isConnected) {
-                disconnect();
-            } else {
-                await connect(rosUrl);
-                localStorage.setItem(ROS_URL_KEY, rosUrl);
-            }
-        } catch (error) {
-            setConnectionError(error instanceof Error ? error.message : 'Connection failed');
-        }
-    };
-
-    const handleReconnect = async () => {
-        setConnectionError(null);
-        try {
-            await reconnect(rosUrl);
-            localStorage.setItem(ROS_URL_KEY, rosUrl);
-        } catch (error) {
-            setConnectionError(error instanceof Error ? error.message : 'Reconnection failed');
-        }
-    };
-
-    const getConnectionStatusText = () => {
-        switch (connectionStatus) {
-            case 'connected': return 'CONNECTED';
-            case 'connecting': return 'CONNECTING...';
-            case 'reconnecting': return 'RECONNECTING...';
-            case 'disconnected': return 'DISCONNECTED';
-            default: return 'UNKNOWN';
-        }
-    };
-
-    const getConnectionStatusColor = () => {
-        switch (connectionStatus) {
-            case 'connected': return '#00ff41';
-            case 'connecting': return '#ffa500';
-            case 'reconnecting': return '#ffa500';
-            case 'disconnected': return '#ff4d4f';
-            default: return '#666';
-        }
-    };
-
-    if (loading) {
+    if (isConnected && loading) {
         return (
             <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Spin size="large" />
-                <Text style={{ color: '#fff', marginLeft: 16 }}>Loading robot configuration...</Text>
+                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
+                    Loading robot configuration...
+                </Text>
             </Page>
         );
     }
 
-    if (error) {
+    if (isConnected && error) {
         return (
             <Page>
                 <Alert
@@ -320,7 +364,7 @@ export const RobotControlPanel: React.FC = () => {
                     type="error"
                     showIcon
                     action={
-                        <Button size="small" onClick={loadUrdfData}>
+                        <Button size="small" onClick={() => void refetchActiveHardware()}>
                             Retry
                         </Button>
                     }
@@ -330,114 +374,12 @@ export const RobotControlPanel: React.FC = () => {
     }
 
     const headerContent = (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div>
-                <Space align="center">
-                    <Text
-                        style={{
-                            margin: 0,
-                            color: '#00ff41',
-                            fontFamily: 'monospace',
-                            textShadow: '0 0 10px #00ff41',
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                        }}
-                    >
-                        ▲ LUCY CONTROL PANEL
-                    </Text>
-                </Space>
-            </div>
-
-            <div>
-                <Space>
-                    <Row gutter={12}>
-                        <Col>
-                            <Statistic
-                                title={<Text style={{ color: '#666', fontSize: '10px' }}>TOTAL JOINTS</Text>}
-                                value={joints.length}
-                                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                            />
-                        </Col>
-                        <Col>
-                            <Statistic
-                                title={<Text style={{ color: '#666', fontSize: '10px' }}>CATEGORIES</Text>}
-                                value={Object.keys(categorizedJoints).length}
-                                valueStyle={{ color: '#00ff41', fontSize: '16px', fontFamily: 'monospace' }}
-                            />
-                        </Col>
-                        <Col>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: '4px 10px',
-                                    borderRadius: 16,
-                                    backgroundColor: '#0d0d0d',
-                                    border: '1px solid #333'
-                                }}>
-                                    <span style={{
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: '50%',
-                                        backgroundColor: getConnectionStatusColor(),
-                                        boxShadow: `0 0 8px ${getConnectionStatusColor()}`
-                                    }} />
-                                    <Text style={{ 
-                                        color: getConnectionStatusColor(), 
-                                        fontFamily: 'monospace', 
-                                        fontSize: 12 
-                                    }}>
-                                        ROS BRIDGE: {getConnectionStatusText()}
-                                    </Text>
-                                </div>
-                                <Input
-                                    size="small"
-                                    placeholder="ROS Bridge URL"
-                                    value={rosUrl}
-                                    onChange={(e) => setRosUrl(e.target.value)}
-                                    disabled={isConnecting || isReconnecting}
-                                    style={{
-                                        width: 200,
-                                        backgroundColor: '#0d0d0d',
-                                        borderColor: '#333',
-                                        color: '#fff',
-                                        fontFamily: 'monospace',
-                                        fontSize: 12
-                                    }}
-                                />
-                                <Button
-                                    size="small"
-                                    onClick={handleConnect}
-                                    disabled={isConnecting || isReconnecting}
-                                    style={{
-                                        backgroundColor: isConnected ? 'transparent' : '#00ff41',
-                                        color: isConnected ? '#fff' : '#000',
-                                        borderColor: isConnected ? '#444' : '#00ff41',
-                                        boxShadow: isConnected ? 'none' : '0 0 8px #00ff41',
-                                    }}
-                                >
-                                    {isConnected ? 'DISCONNECT' : 'CONNECT'}
-                                </Button>
-                                <Button
-                                    size="small"
-                                    onClick={handleReconnect}
-                                    disabled={isDisconnected || isConnecting || isReconnecting}
-                                    style={{
-                                        backgroundColor: (isConnected || isReconnecting) ? '#ffa500' : 'transparent',
-                                        color: (isConnected || isReconnecting) ? '#000' : '#fff',
-                                        borderColor: (isConnected || isReconnecting) ? '#ffa500' : '#444',
-                                        boxShadow: (isConnected || isReconnecting) ? '0 0 8px #ffa500' : 'none',
-                                    }}
-                                >
-                                    {isReconnecting ? 'RECONNECTING...' : 'RECONNECT'}
-                                </Button>
-                            </div>
-                        </Col>
-                    </Row>
-                </Space>
-            </div>
-        </div>
+        <LucyControlPanelHeader>
+            <ControlPanelHeaderStats
+                jointCount={joints.length}
+                categoryCount={Object.keys(categorizedJoints).length}
+            />
+        </LucyControlPanelHeader>
     );
 
     return (
@@ -447,148 +389,176 @@ export const RobotControlPanel: React.FC = () => {
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
-            {connectionError && (
+            {!isConnected ? (
                 <Alert
-                    message="Connection Error"
-                    description={connectionError}
-                    type="error"
+                    type="info"
                     showIcon
-                    closable
-                    onClose={() => setConnectionError(null)}
+                    message={
+                        isConnecting || isReconnecting ? 'Connecting to ROS bridge…' : 'Connect to ROS bridge'
+                    }
+                    description={
+                        isConnecting || isReconnecting
+                            ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
+                            : 'Use CONNECT in the header'
+                    }
                     style={{ marginBottom: 12 }}
                 />
-            )}
+            ) : (
+                <>
+                    <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
+                        <Col flex="auto">
+                            <Space wrap>
+                                <Button
+                                    icon={<ReloadOutlined />}
+                                    onClick={handleResetAll}
+                                    style={{
+                                        backgroundColor: UI_COLOR_TRANSPARENT,
+                                        borderColor: UI_BORDER_SOFT,
+                                        color: UI_TEXT_PRIMARY_ON_DARK,
+                                    }}
+                                >
+                                    RESET ALL
+                                </Button>
 
-            <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
-                <Col flex="auto">
-                    <Space wrap>
-                        <Button
-                            icon={<ReloadOutlined />}
-                            onClick={handleResetAll}
-                            style={{
-                                backgroundColor: 'transparent',
-                                borderColor: '#444',
-                                color: '#fff',
-                            }}
-                        >
-                            RESET ALL
-                        </Button>
+                                <PoseManager
+                                    joints={joints}
+                                    onLoadPose={handleLoadPose}
+                                />
+                                <AnimationManager onPlayAnimation={handlePlayAnimation} />
+                                {isAnimating && (
+                                    <Button
+                                        danger
+                                        icon={<StopOutlined />}
+                                        onClick={handleStopAnimation}
+                                    >
+                                        STOP ANIMATION
+                                    </Button>
+                                )}
+                                <Button
+                                    onClick={() => setIsStreamVisible(v => !v)}
+                                    style={{
+                                        backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                        color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                        borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                        boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                    }}
+                                >
+                                    {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
+                                </Button>
+                                <Button
+                                    onClick={() => setIsWebcamActive(v => !v)}
+                                    style={{
+                                        backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                        color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                        borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                        boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                    }}
+                                >
+                                    {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
+                                </Button>
+                            </Space>
+                        </Col>
 
-                        <PoseManager
-                            joints={joints}
-                            onLoadPose={handleLoadPose}
-                            categoryOrder={categoryOrder}
-                        />
-                        <Button
-                            onClick={() => setIsStreamVisible(v => !v)}
-                            style={{
-                                backgroundColor: isStreamVisible ? '#00ff41' : 'transparent',
-                                color: isStreamVisible ? '#000' : '#fff',
-                                borderColor: isStreamVisible ? '#00ff41' : '#444',
-                                boxShadow: isStreamVisible ? '0 0 10px #00ff41' : 'none',
-                            }}
-                        >
-                            {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                        </Button>
-                    </Space>
-                </Col>
+                        <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
+                            <Col>
+                                <ToggleSwitch
+                                    isOn={isSending}
+                                    onToggle={() => setIsSending(v => !v)}
+                                    title="Send instructions"
+                                    rightIcon={<ThunderboltOutlined />}
+                                    width={180}
+                                    height={32}
+                                />
+                            </Col>
 
-                <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
-                    <Col>
-                        <ToggleSwitch
-                            isOn={isCamOn}
-                            onToggle={toggleCam}
-                            title="Update stream feed"
-                            rightIcon={<CameraOutlined />}
-                            width={180}
-                            height={32}
-                        />
-                    </Col>
+                            <Col>
+                                <ToggleSwitch
+                                    isOn={showDegrees}
+                                    onToggle={() => setShowDegrees(v => !v)}
+                                    title="Angle units"
+                                    textOn="DEGREES"
+                                    textOff="RADIANS"
+                                    width={180}
+                                    height={32}
+                                />
+                            </Col>
+                        </Row>
+                    </Row>
 
-                    <Col>
-                        <ToggleSwitch
-                            isOn={isSending}
-                            onToggle={() => setIsSending(v => !v)}
-                            title="Send instructions"
-                            rightIcon={<ThunderboltOutlined />}
-                            width={180}
-                            height={32}
-                        />
-                    </Col>
-
-                    <Col>
-                        <ToggleSwitch
-                            isOn={showDegrees}
-                            onToggle={() => setShowDegrees(v => !v)}
-                            title="Angle units"
-                            textOn="DEGREES"
-                            textOff="RADIANS"
-                            width={180}
-                            height={32}
-                        />
-                    </Col>
-                </Row>
-            </Row>
-
-            <DndContext
-                sensors={sensors}
-                collisionDetection={rectIntersection}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-            >
-                <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                            gridAutoRows: '1fr',
-                            gap: '12px',
-                            width: '100%',
-                            alignItems: 'stretch',
-                        }}
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={rectIntersection}
+                        onDragStart={handleDragStart}
+                        onDragEnd={handleDragEnd}
                     >
-                        {categoryOrder.map((category) => {
-                            if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
-                                return null;
-                            }
+                        <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                                    gridAutoRows: '1fr',
+                                    gap: '12px',
+                                    width: '100%',
+                                    alignItems: 'stretch',
+                                }}
+                            >
+                                {categoryOrder.map((category) => {
+                                    if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
+                                        return null;
+                                    }
 
-                            return (
-                                <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <DraggableCategory
-                                        id={category}
-                                        category={category}
-                                        joints={categorizedJoints[category]}
-                                        onJointValueChange={handleJointValueChange}
-                                        onResetCategory={handleResetCategory}
+                                    return (
+                                        <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                            <DraggableCategory
+                                                id={category}
+                                                category={category}
+                                                joints={categorizedJoints[category]}
+                                                onJointValueChange={handleJointValueChange}
+                                                onResetCategory={handleResetCategory}
+                                                showDegrees={showDegrees}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </SortableContext>
+
+                        <DragOverlay>
+                            {activeId ? (
+                                <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
+                                    <JointCategory
+                                        category={activeId}
+                                        joints={categorizedJoints[activeId] || []}
+                                        onJointValueChange={() => { }}
+                                        onResetCategory={() => { }}
                                         showDegrees={showDegrees}
                                     />
                                 </div>
-                            );
-                        })}
-                    </div>
-                </SortableContext>
-
-                <DragOverlay>
-                    {activeId ? (
-                        <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
-                            <JointCategory
-                                category={activeId}
-                                joints={categorizedJoints[activeId] || []}
-                                onJointValueChange={() => { }}
-                                onResetCategory={() => { }}
-                                showDegrees={showDegrees}
-                            />
-                        </div>
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
+                            ) : null}
+                        </DragOverlay>
+                    </DndContext>
+                </>
+            )}
 
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
                 initialPosition={{ x: 100, y: 100 }}
-                initialSize={{ w: 480, h: 320 }}
             />
+
+            <MovableModal
+                modalName="WEBCAM"
+                isVisible={isWebcamActive}
+                onClose={() => setIsWebcamActive(false)}
+                initialPosition={{ x: 400, y: 150 }}
+            >
+                {isWebcamActive && (
+                    <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
+                        <MediapipeHandTracker
+                            moveRobotIndex={handleTeleopJoint} />
+                    </Suspense>
+                )}
+            </MovableModal>
         </Page>
     );
 };

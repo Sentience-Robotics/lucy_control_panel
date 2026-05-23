@@ -18,17 +18,30 @@ import {
   FolderOpenOutlined,
   DeleteOutlined,
   DownloadOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  ExclamationCircleOutlined
 } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
-import { storageService, type SavedPose } from '../Services/storage.service.ts';
+import {
+    UI_ACCENT_GREEN,
+    UI_BORDER_MUTED,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_INPUT_SURFACE,
+    UI_LIST_ROW_BG,
+    UI_MODAL_MASK_BG,
+    UI_PANEL_BG,
+    UI_PRIMARY_GREEN_BUTTON_STYLE,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SUBTLE,
+} from '../Constants/uiTheme.ts';
+import { storageService, type SavedPose, PoseInUseError } from '../Services/storage.service.ts';
 
 const { Text, Title } = Typography;
 
 interface PoseManagerProps {
   joints: JointControlState[];
-  onLoadPose: (joints: Record<string, number>, categoryOrder?: string[]) => void;
-  categoryOrder?: string[];
+  onLoadPose: (joints: Record<string, number>) => void;
 }
 
 const PRESET_POSE_NAMES = [
@@ -42,7 +55,7 @@ const PRESET_POSE_NAMES = [
   'Custom Pose'
 ];
 
-export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, categoryOrder }) => {
+export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) => {
   const [saveModalVisible, setSaveModalVisible] = useState(false);
   const [loadModalVisible, setLoadModalVisible] = useState(false);
   const [poseName, setPoseName] = useState('');
@@ -62,12 +75,12 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
   }, []);
 
   useEffect(() => {
-    loadSavedPoses(); // Load poses on component mount to get count
+    void loadSavedPoses(); // Load poses on component mount to get count
   }, [loadSavedPoses]);
 
   useEffect(() => {
     if (loadModalVisible) {
-      loadSavedPoses();
+      void loadSavedPoses();
     }
   }, [loadModalVisible, loadSavedPoses]);
 
@@ -79,7 +92,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
 
     setLoading(true);
     try {
-      const savedPose = await storageService.savePose(poseName.trim(), joints, categoryOrder);
+      const savedPose = await storageService.savePose(poseName.trim(), joints);
       message.success(`Pose "${savedPose.name}" saved successfully`);
       setPoseName('');
       setSaveModalVisible(false);
@@ -90,16 +103,15 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
     } finally {
       setLoading(false);
     }
-  }, [poseName, joints, categoryOrder, loadSavedPoses]);
+  }, [poseName, joints, loadSavedPoses]);
 
   const handleLoadPose = useCallback(async (poseId: string) => {
     setLoading(true);
     try {
       const pose = await storageService.loadPose(poseId);
       if (pose) {
-        onLoadPose(pose.joints, pose.categoryOrder);
-        const layoutInfo = pose.categoryOrder ? ' and layout' : '';
-        message.success(`Pose "${pose.name}"${layoutInfo} loaded successfully`);
+        onLoadPose(pose.joints);
+        message.success(`Pose "${pose.name}" loaded successfully`);
         setLoadModalVisible(false);
       } else {
         message.error('Pose not found');
@@ -118,8 +130,38 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
       message.success(`Pose "${poseName}" deleted`);
       await loadSavedPoses(); // Refresh the list and count
     } catch (error) {
-      message.error('Failed to delete pose');
-      console.error('Error deleting pose:', error);
+      if (error instanceof Error && error.name === 'PoseInUseError') {
+          const inUseError = error as PoseInUseError;
+          Modal.confirm({
+              title: 'Pose is in use',
+              icon: <ExclamationCircleOutlined />,
+              content: (
+                  <div>
+                      <p>This pose is linked to the following animations:</p>
+                      <ul>
+                          {inUseError.animationNames.map(name => <li key={name}>{name}</li>)}
+                      </ul>
+                      <p>If you delete this pose, these animations will also be deleted. Are you sure you want to proceed?</p>
+                  </div>
+              ),
+              okText: 'Yes, delete pose and animations',
+              okType: 'danger',
+              cancelText: 'Cancel',
+              onOk: async () => {
+                  try {
+                      await storageService.deletePose(poseId, true);
+                      message.success(`Pose "${poseName}" and linked animations deleted`);
+                      await loadSavedPoses();
+                  } catch (e) {
+                      message.error('Failed to delete pose');
+                      console.error('Error forcefully deleting pose:', e);
+                  }
+              }
+          });
+      } else {
+          message.error('Failed to delete pose');
+          console.error('Error deleting pose:', error);
+      }
     }
   }, [loadSavedPoses]);
 
@@ -138,9 +180,9 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
           icon={<SaveOutlined />}
           onClick={() => setSaveModalVisible(true)}
           style={{
-            backgroundColor: 'transparent',
-            borderColor: '#444',
-            color: '#fff'
+            backgroundColor: UI_COLOR_TRANSPARENT,
+            borderColor: UI_BORDER_SOFT,
+            color: UI_TEXT_PRIMARY_ON_DARK
           }}
         >
           SAVE POSE
@@ -150,24 +192,24 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
           icon={<FolderOpenOutlined />}
           onClick={() => setLoadModalVisible(true)}
           style={{
-            backgroundColor: 'transparent',
-            borderColor: '#444',
-            color: '#fff'
+            backgroundColor: UI_COLOR_TRANSPARENT,
+            borderColor: UI_BORDER_SOFT,
+            color: UI_TEXT_PRIMARY_ON_DARK
           }}
         >
-          LOAD POSE {poseCount > 0 && <span style={{ color: '#00ff41' }}>({poseCount})</span>}
+          LOAD POSE {poseCount > 0 && <span style={{ color: UI_ACCENT_GREEN }}>({poseCount})</span>}
         </Button>
       </Space>
 
       {/* Save Pose Modal */}
       <Modal
         title={
-          <Title level={4} style={{ color: '#00ff41', margin: 0 }}>
+          <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
             <SaveOutlined /> Save Current Pose
           </Title>
         }
         open={saveModalVisible}
-        onOk={handleSavePose}
+        onOk={() => void handleSavePose()}
         onCancel={() => {
           setSaveModalVisible(false);
           setPoseName('');
@@ -177,17 +219,16 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
         cancelText="Cancel"
         style={{ top: 100 }}
         styles={{
-          mask: { backgroundColor: 'rgba(0, 0, 0, 0.8)' }
+          mask: { backgroundColor: UI_MODAL_MASK_BG }
         }}
         className="dark-modal"
       >
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
-          <Text style={{ color: '#fff' }}>
-            Enter a name for your pose. This will save the current position of all {joints.length} joints{categoryOrder ? ' and the current category layout' : ''}.
+          <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+            Enter a name for your pose. This will save the current position of all {joints.length} joints.
             <br />
-            <Text style={{ color: '#888', fontSize: '12px' }}>
+            <Text style={{ color: UI_TEXT_SUBTLE, fontSize: '12px' }}>
               You can save multiple poses with different names. Duplicate names will automatically get a number suffix.
-              {categoryOrder && ' Layout includes category arrangement for easy restoration.'}
             </Text>
           </Text>
 
@@ -195,18 +236,18 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
             placeholder="Enter pose name (e.g., 'Greeting', 'Resting Position')"
             value={poseName}
             onChange={(e) => setPoseName(e.target.value)}
-            onPressEnter={handleSavePose}
+            onPressEnter={() => void handleSavePose()}
             maxLength={50}
             autoFocus
             style={{
-              backgroundColor: '#1a1a1a',
-              borderColor: '#444',
-              color: '#fff'
+              backgroundColor: UI_INPUT_SURFACE,
+              borderColor: UI_BORDER_SOFT,
+              color: UI_TEXT_PRIMARY_ON_DARK
             }}
           />
 
           <div>
-            <Text style={{ color: '#888', fontSize: '12px', marginBottom: 8, display: 'block' }}>
+            <Text style={{ color: UI_TEXT_SUBTLE, fontSize: '12px', marginBottom: 8, display: 'block' }}>
               Quick suggestions:
             </Text>
             <Space wrap>
@@ -217,9 +258,9 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
                   type="dashed"
                   onClick={() => setPoseName(preset)}
                   style={{
-                    borderColor: '#444',
-                    color: '#888',
-                    backgroundColor: 'transparent'
+                    borderColor: UI_BORDER_SOFT,
+                    color: UI_TEXT_SUBTLE,
+                    backgroundColor: UI_COLOR_TRANSPARENT
                   }}
                 >
                   {preset}
@@ -228,13 +269,15 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
             </Space>
           </div>
 
-          <Card size="small" style={{ backgroundColor: '#0a0a0a', borderColor: '#333' }}>
+          <Card size="small" style={{ backgroundColor: UI_PANEL_BG, borderColor: UI_BORDER_MUTED }}>
             <Row gutter={16}>
               <Col span={12}>
-                <Text strong style={{ color: '#fff' }}>Joints to save:</Text> <Text style={{ color: '#00ff41' }}>{joints.length}</Text>
+                <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Joints to save:</Text>{' '}
+                <Text style={{ color: UI_ACCENT_GREEN }}>{joints.length}</Text>
               </Col>
               <Col span={12}>
-                <Text strong style={{ color: '#fff' }}>Timestamp:</Text> <Text style={{ color: '#00ff41' }}>{formatTimestamp(Date.now())}</Text>
+                <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Timestamp:</Text>{' '}
+                <Text style={{ color: UI_ACCENT_GREEN }}>{formatTimestamp(Date.now())}</Text>
               </Col>
             </Row>
           </Card>
@@ -244,7 +287,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
       {/* Load Pose Modal */}
       <Modal
         title={
-          <Title level={4} style={{ color: '#00ff41', margin: 0 }}>
+          <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
             <FolderOpenOutlined /> Load Saved Pose
           </Title>
         }
@@ -254,9 +297,9 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
             key="close"
             onClick={() => setLoadModalVisible(false)}
             style={{
-              backgroundColor: 'transparent',
-              borderColor: '#444',
-              color: '#fff'
+              backgroundColor: UI_COLOR_TRANSPARENT,
+              borderColor: UI_BORDER_SOFT,
+              color: UI_TEXT_PRIMARY_ON_DARK,
             }}
           >
             Close
@@ -266,13 +309,13 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
         width={700}
         style={{ top: 50 }}
         styles={{
-          mask: { backgroundColor: 'rgba(0, 0, 0, 0.8)' }
+          mask: { backgroundColor: UI_MODAL_MASK_BG }
         }}
         className="dark-modal"
       >
         {savedPoses.length === 0 ? (
-          <Card style={{ textAlign: 'center', backgroundColor: '#0a0a0a', borderColor: '#333' }}>
-            <Text style={{ color: '#888' }}>
+          <Card style={{ textAlign: 'center', backgroundColor: UI_PANEL_BG, borderColor: UI_BORDER_MUTED }}>
+            <Text style={{ color: UI_TEXT_SUBTLE }}>
               No saved poses found. Save your first pose to get started!
             </Text>
           </Card>
@@ -283,20 +326,20 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
               <List.Item
                 key={pose.id}
                 style={{
-                  backgroundColor: '#0c0c0c',
+                  backgroundColor: UI_LIST_ROW_BG,
                   marginBottom: 8,
                   borderRadius: 4,
                   padding: 12,
-                  border: '1px solid #333'
+                  border: `1px solid ${UI_BORDER_MUTED}`
                 }}
                 actions={[
                   <Tooltip title="Load this pose">
                     <Button
                       type="primary"
                       icon={<DownloadOutlined />}
-                      onClick={() => handleLoadPose(pose.id)}
+                      onClick={() => void handleLoadPose(pose.id)}
                       loading={loading}
-                      style={{ backgroundColor: '#00ff41', borderColor: '#00ff41', color: '#000' }}
+                      style={{ ...UI_PRIMARY_GREEN_BUTTON_STYLE }}
                     >
                       Load
                     </Button>
@@ -304,7 +347,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
                   <Popconfirm
                     title="Delete this pose?"
                     description={`Are you sure you want to delete "${pose.name}"? This action cannot be undone.`}
-                    onConfirm={() => handleDeletePose(pose.id, pose.name)}
+                    onConfirm={() => void handleDeletePose(pose.id, pose.name)}
                     okText="Delete"
                     cancelText="Cancel"
                     okButtonProps={{ danger: true }}
@@ -321,23 +364,18 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose, ca
               >
                 <List.Item.Meta
                   title={
-                    <Text strong style={{ fontSize: 16, color: '#00ff41' }}>
+                    <Text strong style={{ fontSize: 16, color: UI_ACCENT_GREEN }}>
                       {pose.name}
                     </Text>
                   }
                   description={
                     <Space direction="vertical" size="small">
                       <Space>
-                        <ClockCircleOutlined style={{ color: '#888' }} />
-                        <Text style={{ color: '#888' }}>{formatTimestamp(pose.timestamp)}</Text>
+                        <ClockCircleOutlined style={{ color: UI_TEXT_SUBTLE }} />
+                        <Text style={{ color: UI_TEXT_SUBTLE }}>{formatTimestamp(pose.timestamp)}</Text>
                       </Space>
-                      <Text style={{ color: '#888' }}>
+                      <Text style={{ color: UI_TEXT_SUBTLE }}>
                         {getJointCount(pose.joints)} joints stored
-                        {pose.categoryOrder && (
-                          <span style={{ color: '#00ff41', marginLeft: 8 }}>
-                            + layout
-                          </span>
-                        )}
                       </Text>
                     </Space>
                   }

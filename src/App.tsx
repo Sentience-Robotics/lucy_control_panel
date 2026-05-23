@@ -1,14 +1,26 @@
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, Spin } from 'antd';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 /* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
-import { Robot3DViewer } from './Pages/Robot3DViewer';
 import { Stream } from "./Pages/Stream.tsx";
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
+import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
+import {
+    UI_ACCENT_GREEN,
+    UI_BG_BLACK,
+    UI_BORDER_STRONG,
+    UI_COLOR_TRANSPARENT,
+    UI_PANEL_BG,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SUBTLE,
+} from './Constants/uiTheme.ts';
+
+const Robot3DViewer = lazy(() => import('./Pages/Robot3DViewer').then(module => ({ default: module.default })));
+const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
 
 function App() {
     const localPassword: string | undefined = import.meta.env.VITE_LOCAL_PASSWORD;
@@ -51,12 +63,12 @@ function App() {
                 theme={{
                     algorithm: theme.darkAlgorithm,
                     token: {
-                        colorPrimary: '#00ff41',
-                        colorBgBase: '#000000',
-                        colorBgContainer: '#0a0a0a',
-                        colorBorder: '#333333',
-                        colorText: '#ffffff',
-                        colorTextSecondary: '#888888',
+                        colorPrimary: UI_ACCENT_GREEN,
+                        colorBgBase: UI_BG_BLACK,
+                        colorBgContainer: UI_PANEL_BG,
+                        colorBorder: UI_BORDER_STRONG,
+                        colorText: UI_TEXT_PRIMARY_ON_DARK,
+                        colorTextSecondary: UI_TEXT_SUBTLE,
                         fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
                     },
                 }}
@@ -71,36 +83,47 @@ function App() {
             theme={{
                 algorithm: theme.darkAlgorithm,
                 token: {
-                    colorPrimary: '#00ff41',
-                    colorBgBase: '#000000',
-                    colorBgContainer: '#0a0a0a',
-                    colorBorder: '#333333',
-                    colorText: '#ffffff',
-                    colorTextSecondary: '#888888',
+                    colorPrimary: UI_ACCENT_GREEN,
+                    colorBgBase: UI_BG_BLACK,
+                    colorBgContainer: UI_PANEL_BG,
+                    colorBorder: UI_BORDER_STRONG,
+                    colorText: UI_TEXT_PRIMARY_ON_DARK,
+                    colorTextSecondary: UI_TEXT_SUBTLE,
                     fontFamily: '"JetBrains Mono", "Fira Code", "Monaco", "Consolas", monospace',
                 },
                 components: {
                     Layout: {
-                        bodyBg: '#000000',
-                        headerBg: '#0a0a0a',
+                        bodyBg: UI_BG_BLACK,
+                        headerBg: UI_PANEL_BG,
                     },
                     Card: {
-                        colorBgContainer: '#0a0a0a',
+                        colorBgContainer: UI_PANEL_BG,
                     },
                     Button: {
-                        colorBgContainer: 'transparent',
+                        colorBgContainer: UI_COLOR_TRANSPARENT,
                     },
                 },
             }}
         >
             <Router>
+                <ActiveHardwareRosProvider>
                 <Navigation />
                 <Routes>
                     <Route path="/" element={<RobotControlPanel />} />
-                    <Route path="/3d-viewer" element={<Robot3DViewer />} />
+                    <Route path="/3d-viewer" element={
+                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
+                            <Robot3DViewer />
+                        </Suspense>
+                    } />
+                    <Route path="/configuration" element={
+                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
+                            <Configuration />
+                        </Suspense>
+                    } />
                     <Route path="/stream" element={<Stream />} />
                     <Route path="*" element={<NotFound />} />
                 </Routes>
+                </ActiveHardwareRosProvider>
             </Router>
         </ConfigProvider>
     );
