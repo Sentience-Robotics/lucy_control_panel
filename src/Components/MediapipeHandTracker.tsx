@@ -88,7 +88,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         if (results.multiHandLandmarks) {
             for (const landmarks of results.multiHandLandmarks) {
                 drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                    color: UI_CANVAS_LIME,
+                    color: "#00FF00",
                     lineWidth: 4,
                 });
                 drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: 2 });
