@@ -70,10 +70,10 @@ const STLMesh: React.FC<STLMeshProps> = ({ meshData, opacity, wireframe }) => {
 };
 
 const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boolean }> = ({ meshes, opacity, wireframe }) => {
-    // URDF uses Z-up convention (positive Z = head).
-    // Three.js is Y-up. Rx(π/2) maps URDF Z → Three.js Y so the robot stands upright.
+    // URDF uses Z-up convention (positive Z = head, z≈0 = feet/base).
+    // Rx(-π/2) maps URDF +Z → Three.js +Y so the robot stands upright.
     return (
-        <group rotation={[Math.PI / 2, 0, 0]}>
+        <group rotation={[-Math.PI / 2, 0, 0]}>
             {meshes.map((mesh, index) => (
                 <STLMesh key={`${mesh.name}-${index}`} meshData={mesh} opacity={opacity} wireframe={wireframe} />
             ))}
