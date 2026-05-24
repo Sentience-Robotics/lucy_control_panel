@@ -1,12 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment, Grid } from '@react-three/drei';
 import { Typography, Button, Spin, Alert } from 'antd';
 import {isWebGLAvailable, STLLoader} from 'three-stdlib';
 import * as THREE from 'three';
-// import { RobotPathResolver } from '../Constants/robotConfig';
+import { RobotPathResolver } from '../Constants/robotConfig';
 import { Page } from '../Components/Page';
 import {
     UI_ACCENT_GREEN,
@@ -14,14 +12,32 @@ import {
     UI_BORDER_MUTED,
     UI_MODAL_MASK_BG,
     UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
+// --- URDF parsing types (internal) ---
+
+interface UrdfVisual {
+    meshFilename: string;
+    xyz: [number, number, number];
+    rpy: [number, number, number];
+    scale: [number, number, number];
+}
+
+interface UrdfJoint {
+    parentLink: string;
+    xyz: [number, number, number];
+    rpy: [number, number, number];
+}
+
+// --- Render types ---
+
 interface MeshData {
     geometry: THREE.BufferGeometry;
     position: [number, number, number];
-    rotation: [number, number, number];
+    quaternion: THREE.Quaternion;
     scale: [number, number, number];
     name: string;
 }
@@ -37,7 +53,7 @@ const STLMesh: React.FC<STLMeshProps> = ({ meshData, opacity, wireframe }) => {
         <mesh
             geometry={meshData.geometry}
             position={meshData.position}
-            rotation={meshData.rotation}
+            quaternion={meshData.quaternion}
             scale={meshData.scale}
         >
             <meshStandardMaterial
@@ -54,8 +70,10 @@ const STLMesh: React.FC<STLMeshProps> = ({ meshData, opacity, wireframe }) => {
 };
 
 const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boolean }> = ({ meshes, opacity, wireframe }) => {
+    // URDF uses Z-up convention (positive Z = head).
+    // Three.js is Y-up. Rx(π/2) maps URDF Z → Three.js Y so the robot stands upright.
     return (
-        <group>
+        <group rotation={[Math.PI / 2, 0, 0]}>
             {meshes.map((mesh, index) => (
                 <STLMesh key={`${mesh.name}-${index}`} meshData={mesh} opacity={opacity} wireframe={wireframe} />
             ))}
@@ -63,15 +81,27 @@ const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boo
     );
 };
 
+// Parse a space-separated xyz/rpy/scale attribute into a typed triple.
+const parseVec3 = (attr: string | null | undefined): [number, number, number] => {
+    if (!attr) return [0, 0, 0];
+    const v = attr.trim().split(/\s+/).map(Number);
+    return [v[0] || 0, v[1] || 0, v[2] || 0];
+};
+
+// Build a 4×4 transform from a URDF origin (xyz translation + rpy Euler XYZ rotation).
+const makeTransform = (xyz: [number, number, number], rpy: [number, number, number]): THREE.Matrix4 => {
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rpy[0], rpy[1], rpy[2], 'XYZ'));
+    return new THREE.Matrix4().compose(new THREE.Vector3(...xyz), q, new THREE.Vector3(1, 1, 1));
+};
+
 const Robot3DViewer: React.FC = () => {
-    // @ts-expect-error unused
     const [meshes, setMeshes] = useState<MeshData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadingStatus, setLoadingStatus] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [wireframe, setWireframe] = useState(false);
     const [opacity, setOpacity] = useState(0.8);
     const [showGrid, setShowGrid] = useState(true);
-    // @ts-expect-error unused
     const loaderRef = useRef(new STLLoader());
 
     const loadRobotModel = async () => {
@@ -80,103 +110,144 @@ const Robot3DViewer: React.FC = () => {
             setLoading(false);
             return;
         }
-        setError("This page is currently not usable, as our URDF file is not finished yet. Please check back later.");
-        setLoading(false);
-        return;
 
-        // try {
-        //     setLoading(true);
-        //     setError(null);
-        //
-        //     // Load URDF file
-        //     const urdfResponse = await fetch(RobotPathResolver.getUrdfPath());
-        //     if (!urdfResponse.ok) {
-        //         throw new Error('Failed to load URDF file');
-        //     }
-        //
-        //     const urdfContent = await urdfResponse.text();
-        //
-        //     // Parse URDF to extract mesh references and transforms
-        //     const parser = new DOMParser();
-        //     const urdfDocument = parser.parseFromString(urdfContent, 'text/xml');
-        //
-        //     const visualElements = urdfDocument.querySelectorAll('visual');
-        //     const meshDataArray: MeshData[] = [];
-        //
-        //     for (const visual of visualElements) {
-        //         const meshElement = visual.querySelector('mesh');
-        //     if (!meshElement) {
-        //         continue;
-        //     }
-        //
-        //     const filename = meshElement.getAttribute('filename');
-        //     if (!filename) {
-        //         continue;
-        //     }
-        //
-        //     // Convert URDF path to public path using configuration
-        //     const stlPath = RobotPathResolver.resolveUrdfMeshPath(filename);
-        //
-        //     try {
-        //         // Load STL geometry
-        //         const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
-        //         loaderRef.current.load(
-        //             stlPath,
-        //             (geometry) => {
-        //             geometry.computeVertexNormals();
-        //             geometry.center();
-        //             resolve(geometry);
-        //             },
-        //             undefined,
-        //             (error) => reject(error)
-        //         );
-        //         });
-        //
-        //         // Extract transform information
-        //         const origin = visual.parentElement?.querySelector('origin');
-        //         let position: [number, number, number] = [0, 0, 0];
-        //         let rotation: [number, number, number] = [0, 0, 0];
-        //
-        //         if (origin) {
-        //         const xyz = origin.getAttribute('xyz');
-        //         const rpy = origin.getAttribute('rpy');
-        //
-        //         if (xyz) {
-        //             const coords = xyz.split(' ').map(Number);
-        //             position = [coords[0] || 0, coords[1] || 0, coords[2] || 0];
-        //         }
-        //
-        //         if (rpy) {
-        //             const angles = rpy.split(' ').map(Number);
-        //             rotation = [angles[0] || 0, angles[1] || 0, angles[2] || 0];
-        //         }
-        //         }
-        //
-        //         // Extract scale
-        //         const scaleAttr = meshElement.getAttribute('scale');
-        //         let scale: [number, number, number] = [1, 1, 1];
-        //         if (scaleAttr) {
-        //             const scaleValues = scaleAttr.split(' ').map(Number);
-        //             scale = [scaleValues[0] || 1, scaleValues[1] || 1, scaleValues[2] || 1];
-        //         }
-        //
-        //         meshDataArray.push({
-        //             geometry,
-        //             position,
-        //             rotation,
-        //             scale,
-        //             name: filename
-        //         });
-        //     } catch (meshError) {
-        //         console.warn(`Failed to load mesh ${stlPath}:`, meshError);
-        //     }
-        // }
-        //     setMeshes(meshDataArray);
-        // } catch (err) {
-        //     setError(err instanceof Error ? err.message : 'Failed to load robot model');
-        // } finally {
-        //     setLoading(false);
-        // }
+        try {
+            setLoading(true);
+            setError(null);
+
+            const urdfUrl = RobotPathResolver.getUrdfPath();
+            setLoadingStatus(`Fetching ${urdfUrl}…`);
+            console.group('[3DViewer] Loading URDF');
+            console.log('URL:', urdfUrl);
+
+            const urdfResponse = await fetch(urdfUrl);
+            console.log('HTTP status:', urdfResponse.status, urdfResponse.statusText);
+            if (!urdfResponse.ok) throw new Error('Failed to load URDF file');
+
+            const urdfContent = await urdfResponse.text();
+            const parser = new DOMParser();
+            const urdfDoc = parser.parseFromString(urdfContent, 'text/xml');
+
+            // --- 1. Parse links → their visuals ---
+            const linkVisualsMap = new Map<string, UrdfVisual[]>();
+            for (const linkEl of urdfDoc.querySelectorAll('link')) {
+                const linkName = linkEl.getAttribute('name') ?? '';
+                const visuals: UrdfVisual[] = [];
+                for (const visualEl of linkEl.querySelectorAll('visual')) {
+                    const meshEl = visualEl.querySelector('mesh');
+                    if (!meshEl) continue;
+                    const filename = meshEl.getAttribute('filename');
+                    if (!filename) continue;
+                    const originEl = visualEl.querySelector('origin');
+                    const scaleAttr = meshEl.getAttribute('scale');
+                    visuals.push({
+                        meshFilename: filename,
+                        xyz: parseVec3(originEl?.getAttribute('xyz')),
+                        rpy: parseVec3(originEl?.getAttribute('rpy')),
+                        scale: scaleAttr ? parseVec3(scaleAttr) : [1, 1, 1],
+                    });
+                }
+                if (visuals.length > 0) linkVisualsMap.set(linkName, visuals);
+            }
+
+            // --- 2. Parse joints → child-to-joint map ---
+            const childToJoint = new Map<string, UrdfJoint>();
+            for (const jointEl of urdfDoc.querySelectorAll('joint')) {
+                const parentEl = jointEl.querySelector('parent');
+                const childEl = jointEl.querySelector('child');
+                if (!parentEl || !childEl) continue;
+                const originEl = jointEl.querySelector('origin');
+                childToJoint.set(childEl.getAttribute('link') ?? '', {
+                    parentLink: parentEl.getAttribute('link') ?? '',
+                    xyz: parseVec3(originEl?.getAttribute('xyz')),
+                    rpy: parseVec3(originEl?.getAttribute('rpy')),
+                });
+            }
+
+            const totalLinks = urdfDoc.querySelectorAll('link').length;
+            const totalJoints = urdfDoc.querySelectorAll('joint').length;
+            const totalVisuals = [...linkVisualsMap.values()].reduce((s, v) => s + v.length, 0);
+            console.log(`Links: ${totalLinks} | Joints: ${totalJoints} | Visual meshes: ${totalVisuals}`);
+            setLoadingStatus(`Parsed URDF — ${totalLinks} links, ${totalVisuals} visuals`);
+
+            // --- 3. Compute world transform for each link (joint chain walk) ---
+            const worldMatCache = new Map<string, THREE.Matrix4>();
+            const getWorldMat = (linkName: string): THREE.Matrix4 => {
+                const hit = worldMatCache.get(linkName);
+                if (hit) return hit;
+                const joint = childToJoint.get(linkName);
+                if (!joint) {
+                    // Root link — identity
+                    const m = new THREE.Matrix4();
+                    worldMatCache.set(linkName, m);
+                    return m;
+                }
+                const result = new THREE.Matrix4().multiplyMatrices(
+                    getWorldMat(joint.parentLink),
+                    makeTransform(joint.xyz, joint.rpy)
+                );
+                worldMatCache.set(linkName, result);
+                return result;
+            };
+
+            // --- 4. Load STL files and build MeshData with full world transforms ---
+            const allVisuals: Array<{ linkName: string; visual: UrdfVisual }> = [];
+            for (const [linkName, visuals] of linkVisualsMap) {
+                for (const visual of visuals) allVisuals.push({ linkName, visual });
+            }
+
+            const total = allVisuals.length;
+            const meshDataArray: MeshData[] = [];
+            let loadedCount = 0;
+            let failedCount = 0;
+
+            for (const { linkName, visual } of allVisuals) {
+                const shortName = visual.meshFilename.split('/').pop() ?? visual.meshFilename;
+                setLoadingStatus(`Loading mesh ${loadedCount + failedCount + 1}/${total}: ${shortName}`);
+
+                // World transform = accumulated joint chain × visual origin offset
+                const worldMat = new THREE.Matrix4().multiplyMatrices(
+                    getWorldMat(linkName),
+                    makeTransform(visual.xyz, visual.rpy)
+                );
+                const pos = new THREE.Vector3();
+                const quat = new THREE.Quaternion();
+                const scl = new THREE.Vector3();
+                worldMat.decompose(pos, quat, scl);
+
+                const stlPath = RobotPathResolver.resolveUrdfMeshPath(visual.meshFilename);
+                try {
+                    const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
+                        loaderRef.current.load(stlPath, (geo) => { geo.computeVertexNormals(); resolve(geo); }, undefined, reject);
+                    });
+
+                    geometry.computeBoundingBox();
+                    const size = new THREE.Vector3();
+                    geometry.boundingBox!.getSize(size);
+
+                    console.log(
+                        `[mesh OK] ${shortName}`
+                        + ` | link=${linkName}`
+                        + ` | world=(${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`
+                        + ` | bbox=(${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)})`
+                    );
+                    loadedCount++;
+                    meshDataArray.push({ geometry, position: [pos.x, pos.y, pos.z], quaternion: quat, scale: visual.scale, name: visual.meshFilename });
+                } catch (meshError) {
+                    failedCount++;
+                    console.warn(`[mesh FAIL] ${stlPath}:`, meshError);
+                }
+            }
+
+            console.log(`[3DViewer] Done — loaded: ${loadedCount}, failed: ${failedCount}`);
+            console.groupEnd();
+            setLoadingStatus(`Done — ${loadedCount} meshes loaded`);
+            setMeshes(meshDataArray);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load robot model');
+        } finally {
+            setLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -185,11 +256,16 @@ const Robot3DViewer: React.FC = () => {
 
     if (loading) {
         return (
-            <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Spin size="large" />
-                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
-                    Loading 3D robot model...
-                </Text>
+            <Page contentStyle={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <Spin size="large" />
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Loading 3D robot model...</Text>
+                </div>
+                {loadingStatus && (
+                    <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 11, fontFamily: 'monospace' }}>
+                        {loadingStatus}
+                    </Text>
+                )}
             </Page>
         );
     }
@@ -261,10 +337,11 @@ const Robot3DViewer: React.FC = () => {
     >
         <Canvas
           camera={{
-            position: [5, 5, 5],
+            // Robot spans Three.js y ≈ 0 (feet) to +15 (head) after Z-up→Y-up rotation.
+            position: [0, 8, 40],
             fov: 50,
             near: 0.1,
-            far: 1000
+            far: 500
           }}
           style={{ background: UI_BG_BLACK }}
         >
@@ -279,14 +356,14 @@ const Robot3DViewer: React.FC = () => {
 
           {showGrid && (
             <Grid
-              args={[20, 20]}
-              cellSize={1}
+              args={[60, 60]}
+              cellSize={2}
               cellThickness={0.5}
               cellColor={UI_ACCENT_GREEN}
-              sectionSize={5}
+              sectionSize={10}
               sectionThickness={1}
               sectionColor={UI_TEXT_PRIMARY_ON_DARK}
-              fadeDistance={30}
+              fadeDistance={80}
               fadeStrength={1}
             />
           )}
@@ -294,13 +371,14 @@ const Robot3DViewer: React.FC = () => {
           <RobotModel meshes={meshes} opacity={opacity} wireframe={wireframe} />
 
           <OrbitControls
+            target={[0, 8, 0]}
             enablePan={true}
             enableZoom={true}
             enableRotate={true}
             dampingFactor={0.05}
             screenSpacePanning={false}
             minDistance={1}
-            maxDistance={50}
+            maxDistance={200}
           />
 
           <Environment preset="warehouse" />
