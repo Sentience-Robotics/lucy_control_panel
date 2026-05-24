@@ -76,7 +76,7 @@ const REFRESH_RATE = 300;
 const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
 
 export const RobotControlPanel: React.FC = () => {
-    const { isConnected, isConnecting, isReconnecting } = useRosConnection();
+    const { isConnected, isConnecting } = useRosConnection();
 
     const {
         controllerConfigsFromActive,
@@ -452,10 +452,10 @@ export const RobotControlPanel: React.FC = () => {
                     type="info"
                     showIcon
                     message={
-                        isConnecting || isReconnecting ? 'Connecting to ROS bridge…' : 'Connect to ROS bridge'
+                        isConnecting ? 'Connecting to ROS bridge…' : 'Connect to ROS bridge'
                     }
                     description={
-                        isConnecting || isReconnecting
+                        isConnecting
                             ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
                             : 'Use CONNECT in the header'
                     }
