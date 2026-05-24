@@ -87,6 +87,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
     const jointsRef = useRef<JointControlState[]>(joints);
+    const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(true);
@@ -233,20 +234,34 @@ export const RobotControlPanel: React.FC = () => {
         return unsubscribe;
     }, [isSending, isConnected, joints.length]);
 
-    // Subscribe to /joint_states for actual motor feedback — always active when connected.
+    // Subscribe to /joint_states — write into a ref at full ROS rate (no re-renders).
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
-            setJoints((prev) =>
-                prev.map((j) => {
-                    const p = positions.find((x) => x.name === j.name);
-                    if (p === undefined) return j;
-                    if (Math.abs(p.value - (j.actualValue ?? p.value + 1)) < 0.0005) return j;
-                    return { ...j, actualValue: p.value };
-                })
-            );
+            for (const { name, value } of positions) {
+                actualPositionsRef.current.set(name, value);
+            }
         });
-        return unsubscribe;
+        return () => { unsubscribe(); actualPositionsRef.current.clear(); };
+    }, [isConnected, joints.length]);
+
+    // Drain actual positions into state at 10 Hz — controls the render budget.
+    useEffect(() => {
+        if (!isConnected || joints.length === 0) return;
+        const interval = setInterval(() => {
+            setJoints((prev) => {
+                let changed = false;
+                const next = prev.map((j) => {
+                    const actual = actualPositionsRef.current.get(j.name);
+                    if (actual === undefined) return j;
+                    if (Math.abs(actual - (j.actualValue ?? actual + 1)) < 0.0005) return j;
+                    changed = true;
+                    return { ...j, actualValue: actual };
+                });
+                return changed ? next : prev;
+            });
+        }, 100);
+        return () => clearInterval(interval);
     }, [isConnected, joints.length]);
 
     useEffect(() => {
