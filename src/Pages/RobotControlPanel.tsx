@@ -249,6 +249,7 @@ export const RobotControlPanel: React.FC = () => {
     }, [isConnected, joints.length]);
 
     // Drain actual positions into state at 10 Hz — controls the render budget.
+    // Slider aligns to actual once on first feedback; after that only the blue dot updates.
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const interval = setInterval(() => {
@@ -258,15 +259,15 @@ export const RobotControlPanel: React.FC = () => {
                 const next = prev.map((j) => {
                     const actual = actualPositionsRef.current.get(j.name);
                     if (actual === undefined) return j;
-                    const actualChanged = Math.abs(actual - (j.actualValue ?? actual + 1)) >= 0.0005;
-                    // When not in control mode, keep the slider aligned to the real motor position.
-                    const sliderChanged = notSending && Math.abs(actual - j.currentValue) >= 0.0005;
-                    if (!actualChanged && !sliderChanged) return j;
+                    const isFirstFeedback = j.actualValue === undefined;
+                    const actualChanged = isFirstFeedback || Math.abs(actual - j.actualValue!) >= 0.0005;
+                    if (!actualChanged) return j;
                     changed = true;
                     return {
                         ...j,
                         actualValue: actual,
-                        ...(notSending && { currentValue: actual, targetValue: actual }),
+                        // First feedback only — align slider once.
+                        ...(isFirstFeedback && notSending && { currentValue: actual, targetValue: actual }),
                     };
                 });
                 return changed ? next : prev;
