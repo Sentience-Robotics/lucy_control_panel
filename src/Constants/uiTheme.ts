@@ -30,10 +30,9 @@ export const UI_TEXT_PRIMARY_ON_DARK = '#ffffff';
 export const UI_TEXT_SECONDARY_MUTED = '#666666';
 /** Muted labels / secondary lines (Ant `colorTextSecondary` parity). */
 export const UI_TEXT_SUBTLE = '#888888';
-export const UI_ERROR_RED = '#ff4d4f';
-export const UI_WARNING_AMBER = '#faad14';
-/** Connecting / highlight orange (ROS bridge, stream chrome). */
-export const UI_ACCENT_ORANGE = '#ffa500';
+export const UI_ERROR = '#ff4d4f';
+export const UI_WARNING = '#ffa500';
+export const UI_ACCENT_BLUE = '#00d9ff';
 /** Decorative accent on NotFound — not the primary semantic error color. */
 export const UI_DECORATIVE_CORAL = '#ff6b6b';
 
