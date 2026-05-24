@@ -35,6 +35,12 @@ export const STREAM_SOURCES: StreamSource[] = [
         messageType: 'sensor_msgs/msg/CompressedImage'
     },
     {
+        id: 'gazebo',
+        name: 'Gazebo Webcam',
+        topic: '/camera/gazebo/compressed',
+        messageType: 'sensor_msgs/msg/CompressedImage'
+    },
+    {
         id: 'realsense-rgb',
         name: 'Realsense RGB',
         topic: '/realsense/realsense2_camera/color/image_raw/compressed',
