@@ -43,6 +43,7 @@ import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
+import { degreeToRadian } from '../Utils/math.utils';
 
 /* Components */
 import { Page } from '../Components/Page';
@@ -127,14 +128,16 @@ export const RobotControlPanel: React.FC = () => {
         const joints: JointControlState[] = [];
         for (const c of configs) {
             for (const name of c.joints) {
+                const lim = c.jointLimits?.[name];
                 joints.push({
                     name,
                     currentValue: 0,
                     targetValue: 0,
-                    minValue: defaultMin,
-                    maxValue: defaultMax,
+                    minValue: lim ? degreeToRadian(lim.minDeg) : defaultMin,
+                    maxValue: lim ? degreeToRadian(lim.maxDeg) : defaultMax,
                     type: 'revolute',
                     category: c.defaultCategory,
+                    ...(lim && { restValue: degreeToRadian(lim.defaultDeg) }),
                 });
             }
         }

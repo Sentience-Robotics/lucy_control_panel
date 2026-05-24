@@ -1,0 +1,16 @@
+/* ─── Ant Design Slider: kill the rectangular focus ring on mouse click ─────
+   rc-slider places a focusable div *inside* the handle that can't be reached
+   via the `styles` prop. `:focus:not(:focus-visible)` targets mouse/touch
+   focus only, leaving keyboard navigation outlines intact.                  */
+.ant-slider *:focus:not(:focus-visible) {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* ─── Ant Design Slider: clean click feedback ────────────────────────────
+   The ::after disk (generated from colorPrimary) is replaced by a simple
+   scale-up of the solid handle dot on :active.                             */
+.ant-slider-handle:active {
+    transform: translateX(-50%) scale(1.2) !important;
+    transition: transform 0.08s ease !important;
+}
