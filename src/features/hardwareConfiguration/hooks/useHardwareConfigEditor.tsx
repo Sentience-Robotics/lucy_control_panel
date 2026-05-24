@@ -58,7 +58,7 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
     const { serverErrorRows, boardColumns, actuatorColumns, pressureSensorColumns } = useHardwareConfigEditorColumns({
         yamlDoc: yaml.yamlDoc,
         serverFieldErrors: yaml.serverFieldErrors,
-        yamlJointCatalog: table.yamlJointCatalog,
+        assignableUrdfJoints: table.assignableUrdfJoints,
         patchDoc: yaml.patchDoc,
         actuatorIdOnFocusRef: yaml.actuatorIdOnFocusRef,
         deleteActuatorAt: mutations.deleteActuatorAt,

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     asMapping,
+    assignableUrdfJointsFromYaml,
     boardSlots,
-    catalogUrdfJointsFromYaml,
     freePhysicalPinsOnBoard,
     sortedBoardIds,
 } from '../model/documentHelpers.ts';
@@ -97,7 +97,10 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
         return typeof v === 'string' ? v.trim() : '';
     }, [yamlDoc]);
 
-    const yamlJointCatalog = useMemo(() => (yamlDoc ? catalogUrdfJointsFromYaml(yamlDoc) : []), [yamlDoc]);
+    const assignableUrdfJoints = useMemo(
+        () => (yamlDoc ? assignableUrdfJointsFromYaml(yamlDoc) : []),
+        [yamlDoc],
+    );
 
     return {
         boardsEligibleForNewActuator,
@@ -106,7 +109,7 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
         actuatorRows,
         pressureSensorRows,
         hardwareRobotName,
-        yamlJointCatalog,
+        assignableUrdfJoints,
         addActuatorBoard,
         setAddActuatorBoard,
         addPressureSensorActuatorId,
