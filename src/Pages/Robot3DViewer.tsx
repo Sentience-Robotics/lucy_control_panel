@@ -88,9 +88,11 @@ const parseVec3 = (attr: string | null | undefined): [number, number, number] =>
     return [v[0] || 0, v[1] || 0, v[2] || 0];
 };
 
-// Build a 4×4 transform from a URDF origin (xyz translation + rpy Euler XYZ rotation).
+// Build a 4×4 transform from a URDF origin.
+// URDF rpy = extrinsic fixed-axis rotations: first X (roll), then Y (pitch), then Z (yaw).
+// Extrinsic XYZ = intrinsic ZYX, so Three.js Euler 'ZYX' gives Rz(yaw)·Ry(pitch)·Rx(roll). ✓
 const makeTransform = (xyz: [number, number, number], rpy: [number, number, number]): THREE.Matrix4 => {
-    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rpy[0], rpy[1], rpy[2], 'XYZ'));
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rpy[0], rpy[1], rpy[2], 'ZYX'));
     return new THREE.Matrix4().compose(new THREE.Vector3(...xyz), q, new THREE.Vector3(1, 1, 1));
 };
 
