@@ -97,7 +97,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         }
         // calls the processHands() function once a second
         const now = Date.now();
-        if (now - lastProcessTimeRef.current >= 1 / UPDATE_HZ_S) {
+        if (now - lastProcessTimeRef.current >= 1000 / UPDATE_HZ_S) {
             lastProcessTimeRef.current = now;
             processHands(results.multiHandLandmarks);
         }

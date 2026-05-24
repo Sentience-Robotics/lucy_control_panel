@@ -19,12 +19,14 @@ interface JointControlProps {
   joint: JointControlState;
   onValueChange: (name: string, value: number) => void;
   showDegrees?: boolean;
+  disabled?: boolean;
 }
 
 export const JointControl: React.FC<JointControlProps> = React.memo(({
   joint,
   onValueChange,
-  showDegrees = true
+  showDegrees = true,
+  disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
 
@@ -127,6 +129,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               value={currentDisplay}
               onChange={(value) => handleSliderChange(convertInputValue(value))}
               onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
+              disabled={disabled}
               style={{ margin: 0 }}
               tooltip={{
                 formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
@@ -161,6 +164,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             step={showDegrees ? 0.1 : 0.001}
             value={currentDisplay}
             onChange={(value) => handleInputChange(convertInputValue(value || 0))}
+            disabled={disabled}
             size="small"
             style={{
               width: 80,

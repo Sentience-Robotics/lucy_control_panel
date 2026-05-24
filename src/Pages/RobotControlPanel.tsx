@@ -96,7 +96,7 @@ export const RobotControlPanel: React.FC = () => {
     const [isSending, setIsSending] = useState(false);
     const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
-    const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
     const retakeCountRef = useRef(0);
 
@@ -251,12 +251,20 @@ export const RobotControlPanel: React.FC = () => {
         const interval = setInterval(() => {
             setJoints((prev) => {
                 let changed = false;
+                const notSending = !isSendingRef.current;
                 const next = prev.map((j) => {
                     const actual = actualPositionsRef.current.get(j.name);
                     if (actual === undefined) return j;
-                    if (Math.abs(actual - (j.actualValue ?? actual + 1)) < 0.0005) return j;
+                    const actualChanged = Math.abs(actual - (j.actualValue ?? actual + 1)) >= 0.0005;
+                    // When not in control mode, keep the slider aligned to the real motor position.
+                    const sliderChanged = notSending && Math.abs(actual - j.currentValue) >= 0.0005;
+                    if (!actualChanged && !sliderChanged) return j;
                     changed = true;
-                    return { ...j, actualValue: actual };
+                    return {
+                        ...j,
+                        actualValue: actual,
+                        ...(notSending && { currentValue: actual, targetValue: actual }),
+                    };
                 });
                 return changed ? next : prev;
             });
@@ -297,6 +305,7 @@ export const RobotControlPanel: React.FC = () => {
     }, []);
 
     const handleTeleopJoint = (y: number, jointName: string) => {
+        if (!isSendingRef.current) return;
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
                 const clampedX = Math.max(joint.minValue, y * joint.maxValue);
@@ -605,6 +614,7 @@ export const RobotControlPanel: React.FC = () => {
                                                 onJointValueChange={handleJointValueChange}
                                                 onResetCategory={handleResetCategory}
                                                 showDegrees={showDegrees}
+                                                disabled={!isSending}
                                             />
                                         </div>
                                     );
