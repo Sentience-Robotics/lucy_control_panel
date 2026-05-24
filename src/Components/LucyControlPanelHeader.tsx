@@ -31,10 +31,8 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         connectionStatus,
         isConnected,
         isConnecting,
-        isReconnecting,
         isDisconnected,
         connect,
-        reconnect,
         disconnect,
     } = useRosConnection();
 
@@ -77,24 +75,12 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         }
     };
 
-    const handleReconnect = async () => {
-        setConnectionError(null);
-        try {
-            await reconnect(rosUrl);
-            localStorage.setItem(ROS_URL_KEY, rosUrl);
-        } catch (error) {
-            setConnectionError(error instanceof Error ? error.message : 'Reconnection failed');
-        }
-    };
-
     const getConnectionStatusText = () => {
         switch (connectionStatus) {
             case 'connected':
                 return 'CONNECTED';
             case 'connecting':
                 return 'CONNECTING...';
-            case 'reconnecting':
-                return 'RECONNECTING...';
             case 'disconnected':
                 return 'DISCONNECTED';
             default:
@@ -110,8 +96,6 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
             case 'connected':
                 return UI_ACCENT_GREEN;
             case 'connecting':
-                return UI_WARNING;
-            case 'reconnecting':
                 return UI_WARNING;
             case 'disconnected':
                 return UI_ERROR;
@@ -197,7 +181,7 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                             placeholder="ROS BRIDGE URL"
                             value={rosUrl}
                             onChange={(e) => setRosUrl(e.target.value)}
-                            disabled={isConnecting || isReconnecting}
+                            disabled={isConnecting}
                             style={{
                                 width: 200,
                                 backgroundColor: UI_CHROME_SURFACE,
@@ -210,7 +194,7 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                         <Button
                             size="small"
                             onClick={() => void handleConnect()}
-                            disabled={isConnecting || isReconnecting}
+                            disabled={isConnecting}
                             style={{
                                 backgroundColor: isConnected ? UI_COLOR_TRANSPARENT : UI_ACCENT_GREEN,
                                 color: isConnected ? UI_TEXT_PRIMARY_ON_DARK : UI_TEXT_ON_ACCENT,
@@ -219,21 +203,6 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                             }}
                         >
                             {isConnected ? 'DISCONNECT' : 'CONNECT'}
-                        </Button>
-                        <Button
-                            size="small"
-                            onClick={() => void handleReconnect()}
-                            disabled={isDisconnected || isConnecting || isReconnecting}
-                            style={{
-                                backgroundColor:
-                                    isConnected || isReconnecting ? UI_WARNING : UI_COLOR_TRANSPARENT,
-                                color: isConnected || isReconnecting ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                borderColor: isConnected || isReconnecting ? UI_WARNING : UI_BORDER_SOFT,
-                                boxShadow:
-                                    isConnected || isReconnecting ? `0 0 8px ${UI_WARNING}` : 'none',
-                            }}
-                        >
-                            {isReconnecting ? 'RECONNECTING...' : 'RECONNECT'}
                         </Button>
                     </div>
                 </div>

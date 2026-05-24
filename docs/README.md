@@ -13,7 +13,7 @@ High-level module map and data-flow diagram across the full stack.
 
 | Document | Description |
 |---|---|
-| [RosBridgeService](./services/ros/ros.service.md) | WebSocket connection lifecycle, status events, reconnection |
+| [RosBridgeService](./services/ros/ros.service.md) | WebSocket connection lifecycle, status events |
 | [JointStateHandler](./services/ros/handlers/JointState.handler.md) | Joint command publication via `trajectory_msgs/JointTrajectory` |
 
 ### [Components](./components/README.md)
