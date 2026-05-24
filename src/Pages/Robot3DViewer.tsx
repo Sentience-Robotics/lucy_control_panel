@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { Typography, Button, Spin, Alert, Tooltip, Slider } from 'antd';
+import { Typography, Button, Spin, Alert } from 'antd';
+import { isWebGLAvailable, STLLoader } from 'three-stdlib';
+import * as THREE from 'three';
+import { RobotPathResolver } from '../Constants/robotConfig';
 import { Page } from '../Components/Page';
-import { RobotFKModel } from '../Components/RobotFKModel';
-import { useRobotModel } from '../hooks/useRobotModel';
-import { useRosConnection } from '../hooks/useRosConnection.hook';
-import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
-import { ToggleSwitch } from '../Components/ToggleSwitch';
 import {
     UI_ACCENT_GREEN,
     UI_BG_BLACK,
@@ -19,39 +17,245 @@ import {
 
 const { Text } = Typography;
 
-interface Robot3DViewerProps {
-    /** When true: compact canvas only, no page wrapper or control overlays. */
-    embedded?: boolean;
+// --- URDF parsing types (internal) ---
+
+interface UrdfVisual {
+    meshFilename: string;
+    xyz: [number, number, number];
+    rpy: [number, number, number];
+    scale: [number, number, number];
 }
 
-const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
-    const { linkMeshes, urdfJoints, loading, loadingStatus, error, reload } = useRobotModel();
-    const { isConnected } = useRosConnection();
-    const jointAngles = useThrottledJointAngles(isConnected);
+interface UrdfJoint {
+    parentLink: string;
+    xyz: [number, number, number];
+    rpy: [number, number, number];
+}
 
+// --- Render types ---
+
+interface MeshData {
+    geometry: THREE.BufferGeometry;
+    position: [number, number, number];
+    quaternion: THREE.Quaternion;
+    scale: [number, number, number];
+    name: string;
+}
+
+interface STLMeshProps {
+    meshData: MeshData;
+    opacity: number;
+    wireframe: boolean;
+}
+
+const STLMesh: React.FC<STLMeshProps> = ({ meshData, opacity, wireframe }) => {
+    return (
+        <mesh
+            geometry={meshData.geometry}
+            position={meshData.position}
+            quaternion={meshData.quaternion}
+            scale={meshData.scale}
+        >
+            <meshStandardMaterial
+                key={`${wireframe}-${opacity}`}
+                color={UI_ACCENT_GREEN}
+                transparent
+                opacity={opacity}
+                wireframe={wireframe}
+                roughness={0.3}
+                metalness={0.7}
+            />
+        </mesh>
+    );
+};
+
+const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boolean }> = ({ meshes, opacity, wireframe }) => {
+    // URDF uses Z-up convention (positive Z = head).
+    // Three.js is Y-up. Rx(π/2) maps URDF Z → Three.js Y so the robot stands upright.
+    return (
+        <group rotation={[Math.PI / 2, 0, 0]}>
+            {meshes.map((mesh, index) => (
+                <STLMesh key={`${mesh.name}-${index}`} meshData={mesh} opacity={opacity} wireframe={wireframe} />
+            ))}
+        </group>
+    );
+};
+
+// Parse a space-separated xyz/rpy/scale attribute into a typed triple.
+const parseVec3 = (attr: string | null | undefined): [number, number, number] => {
+    if (!attr) return [0, 0, 0];
+    const v = attr.trim().split(/\s+/).map(Number);
+    return [v[0] || 0, v[1] || 0, v[2] || 0];
+};
+
+// Build a 4×4 transform from a URDF origin (xyz translation + rpy Euler XYZ rotation).
+const makeTransform = (xyz: [number, number, number], rpy: [number, number, number]): THREE.Matrix4 => {
+    const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rpy[0], rpy[1], rpy[2], 'XYZ'));
+    return new THREE.Matrix4().compose(new THREE.Vector3(...xyz), q, new THREE.Vector3(1, 1, 1));
+};
+
+const Robot3DViewer: React.FC = () => {
+    const [meshes, setMeshes] = useState<MeshData[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingStatus, setLoadingStatus] = useState<string>('');
+    const [error, setError] = useState<string | null>(null);
     const [wireframe, setWireframe] = useState(false);
-    const [opacity, setOpacity] = useState(embedded ? 0.85 : 0.8);
-    const [showGrid, setShowGrid] = useState(!embedded);
+    const [opacity, setOpacity] = useState(0.8);
+    const [showGrid, setShowGrid] = useState(true);
+    const loaderRef = useRef(new STLLoader());
+
+    const loadRobotModel = async () => {
+        if (!isWebGLAvailable()) {
+            setError('WebGL is not supported or activated in your browser. Please use a WebGL-compatible browser.');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            setError(null);
+
+            const urdfUrl = RobotPathResolver.getUrdfPath();
+            setLoadingStatus(`Fetching ${urdfUrl}…`);
+            console.group('[3DViewer] Loading URDF');
+            console.log('URL:', urdfUrl);
+
+            const urdfResponse = await fetch(urdfUrl);
+            console.log('HTTP status:', urdfResponse.status, urdfResponse.statusText);
+            if (!urdfResponse.ok) throw new Error('Failed to load URDF file');
+
+            const urdfContent = await urdfResponse.text();
+            const parser = new DOMParser();
+            const urdfDoc = parser.parseFromString(urdfContent, 'text/xml');
+
+            // --- 1. Parse links → their visuals ---
+            const linkVisualsMap = new Map<string, UrdfVisual[]>();
+            for (const linkEl of urdfDoc.querySelectorAll('link')) {
+                const linkName = linkEl.getAttribute('name') ?? '';
+                const visuals: UrdfVisual[] = [];
+                for (const visualEl of linkEl.querySelectorAll('visual')) {
+                    const meshEl = visualEl.querySelector('mesh');
+                    if (!meshEl) continue;
+                    const filename = meshEl.getAttribute('filename');
+                    if (!filename) continue;
+                    const originEl = visualEl.querySelector('origin');
+                    const scaleAttr = meshEl.getAttribute('scale');
+                    visuals.push({
+                        meshFilename: filename,
+                        xyz: parseVec3(originEl?.getAttribute('xyz')),
+                        rpy: parseVec3(originEl?.getAttribute('rpy')),
+                        scale: scaleAttr ? parseVec3(scaleAttr) : [1, 1, 1],
+                    });
+                }
+                if (visuals.length > 0) linkVisualsMap.set(linkName, visuals);
+            }
+
+            // --- 2. Parse joints → child-to-joint map ---
+            const childToJoint = new Map<string, UrdfJoint>();
+            for (const jointEl of urdfDoc.querySelectorAll('joint')) {
+                const parentEl = jointEl.querySelector('parent');
+                const childEl = jointEl.querySelector('child');
+                if (!parentEl || !childEl) continue;
+                const originEl = jointEl.querySelector('origin');
+                childToJoint.set(childEl.getAttribute('link') ?? '', {
+                    parentLink: parentEl.getAttribute('link') ?? '',
+                    xyz: parseVec3(originEl?.getAttribute('xyz')),
+                    rpy: parseVec3(originEl?.getAttribute('rpy')),
+                });
+            }
+
+            const totalLinks = urdfDoc.querySelectorAll('link').length;
+            const totalJoints = urdfDoc.querySelectorAll('joint').length;
+            const totalVisuals = [...linkVisualsMap.values()].reduce((s, v) => s + v.length, 0);
+            console.log(`Links: ${totalLinks} | Joints: ${totalJoints} | Visual meshes: ${totalVisuals}`);
+            setLoadingStatus(`Parsed URDF — ${totalLinks} links, ${totalVisuals} visuals`);
+
+            // --- 3. Compute world transform for each link (joint chain walk) ---
+            const worldMatCache = new Map<string, THREE.Matrix4>();
+            const getWorldMat = (linkName: string): THREE.Matrix4 => {
+                const hit = worldMatCache.get(linkName);
+                if (hit) return hit;
+                const joint = childToJoint.get(linkName);
+                if (!joint) {
+                    // Root link — identity
+                    const m = new THREE.Matrix4();
+                    worldMatCache.set(linkName, m);
+                    return m;
+                }
+                const result = new THREE.Matrix4().multiplyMatrices(
+                    getWorldMat(joint.parentLink),
+                    makeTransform(joint.xyz, joint.rpy)
+                );
+                worldMatCache.set(linkName, result);
+                return result;
+            };
+
+            // --- 4. Load STL files and build MeshData with full world transforms ---
+            const allVisuals: Array<{ linkName: string; visual: UrdfVisual }> = [];
+            for (const [linkName, visuals] of linkVisualsMap) {
+                for (const visual of visuals) allVisuals.push({ linkName, visual });
+            }
+
+            const total = allVisuals.length;
+            const meshDataArray: MeshData[] = [];
+            let loadedCount = 0;
+            let failedCount = 0;
+
+            for (const { linkName, visual } of allVisuals) {
+                const shortName = visual.meshFilename.split('/').pop() ?? visual.meshFilename;
+                setLoadingStatus(`Loading mesh ${loadedCount + failedCount + 1}/${total}: ${shortName}`);
+
+                // World transform = accumulated joint chain × visual origin offset
+                const worldMat = new THREE.Matrix4().multiplyMatrices(
+                    getWorldMat(linkName),
+                    makeTransform(visual.xyz, visual.rpy)
+                );
+                const pos = new THREE.Vector3();
+                const quat = new THREE.Quaternion();
+                const scl = new THREE.Vector3();
+                worldMat.decompose(pos, quat, scl);
+
+                const stlPath = RobotPathResolver.resolveUrdfMeshPath(visual.meshFilename);
+                try {
+                    const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
+                        loaderRef.current.load(stlPath, (geo) => { geo.computeVertexNormals(); resolve(geo); }, undefined, reject);
+                    });
+
+                    geometry.computeBoundingBox();
+                    const size = new THREE.Vector3();
+                    geometry.boundingBox!.getSize(size);
+
+                    console.log(
+                        `[mesh OK] ${shortName}`
+                        + ` | link=${linkName}`
+                        + ` | world=(${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`
+                        + ` | bbox=(${size.x.toFixed(2)}, ${size.y.toFixed(2)}, ${size.z.toFixed(2)})`
+                    );
+                    loadedCount++;
+                    meshDataArray.push({ geometry, position: [pos.x, pos.y, pos.z], quaternion: quat, scale: visual.scale, name: visual.meshFilename });
+                } catch (meshError) {
+                    failedCount++;
+                    console.warn(`[mesh FAIL] ${stlPath}:`, meshError);
+                }
+            }
+
+            console.log(`[3DViewer] Done — loaded: ${loadedCount}, failed: ${failedCount}`);
+            console.groupEnd();
+            setLoadingStatus(`Done — ${loadedCount} meshes loaded`);
+            setMeshes(meshDataArray);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load robot model');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadRobotModel();
+    }, []);
 
     // --- Loading state ---
     if (loading) {
-        if (embedded) {
-            return (
-                <div style={{
-                    width: '100%', height: '100%',
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center',
-                    gap: 8, background: UI_BG_BLACK,
-                }}>
-                    <Spin size="default" />
-                    {loadingStatus && (
-                        <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, fontFamily: 'monospace' }}>
-                            {loadingStatus}
-                        </Text>
-                    )}
-                </div>
-            );
-        }
         return (
             <Page contentStyle={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -69,19 +273,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
 
     // --- Error state ---
     if (error) {
-        if (embedded) {
-            return (
-                <div style={{
-                    width: '100%', height: '100%',
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center',
-                    gap: 8, background: UI_BG_BLACK, padding: 12,
-                }}>
-                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 11, textAlign: 'center' }}>{error}</Text>
-                    <button onClick={reload} style={{ fontFamily: 'monospace', cursor: 'pointer' }}>Retry</button>
-                </div>
-            );
-        }
         return (
             <Page>
                 <Alert
@@ -89,7 +280,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                     description={error}
                     type="error"
                     showIcon
-                    action={<Button size="small" onClick={reload}>Retry</Button>}
+                    action={<Button size="small" onClick={loadRobotModel}>Retry</Button>}
                 />
             </Page>
         );
@@ -98,17 +289,20 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
     // --- Canvas ---
     const canvas = (
         <Canvas
-            camera={embedded
-                ? { position: [0, 8, 40], fov: 50, near: 0.1, far: 500 }
-                : { position: [0, 8, 40], fov: 50, near: 0.1, far: 500 }
-            }
-            style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
+            camera={{
+                // Robot spans Three.js y ≈ 0 (feet) to +15 (head) after Z-up→Y-up rotation.
+                position: [0, 8, 40],
+                fov: 50,
+                near: 0.1,
+                far: 500,
+            }}
+            style={{ background: UI_BG_BLACK }}
         >
             <ambientLight intensity={0.6} />
-            <directionalLight position={[10, 10, 5]} intensity={1} castShadow={!embedded} shadow-mapSize={[2048, 2048]} />
-            {!embedded && <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN} />}
+            <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
+            <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN} />
 
-            {!embedded && showGrid && (
+            {showGrid && (
                 <Grid
                     args={[60, 60]}
                     cellSize={2}
@@ -122,29 +316,40 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                 />
             )}
 
-            <RobotFKModel
-                linkMeshes={linkMeshes}
-                urdfJoints={urdfJoints}
-                jointAngles={jointAngles}
-                opacity={opacity}
-                wireframe={!embedded && wireframe}
-            />
+            <RobotModel meshes={meshes} opacity={opacity} wireframe={wireframe} />
 
             <OrbitControls
                 target={[0, 8, 0]}
-                enablePan={!embedded}
-                enableZoom
-                enableRotate
-                dampingFactor={embedded ? 0.1 : 0.05}
-                minDistance={embedded ? 10 : 1}
-                maxDistance={embedded ? 100 : 200}
+                enablePan={true}
+                enableZoom={true}
+                enableRotate={true}
+                dampingFactor={0.05}
+                screenSpacePanning={false}
+                minDistance={1}
+                maxDistance={200}
             />
-
         </Canvas>
     );
 
-    // --- Embedded: bare canvas ---
-    if (embedded) return canvas;
+    // --- Full page: canvas + overlays + header controls ---
+    const headerContent = (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>WIREFRAME:</Text>
+                <div className="tui-toggle">
+                    <button onClick={() => setWireframe(false)} className={`tui-toggle-button ${!wireframe ? 'active' : ''}`}>OFF</button>
+                    <div className="tui-toggle-divider" />
+                    <button onClick={() => setWireframe(true)} className={`tui-toggle-button ${wireframe ? 'active' : ''}`}>ON</button>
+                </div>
+                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>GRID:</Text>
+                <div className="tui-toggle">
+                    <button onClick={() => setShowGrid(false)} className={`tui-toggle-button ${!showGrid ? 'active' : ''}`}>OFF</button>
+                    <div className="tui-toggle-divider" />
+                    <button onClick={() => setShowGrid(true)} className={`tui-toggle-button ${showGrid ? 'active' : ''}`}>ON</button>
+                </div>
+            </div>
+        </div>
+    );
 
     return (
         <Page
@@ -165,12 +370,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                 <div>• Mouse wheel: Zoom in/out</div>
                 <div>• Right mouse click + drag: Pan</div>
                 <div style={{ marginTop: 8 }}>
-                    <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {linkMeshes.length}</Text>
-                </div>
-                <div style={{ marginTop: 4 }}>
-                    <Text style={{ color: jointAngles.size > 0 ? UI_ACCENT_GREEN : UI_TEXT_SECONDARY_MUTED }}>
-                        JOINTS: {jointAngles.size > 0 ? `LIVE (${jointAngles.size})` : 'STATIC'}
-                    </Text>
+                    <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {meshes.length}</Text>
                 </div>
             </div>
 
