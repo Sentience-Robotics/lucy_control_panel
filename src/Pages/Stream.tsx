@@ -7,7 +7,7 @@ import type { StreamSource } from '../Constants/rosConfig';
 import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
 import {
     UI_ACCENT_GREEN,
-    UI_ACCENT_ORANGE,
+    UI_WARNING,
     UI_ACCENT_TEXT_SHADOW,
     UI_BORDER_MUTED,
     UI_CHROME_SURFACE,
@@ -26,12 +26,12 @@ const SELECT_POPUP_STYLE = {
 };
 
 const WARNING_BADGE_STYLE: React.CSSProperties = {
-    color: UI_ACCENT_ORANGE,
+    color: UI_WARNING,
     fontFamily: 'monospace',
     fontSize: 10,
     padding: '2px 6px',
     backgroundColor: UI_INPUT_SURFACE,
-    border: `1px solid ${UI_ACCENT_ORANGE}`,
+    border: `1px solid ${UI_WARNING}`,
     borderRadius: 4
 };
 
@@ -49,11 +49,11 @@ export const Stream: React.FC = () => {
         }
     };
 
-    const selectOptions = useMemo(() => 
+    const selectOptions = useMemo(() =>
         STREAM_SOURCES.map(source => ({
             value: source.id,
             label: source.name
-        })), 
+        })),
         []
     );
 
@@ -87,7 +87,7 @@ export const Stream: React.FC = () => {
                 />
                 <StreamMetrics fps={fps} frameDelay={frameDelay} fontSize={12} />
                 {hasEmptyDataWarning && (
-                    <span 
+                    <span
                         style={WARNING_BADGE_STYLE}
                         title="Topic is not publishing compressed image data. Check ROS configuration."
                     >
@@ -105,8 +105,8 @@ export const Stream: React.FC = () => {
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
-            <StreamPlayer 
-                onFrameDelayChange={setFrameDelay} 
+            <StreamPlayer
+                onFrameDelayChange={setFrameDelay}
                 onFpsChange={setFps}
                 streamSource={selectedStreamSource}
                 onEmptyDataWarning={setHasEmptyDataWarning}

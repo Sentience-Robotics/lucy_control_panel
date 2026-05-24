@@ -5,13 +5,13 @@ import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClien
 import {
     UI_ACCENT_BOX_SHADOW_SOFT,
     UI_ACCENT_GREEN,
-    UI_ACCENT_ORANGE,
+    UI_WARNING,
     UI_ACCENT_TEXT_SHADOW,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_CHROME_SURFACE,
     UI_COLOR_TRANSPARENT,
-    UI_ERROR_RED,
+    UI_ERROR,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
@@ -104,17 +104,17 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
 
     const getConnectionStatusColor = () => {
         if (countState > 1) {
-            return UI_ACCENT_ORANGE;
+            return UI_WARNING;
         }
         switch (connectionStatus) {
             case 'connected':
                 return UI_ACCENT_GREEN;
             case 'connecting':
-                return UI_ACCENT_ORANGE;
+                return UI_WARNING;
             case 'reconnecting':
-                return UI_ACCENT_ORANGE;
+                return UI_WARNING;
             case 'disconnected':
-                return UI_ERROR_RED;
+                return UI_ERROR;
             default:
                 return UI_TEXT_SECONDARY_MUTED;
         }
@@ -226,11 +226,11 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                             disabled={isDisconnected || isConnecting || isReconnecting}
                             style={{
                                 backgroundColor:
-                                    isConnected || isReconnecting ? UI_ACCENT_ORANGE : UI_COLOR_TRANSPARENT,
+                                    isConnected || isReconnecting ? UI_WARNING : UI_COLOR_TRANSPARENT,
                                 color: isConnected || isReconnecting ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                borderColor: isConnected || isReconnecting ? UI_ACCENT_ORANGE : UI_BORDER_SOFT,
+                                borderColor: isConnected || isReconnecting ? UI_WARNING : UI_BORDER_SOFT,
                                 boxShadow:
-                                    isConnected || isReconnecting ? `0 0 8px ${UI_ACCENT_ORANGE}` : 'none',
+                                    isConnected || isReconnecting ? `0 0 8px ${UI_WARNING}` : 'none',
                             }}
                         >
                             {isReconnecting ? 'RECONNECTING...' : 'RECONNECT'}

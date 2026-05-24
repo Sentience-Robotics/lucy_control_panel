@@ -4,7 +4,7 @@ import type { JointControlState } from '../Constants/robotTypes';
 
 import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
 import {
-    UI_ACCENT_ORANGE,
+    UI_ACCENT_BLUE,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_INPUT_SURFACE,
@@ -120,26 +120,6 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ flex: 1, position: 'relative' }}>
-            {actualBarPercent !== undefined && (
-              <div
-                title={`Actual: ${showDegrees
-                  ? `${Math.round(radianToDegree(joint.actualValue!) * 10) / 10}°`
-                  : `${Math.round(joint.actualValue! * 1000) / 1000}rad`}`}
-                style={{
-                  position: 'absolute',
-                  left: `${actualBarPercent}%`,
-                  top: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: 3,
-                  height: 16,
-                  backgroundColor: UI_ACCENT_ORANGE,
-                  borderRadius: 2,
-                  pointerEvents: 'none',
-                  boxShadow: `0 0 4px ${UI_ACCENT_ORANGE}`,
-                  zIndex: 0,
-                }}
-              />
-            )}
             <Slider
               min={minDisplay}
               max={maxDisplay}
@@ -153,6 +133,26 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 placement: 'top'
               }}
             />
+            {actualBarPercent !== undefined && (
+              <div
+                title={`Actual: ${showDegrees
+                  ? `${Math.round(radianToDegree(joint.actualValue!) * 10) / 10}°`
+                  : `${Math.round(joint.actualValue! * 1000) / 1000}rad`}`}
+                style={{
+                  position: 'absolute',
+                  left: `${actualBarPercent}%`,
+                  // top: '50%',
+                  top: 20,
+                  transform: 'translate(-50%, -50%)',
+                  width: 4,
+                  height: 4,
+                  backgroundColor: UI_ACCENT_BLUE,
+                  borderRadius: 2,
+                  pointerEvents: 'none',
+                  boxShadow: `0 0 4px ${UI_ACCENT_BLUE}`,
+                }}
+              />
+            )}
           </div>
 
           <InputNumber

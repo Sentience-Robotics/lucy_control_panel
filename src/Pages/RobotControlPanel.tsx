@@ -60,12 +60,12 @@ import {
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
-    UI_ERROR_RED,
+    UI_ERROR,
     UI_MODAL_MASK_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
-    UI_WARNING_AMBER,
+    UI_WARNING,
 } from '../Constants/uiTheme.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -629,7 +629,7 @@ export const RobotControlPanel: React.FC = () => {
                 return (
                     <Modal
                         title={
-                            <Title level={4} style={{ color: UI_WARNING_AMBER, margin: 0 }}>
+                            <Title level={4} style={{ color: UI_WARNING, margin: 0 }}>
                                 <ThunderboltOutlined /> {fighting ? 'Stop fighting!' : 'Someone else took control'}
                             </Title>
                         }
@@ -681,7 +681,7 @@ export const RobotControlPanel: React.FC = () => {
                             <Text style={{ color: UI_TEXT_SUBTLE }}>
                                 {fighting
                                     ? 'The robot is confused. You should be too.'
-                                    : <>Your Control Robot was automatically turned <Text style={{ color: UI_ERROR_RED }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.</>
+                                    : <>Your Control Robot was automatically turned <Text style={{ color: UI_ERROR }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.</>
                                 }
                             </Text>
                         </Space>
