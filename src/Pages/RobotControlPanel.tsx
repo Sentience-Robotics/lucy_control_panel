@@ -222,6 +222,22 @@ export const RobotControlPanel: React.FC = () => {
         return unsubscribe;
     }, [isSending, isConnected, joints.length]);
 
+    // Subscribe to /joint_states for actual motor feedback — always active when connected.
+    useEffect(() => {
+        if (!isConnected || joints.length === 0) return;
+        const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
+            setJoints((prev) =>
+                prev.map((j) => {
+                    const p = positions.find((x) => x.name === j.name);
+                    if (p === undefined) return j;
+                    if (Math.abs(p.value - (j.actualValue ?? p.value + 1)) < 0.0005) return j;
+                    return { ...j, actualValue: p.value };
+                })
+            );
+        });
+        return unsubscribe;
+    }, [isConnected, joints.length]);
+
     useEffect(() => {
         if (!isSending) {
             return;
@@ -648,7 +664,7 @@ export const RobotControlPanel: React.FC = () => {
                                     color: UI_TEXT_PRIMARY_ON_DARK,
                                 }}
                             >
-                                {fighting ? "Let's calm down" : 'Dismiss'}
+                                {fighting ? "Let's calm down" : 'Close'}
                             </Button>,
                         ]}
                         style={{ top: 200 }}

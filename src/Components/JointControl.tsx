@@ -4,6 +4,7 @@ import type { JointControlState } from '../Constants/robotTypes';
 
 import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
 import {
+    UI_ACCENT_ORANGE,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_INPUT_SURFACE,
@@ -78,6 +79,15 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
 
+  const actualBarPercent = useMemo(() => {
+    if (joint.actualValue === undefined) return undefined;
+    const actualDisplay = showDegrees
+      ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
+      : Math.round(joint.actualValue * 1000) / 1000;
+    const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
+    return Math.max(0, Math.min(100, pct));
+  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees]);
+
   const getJointTypeColor = (type: string): string => {
     switch (type) {
       case 'revolute': return 'blue';
@@ -109,19 +119,41 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Slider
-            min={minDisplay}
-            max={maxDisplay}
-            step={showDegrees ? 0.1 : 0.001}
-            value={currentDisplay}
-            onChange={(value) => handleSliderChange(convertInputValue(value))}
-            onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
-            style={{ flex: 1, margin: 0 }}
-            tooltip={{
-              formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
-              placement: 'top'
-            }}
-          />
+          <div style={{ flex: 1, position: 'relative' }}>
+            {actualBarPercent !== undefined && (
+              <div
+                title={`Actual: ${showDegrees
+                  ? `${Math.round(radianToDegree(joint.actualValue!) * 10) / 10}°`
+                  : `${Math.round(joint.actualValue! * 1000) / 1000}rad`}`}
+                style={{
+                  position: 'absolute',
+                  left: `${actualBarPercent}%`,
+                  top: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: 3,
+                  height: 16,
+                  backgroundColor: UI_ACCENT_ORANGE,
+                  borderRadius: 2,
+                  pointerEvents: 'none',
+                  boxShadow: `0 0 4px ${UI_ACCENT_ORANGE}`,
+                  zIndex: 0,
+                }}
+              />
+            )}
+            <Slider
+              min={minDisplay}
+              max={maxDisplay}
+              step={showDegrees ? 0.1 : 0.001}
+              value={currentDisplay}
+              onChange={(value) => handleSliderChange(convertInputValue(value))}
+              onChangeComplete={(value) => handleSliderAfterChange(convertInputValue(value))}
+              style={{ margin: 0 }}
+              tooltip={{
+                formatter: (value) => `${value}${showDegrees ? '°' : 'rad'}`,
+                placement: 'top'
+              }}
+            />
+          </div>
 
           <InputNumber
             min={minDisplay}
