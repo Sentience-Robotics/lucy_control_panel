@@ -5,12 +5,14 @@ import type { JointControlState } from '../Constants/robotTypes';
 import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
 import {
     UI_ACCENT_BLUE,
+    UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_INPUT_SURFACE,
     UI_LIST_ROW_BG,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
+    UI_WARNING,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -90,6 +92,15 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     return Math.max(0, Math.min(100, pct));
   }, [joint.actualValue, minDisplay, maxDisplay, showDegrees]);
 
+  const restBarPercent = useMemo(() => {
+    if (joint.restValue === undefined) return undefined;
+    const restDisplay = showDegrees
+      ? Math.round(radianToDegree(joint.restValue) * 100) / 100
+      : Math.round(joint.restValue * 1000) / 1000;
+    const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
+    return Math.max(0, Math.min(100, pct));
+  }, [joint.restValue, minDisplay, maxDisplay, showDegrees]);
+
   const getJointTypeColor = (type: string): string => {
     switch (type) {
       case 'revolute': return 'blue';
@@ -136,6 +147,25 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 placement: 'top'
               }}
             />
+            {restBarPercent !== undefined && (
+              <div
+                title={`Default: ${showDegrees
+                  ? `${Math.round(radianToDegree(joint.restValue!) * 10) / 10}°`
+                  : `${Math.round(joint.restValue! * 1000) / 1000}rad`}`}
+                style={{
+                  position: 'absolute',
+                  left: `${restBarPercent}%`,
+                  top: -6,
+                  transform: 'translate(-50%, -50%)',
+                  width: 4,
+                  height: 4,
+                  backgroundColor: UI_ACCENT_GREEN,
+                  borderRadius: 2,
+                  pointerEvents: 'none',
+                  boxShadow: `0 0 4px ${UI_ACCENT_GREEN}`,
+                }}
+              />
+            )}
             {actualBarPercent !== undefined && (
               <div
                 title={`Actual: ${showDegrees
@@ -144,8 +174,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
                 style={{
                   position: 'absolute',
                   left: `${actualBarPercent}%`,
-                  // top: '50%',
-                  top: 20,
+                  top: 19,
                   transform: 'translate(-50%, -50%)',
                   width: 4,
                   height: 4,
