@@ -1,4 +1,4 @@
-import type { ControllerJointConfig } from '../Constants/rosConfig';
+import type { ControllerJointConfig, JointLimitDeg } from '../Constants/rosConfig';
 
 function boardIdToCategory(boardId: string): string {
     const tail = boardId.replace(/^rp2040_/, '');
@@ -39,9 +39,26 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
                     Number((b as Record<string, unknown>).virtual_pin),
             );
 
-        const joints = rows
-            .map((a) => String((a as Record<string, unknown>).urdf_joint ?? '').trim())
-            .filter(Boolean);
+        const joints: string[] = [];
+        const jointLimits: Record<string, JointLimitDeg> = {};
+
+        for (const row of rows) {
+            const r = row as Record<string, unknown>;
+            const joint = String(r.urdf_joint ?? '').trim();
+            if (!joint) continue;
+            joints.push(joint);
+
+            const minDeg = Number(r.servo_min_deg);
+            const maxDeg = Number(r.servo_max_deg);
+            const defaultDeg = Number(r.servo_default_deg);
+            if (Number.isFinite(minDeg) && Number.isFinite(maxDeg) && minDeg < maxDeg) {
+                jointLimits[joint] = {
+                    minDeg,
+                    maxDeg,
+                    defaultDeg: Number.isFinite(defaultDeg) ? defaultDeg : (minDeg + maxDeg) / 2,
+                };
+            }
+        }
 
         if (joints.length === 0) continue;
 
@@ -49,6 +66,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
             topic: `/${ctrlName}/joint_trajectory`,
             joints,
             defaultCategory: boardIdToCategory(boardId),
+            ...(Object.keys(jointLimits).length > 0 && { jointLimits }),
         });
     }
 
