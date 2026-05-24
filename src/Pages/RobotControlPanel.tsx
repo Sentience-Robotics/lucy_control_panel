@@ -93,6 +93,7 @@ export const RobotControlPanel: React.FC = () => {
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
+    const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
     const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
@@ -146,6 +147,9 @@ export const RobotControlPanel: React.FC = () => {
             JointStateHandler.getInstance([]);
             setJoints([]);
             setCategoryOrder([]);
+            // Ensure control mode is always OFF when the connection drops so that
+            // reconnecting never starts with control already active.
+            setIsSending(false);
             return;
         }
 
@@ -199,10 +203,17 @@ export const RobotControlPanel: React.FC = () => {
     }, [joints]);
 
     useEffect(() => {
+        isSendingRef.current = isSending;
+    }, [isSending]);
+
+
+    useEffect(() => {
         if (!isConnected) return;
         const unsubscribe = ControlModeHandler.getInstance().onControlTakenByOther(() => {
+            if (isSendingRef.current) {
+                setShowControlTakenModal(true);
+            }
             setIsSending(false);
-            setShowControlTakenModal(true);
         });
         return unsubscribe;
     }, [isConnected]);

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Typography } from 'antd';
 import { useRosConnection } from '../hooks/useRosConnection.hook.ts';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler.ts';
+import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler.ts';
 import {
     UI_ACCENT_BOX_SHADOW_SOFT,
     UI_ACCENT_GREEN,
@@ -31,7 +32,6 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         connectionStatus,
         isConnected,
         isConnecting,
-        isDisconnected,
         connect,
         disconnect,
     } = useRosConnection();
@@ -51,6 +51,9 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [countState, setCountState] = useState<number>(0);
+    const [activeControllerId, setActiveControllerId] = useState<string>(
+        () => ControlModeHandler.getInstance().currentControllerId
+    );
 
     useEffect(() => {
         const handler = new ConnectedClientsHandler((count: number) => {
@@ -61,10 +64,15 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         };
     }, []);
 
+    useEffect(() => {
+        return ControlModeHandler.getInstance().onControllerChanged(setActiveControllerId);
+    }, []);
+
     const handleConnect = async () => {
         setConnectionError(null);
         try {
             if (isConnected) {
+                ControlModeHandler.getInstance().releaseControl();
                 disconnect();
             } else {
                 await connect(rosUrl);
@@ -104,7 +112,14 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         }
     };
 
+    const getControllerColor = () => {
+        if (activeControllerId === ControlModeHandler.getInstance().clientId) return UI_ACCENT_GREEN;
+        if (activeControllerId !== '') return UI_WARNING;
+        return UI_TEXT_SECONDARY_MUTED;
+    };
+
     const bridgeColor = getConnectionStatusColor();
+    const controllerColor = getControllerColor();
 
     return (
         <div style={{ width: '100%' }}>
@@ -174,6 +189,36 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                                 }}
                             >
                                 ROS BRIDGE:{countState > 0 ? ` ${countState}` : ''} {getConnectionStatusText()}
+                            </Text>
+                        </div>
+                        <div
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '4px 10px',
+                                borderRadius: 16,
+                                backgroundColor: UI_CHROME_SURFACE,
+                                border: `1px solid ${UI_BORDER_MUTED}`,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: '50%',
+                                    backgroundColor: controllerColor,
+                                    boxShadow: `0 0 8px ${controllerColor}`,
+                                }}
+                            />
+                            <Text
+                                style={{
+                                    color: controllerColor,
+                                    fontFamily: 'monospace',
+                                    fontSize: 12,
+                                }}
+                            >
+                                {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
                             </Text>
                         </div>
                         <Input
