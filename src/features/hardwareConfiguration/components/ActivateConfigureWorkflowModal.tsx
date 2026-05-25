@@ -4,8 +4,10 @@ import {
     LoadingOutlined,
     MinusCircleOutlined,
     ThunderboltOutlined,
+    WarningOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Checkbox, Divider, Modal, Progress, Space, Switch, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Modal, Progress, Space, Switch, Tag, Typography } from 'antd';
+import type { HardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
 import { HardwareConfigPresetHeaderTag } from '../../../Components/HardwareConfigPresetTag.tsx';
 import {
     UI_ACCENT_GREEN,
@@ -70,6 +72,18 @@ export interface ActivateConfigureWorkflowModalProps {
     workflowSteps: WorkflowStepSlice[];
     workflowOverallPercent: number;
     workflowDetailLine: string;
+    /** True once the most recent run finished successfully (and no new run started). */
+    workflowLastRunSucceeded: boolean;
+    /**
+     * Structural diff between the active doc captured before the run and the
+     * target preset. `null` when not enough info to compute (e.g. server fetch failed).
+     */
+    workflowLastRunDiff: HardwareConfigDiff | null;
+    /**
+     * `true` if Gazebo is part of the active launch graph (latched signal
+     * from `lucy_control_supervisor`). `false` if known not to be. `null` if unknown.
+     */
+    gazeboRunning: boolean | null;
     canRun: boolean;
 }
 
@@ -96,8 +110,25 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         workflowSteps,
         workflowOverallPercent,
         workflowDetailLine,
+        workflowLastRunSucceeded,
+        workflowLastRunDiff,
+        gazeboRunning,
         canRun,
     } = props;
+
+    const showGazeboRestartPrompt =
+        !workflowRunning &&
+        workflowLastRunSucceeded &&
+        gazeboRunning === true &&
+        workflowLastRunDiff !== null &&
+        workflowLastRunDiff.requiresGazeboRestart;
+
+    const showNoRestartNeeded =
+        !workflowRunning &&
+        workflowLastRunSucceeded &&
+        gazeboRunning === true &&
+        workflowLastRunDiff !== null &&
+        !workflowLastRunDiff.requiresGazeboRestart;
 
     return (
         <Modal
@@ -267,6 +298,27 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     ) : null}
                 </div>
 
+                {showGazeboRestartPrompt && workflowLastRunDiff ? (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        icon={<WarningOutlined />}
+                        message="GAZEBO RESTART REQUIRED"
+                        description={
+                            <GazeboRestartDiffBody diff={workflowLastRunDiff} />
+                        }
+                    />
+                ) : null}
+
+                {showNoRestartNeeded ? (
+                    <Alert
+                        type="success"
+                        showIcon
+                        message="GAZEBO RESTART NOT REQUIRED"
+                        description="Generated ros2_control xacro is unchanged — RELOAD applied the new controllers."
+                    />
+                ) : null}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                     {workflowRunning ? (
                         <Button danger onClick={onAbort}>
@@ -276,23 +328,113 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         <span />
                     )}
                     <Space>
-                        <Button onClick={onClose} disabled={workflowRunning}>
-                            CANCEL
-                        </Button>
-                        {!workflowRunning ? (
-                            <Button
-                                type="primary"
-                                icon={<ThunderboltOutlined />}
-                                onClick={() => void onRun()}
-                                disabled={!canRun}
-                                style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                            >
-                                RUN
-                            </Button>
-                        ) : null}
+                        {!workflowRunning && workflowLastRunSucceeded ? (
+                            <>
+                                <Button
+                                    danger
+                                    icon={<ThunderboltOutlined />}
+                                    onClick={() => void onRun()}
+                                    disabled={!canRun}
+                                >
+                                    RUN AGAIN
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    onClick={onClose}
+                                    style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                                >
+                                    DONE
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button onClick={onClose} disabled={workflowRunning}>
+                                    CANCEL
+                                </Button>
+                                {!workflowRunning ? (
+                                    <Button
+                                        type="primary"
+                                        icon={<ThunderboltOutlined />}
+                                        onClick={() => void onRun()}
+                                        disabled={!canRun}
+                                        style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                                    >
+                                        RUN
+                                    </Button>
+                                ) : null}
+                            </>
+                        )}
                     </Space>
                 </div>
             </Space>
         </Modal>
+    );
+}
+
+function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff }) {
+    const noun = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`;
+    return (
+        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+            <Text style={{ fontSize: 12 }}>
+                gz_ros2_control loads the URDF + ros2_control blocks at robot spawn. Apply the new
+                xacro by restarting Lucy with Gazebo:
+            </Text>
+            <Text code copyable style={{ fontSize: 11 }}>
+                ros2 launch lucy_bringup lucy.launch.py gazebo:=true rviz:=true
+            </Text>
+            <Divider style={{ margin: '6px 0' }} />
+            <Space size={6} wrap>
+                {diff.boardsAdded.length > 0 ? (
+                    <Tag color="green">+{noun(diff.boardsAdded.length, 'board')}</Tag>
+                ) : null}
+                {diff.boardsRemoved.length > 0 ? (
+                    <Tag color="red">-{noun(diff.boardsRemoved.length, 'board')}</Tag>
+                ) : null}
+                {diff.actuatorsAdded.length > 0 ? (
+                    <Tag color="green">+{noun(diff.actuatorsAdded.length, 'actuator')}</Tag>
+                ) : null}
+                {diff.actuatorsRemoved.length > 0 ? (
+                    <Tag color="red">-{noun(diff.actuatorsRemoved.length, 'actuator')}</Tag>
+                ) : null}
+                {diff.actuatorsModified.length > 0 ? (
+                    <Tag color="orange">
+                        ~{noun(diff.actuatorsModified.length, 'actuator')} modified
+                    </Tag>
+                ) : null}
+            </Space>
+            <div style={{ maxHeight: 180, overflow: 'auto', fontSize: 11, lineHeight: 1.4 }}>
+                {diff.boardsAdded.map((b) => (
+                    <div key={`b+${b}`}>
+                        <Text type="success">+ board {b}</Text>
+                    </div>
+                ))}
+                {diff.boardsRemoved.map((b) => (
+                    <div key={`b-${b}`}>
+                        <Text type="danger">− board {b}</Text>
+                    </div>
+                ))}
+                {diff.actuatorsAdded.map((a) => (
+                    <div key={`a+${a.actuatorId}`}>
+                        <Text type="success">+ actuator {a.label}</Text>
+                    </div>
+                ))}
+                {diff.actuatorsRemoved.map((a) => (
+                    <div key={`a-${a.actuatorId}`}>
+                        <Text type="danger">− actuator {a.label}</Text>
+                    </div>
+                ))}
+                {diff.actuatorsModified.map((a) => (
+                    <div key={`a~${a.actuatorId}`}>
+                        <Text type="warning">~ actuator {a.label}</Text>
+                        <span style={{ color: '#999' }}>
+                            {' '}
+                            {a.changes
+                                .map((c) => `${c.field}: ${String(c.before ?? '∅')} → ${String(c.after ?? '∅')}`)
+                                .join(', ')}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </Space>
     );
 }

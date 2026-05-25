@@ -3,10 +3,15 @@ import { useCallback, useRef, useState } from 'react';
 import type { ConfigurePipelineFeedbackNormalized } from '../../../Constants/hardwareConfigTypes.ts';
 import { HardwareConfigHandler } from '../../../Services/ros/handlers/HardwareConfig.handler.ts';
 import { startConfigurePipeline } from '../../../Services/ros/handlers/ConfigurePipeline.handler.ts';
+import { parseHardwareConfigYaml } from '../../../Utils/hardwareConfigYaml.ts';
 import type {
     WorkflowStepId,
     WorkflowStepSlice,
 } from '../activateWorkflowStepTypes.ts';
+import {
+    computeHardwareConfigDiff,
+    type HardwareConfigDiff,
+} from '../model/hardwareConfigDiff.ts';
 
 function initialSteps(
     simulationOnly: boolean,
@@ -102,6 +107,12 @@ export interface UseActivateConfigureWorkflowParams {
     isConnected: boolean;
     robotPackageName: string;
     refetchActiveHardware: () => Promise<unknown>;
+    /**
+     * Returns the parsed YAML of the currently-active hardware doc on the system,
+     * captured by the parent right before the workflow starts so the diff is
+     * computed against the state Gazebo originally loaded — not the post-activate state.
+     */
+    getPreRunActiveSnapshot: () => Record<string, unknown> | null;
 }
 
 export function useActivateConfigureWorkflow({
@@ -109,12 +120,19 @@ export function useActivateConfigureWorkflow({
     isConnected,
     robotPackageName,
     refetchActiveHardware,
+    getPreRunActiveSnapshot,
 }: UseActivateConfigureWorkflowParams) {
     const [workflowRunning, setWorkflowRunning] = useState(false);
     const [steps, setSteps] = useState<WorkflowStepSlice[]>(() => initialSteps(false, false, false));
     const [detailLine, setDetailLine] = useState('');
+    const [lastRunSucceeded, setLastRunSucceeded] = useState(false);
+    const [lastRunDiff, setLastRunDiff] = useState<HardwareConfigDiff | null>(null);
     const abortRef = useRef<(() => void) | null>(null);
     const runIdRef = useRef(0);
+    /** Snapshot of pre-run active doc, captured at the start of each run. */
+    const preRunActiveDocRef = useRef<Record<string, unknown> | null>(null);
+    /** Parsed YAML of the target preset (loaded once per run). */
+    const targetDocRef = useRef<Record<string, unknown> | null>(null);
 
     const workflowOverallPercent = computeWorkflowOverallPercent(steps);
 
@@ -127,9 +145,23 @@ export function useActivateConfigureWorkflow({
         (simulationOnly: boolean, buildOnly: boolean, activateOnly: boolean) => {
             setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
             setDetailLine('');
+            setLastRunSucceeded(false);
+            setLastRunDiff(null);
+            preRunActiveDocRef.current = null;
+            targetDocRef.current = null;
         },
         [],
     );
+
+    const computeAndStoreDiff = useCallback(() => {
+        const before = preRunActiveDocRef.current;
+        const after = targetDocRef.current;
+        if (!before || !after) {
+            setLastRunDiff(null);
+            return;
+        }
+        setLastRunDiff(computeHardwareConfigDiff(before, after));
+    }, []);
 
     const patchStep = useCallback((id: WorkflowStepId, patch: Partial<Omit<WorkflowStepSlice, 'id' | 'title'>>) => {
         setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -168,8 +200,24 @@ export function useActivateConfigureWorkflow({
             const runId = ++runIdRef.current;
             abortRef.current = null;
             setWorkflowRunning(true);
+            setLastRunSucceeded(false);
+            setLastRunDiff(null);
             setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
             setDetailLine('');
+
+            // Snapshot the active doc the running system loaded so we can later
+            // diff it against the target preset. Failing to capture either side
+            // just means we won't surface a Gazebo-restart prompt.
+            preRunActiveDocRef.current = getPreRunActiveSnapshot();
+            targetDocRef.current = null;
+            try {
+                const targetRes = await HardwareConfigHandler.getConfig(targetConfigName.trim());
+                if (targetRes.success) {
+                    targetDocRef.current = parseHardwareConfigYaml(targetRes.config_yaml || '');
+                }
+            } catch {
+                targetDocRef.current = null;
+            }
 
             const shouldContinue = () => runId === runIdRef.current;
 
@@ -254,6 +302,8 @@ export function useActivateConfigureWorkflow({
                     setDetailLine('Activated — build, flash, and reload skipped.');
                     await refetchActiveHardware();
                     messageApi.success('Configuration activated (build, flash, and reload skipped).');
+                    computeAndStoreDiff();
+                    setLastRunSucceeded(true);
                     return;
                 }
 
@@ -360,6 +410,8 @@ export function useActivateConfigureWorkflow({
                 setDetailLine(wetRes.message || 'Complete');
                 await refetchActiveHardware();
                 messageApi.success(`Workflow finished: ${wetRes.message || 'OK'}`);
+                computeAndStoreDiff();
+                setLastRunSucceeded(true);
             } catch (e) {
                 if (!shouldContinue()) return;
                 const msg = e instanceof Error ? e.message : 'Workflow failed';
@@ -375,7 +427,15 @@ export function useActivateConfigureWorkflow({
                 if (runId === runIdRef.current) setWorkflowRunning(false);
             }
         },
-        [isConnected, messageApi, patchStep, refetchActiveHardware, robotPackageName],
+        [
+            isConnected,
+            messageApi,
+            patchStep,
+            refetchActiveHardware,
+            robotPackageName,
+            getPreRunActiveSnapshot,
+            computeAndStoreDiff,
+        ],
     );
 
     return {
@@ -383,6 +443,8 @@ export function useActivateConfigureWorkflow({
         workflowSteps: steps,
         workflowOverallPercent,
         workflowDetailLine: detailLine,
+        workflowLastRunSucceeded: lastRunSucceeded,
+        workflowLastRunDiff: lastRunDiff,
         runActivateWorkflow,
         abortWorkflow,
         resetWorkflowPresentation,

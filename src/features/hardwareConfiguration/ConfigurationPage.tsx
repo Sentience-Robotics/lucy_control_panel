@@ -218,6 +218,9 @@ const ConfigurationPage = () => {
                 workflowSteps={hw.workflowSteps}
                 workflowOverallPercent={hw.workflowOverallPercent}
                 workflowDetailLine={hw.workflowDetailLine}
+                workflowLastRunSucceeded={hw.workflowLastRunSucceeded}
+                workflowLastRunDiff={hw.workflowLastRunDiff}
+                gazeboRunning={hw.gazeboRunning}
                 canRun={hw.modalCanRun && hw.isConnected}
             />
 

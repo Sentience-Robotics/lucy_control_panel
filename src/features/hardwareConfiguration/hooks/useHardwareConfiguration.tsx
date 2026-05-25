@@ -1,6 +1,7 @@
 import { message } from 'antd';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useActiveHardwareRos } from '../../../contexts/ActiveHardwareRosContext.tsx';
+import { useGazeboRunning } from '../../../hooks/useGazeboRunning.hook.ts';
 import { useRosConnection } from '../../../hooks/useRosConnection.hook.ts';
 import { boardsToFlashGoal } from '../utils/boardsToFlashGoal.ts';
 import { useActivateConfigureWorkflow } from './useActivateConfigureWorkflow.tsx';
@@ -66,6 +67,18 @@ export function useHardwareConfiguration() {
         refetchActiveHardware,
     });
 
+    const gazeboRunning = useGazeboRunning();
+    // Always carry the latest active doc in a ref so the workflow can snapshot
+    // it without re-rendering or stale closures.
+    const activeHardwareDocRef = useRef<Record<string, unknown> | null>(null);
+    useEffect(() => {
+        activeHardwareDocRef.current = activeHardwareDoc;
+    }, [activeHardwareDoc]);
+    const getPreRunActiveSnapshot = useCallback(() => {
+        const doc = activeHardwareDocRef.current;
+        return doc ? (structuredClone(doc) as Record<string, unknown>) : null;
+    }, []);
+
     const pipelineBoardIds = useMemo(
         () => editor.boardRows.map((r) => r.boardId),
         [editor.boardRows],
@@ -81,6 +94,8 @@ export function useHardwareConfiguration() {
         workflowSteps,
         workflowOverallPercent,
         workflowDetailLine,
+        workflowLastRunSucceeded,
+        workflowLastRunDiff,
         runActivateWorkflow,
         abortWorkflow,
         resetWorkflowPresentation,
@@ -89,6 +104,7 @@ export function useHardwareConfiguration() {
         isConnected,
         robotPackageName: serverRobotPackage,
         refetchActiveHardware,
+        getPreRunActiveSnapshot,
     });
 
     useEffect(() => {
@@ -209,6 +225,9 @@ export function useHardwareConfiguration() {
         workflowSteps,
         workflowOverallPercent,
         workflowDetailLine,
+        workflowLastRunSucceeded,
+        workflowLastRunDiff,
+        gazeboRunning,
         modalCanRun,
         pipelineBoardOptions,
         editorLocked,
