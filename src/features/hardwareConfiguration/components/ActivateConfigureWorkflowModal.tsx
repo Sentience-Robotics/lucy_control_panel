@@ -331,7 +331,6 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         {!workflowRunning && workflowLastRunSucceeded ? (
                             <>
                                 <Button
-                                    danger
                                     icon={<ThunderboltOutlined />}
                                     onClick={() => void onRun()}
                                     disabled={!canRun}
@@ -376,12 +375,32 @@ function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff }) {
     return (
         <Space direction="vertical" size={6} style={{ width: '100%' }}>
             <Text style={{ fontSize: 12 }}>
-                gz_ros2_control loads the URDF + ros2_control blocks at robot spawn. Apply the new
-                xacro by restarting Lucy with Gazebo:
+                gz_ros2_control loads the URDF + ros2_control blocks at robot spawn. To apply the
+                new xacro, restart Lucy with Gazebo using one of the following:
             </Text>
-            <Text code copyable style={{ fontSize: 11 }}>
-                ros2 launch lucy_bringup lucy.launch.py gazebo:=true rviz:=true
-            </Text>
+            <div style={{ fontSize: 12 }}>
+                <Text strong>Recommended:</Text>{' '}
+                <Text>
+                    press <Text code>Ctrl+C</Text> in the Lucy terminal, close it, then open a new
+                    terminal and run:
+                </Text>
+                <div style={{ marginTop: 4 }}>
+                    <Text code copyable style={{ fontSize: 11 }}>
+                        ./launch_lucy.sh
+                    </Text>
+                </div>
+            </div>
+            <div style={{ fontSize: 12 }}>
+                <Text strong>Advanced (same terminal):</Text>{' '}
+                <Text>
+                    press <Text code>Ctrl+C</Text>, then run:
+                </Text>
+                <div style={{ marginTop: 4 }}>
+                    <Text code copyable style={{ fontSize: 11 }}>
+                        ros2 launch lucy_bringup lucy.launch.py gazebo:=true rviz:=true
+                    </Text>
+                </div>
+            </div>
             <Divider style={{ margin: '6px 0' }} />
             <Space size={6} wrap>
                 {diff.boardsAdded.length > 0 ? (
