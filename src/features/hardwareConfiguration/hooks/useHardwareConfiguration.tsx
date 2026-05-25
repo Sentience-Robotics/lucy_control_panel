@@ -45,15 +45,6 @@ export function useHardwareConfiguration() {
         }
     }, []);
 
-    const setActivateModalSimulationOnly = useCallback((v: boolean) => {
-        setActivateModalSimulationOnlyInner(v);
-        if (v) {
-            setActivateModalBuildOnlyInner(false);
-            setActivateModalActivateOnlyInner(false);
-            setActivateModalBoards([]);
-        }
-    }, []);
-
     const lists = useHardwareConfigLists(isConnected, messageApi);
     const editor = useHardwareConfigEditor({
         messageApi,
@@ -86,6 +77,24 @@ export function useHardwareConfiguration() {
 
     const pipelineBoardOptions = useMemo(
         () => pipelineBoardIds.map((id) => ({ label: id, value: id })),
+        [pipelineBoardIds],
+    );
+
+    const setActivateModalSimulationOnly = useCallback(
+        (v: boolean) => {
+            setActivateModalSimulationOnlyInner(v);
+            if (v) {
+                setActivateModalBuildOnlyInner(false);
+                setActivateModalActivateOnlyInner(false);
+                setActivateModalBoards([]);
+            } else {
+                // Leaving SIMULATION ONLY pre-selects all known boards so the
+                // hardware workflow is immediately runnable.
+                setActivateModalBoards((prev) =>
+                    prev.length === 0 && pipelineBoardIds.length > 0 ? [...pipelineBoardIds] : prev,
+                );
+            }
+        },
         [pipelineBoardIds],
     );
 
@@ -141,14 +150,15 @@ export function useHardwareConfiguration() {
     ]);
 
     const openActivateModal = useCallback(() => {
-        const simDefault = pipelineBoardIds.length === 0;
-        setActivateModalSimulationOnlyInner(simDefault);
-        setActivateModalBoards(simDefault ? [] : [...pipelineBoardIds]);
+        // Default to SIMULATION ONLY so the modal opens with the safe sim flow;
+        // users with real boards can disable the switch (which pre-selects all boards).
+        setActivateModalSimulationOnlyInner(true);
+        setActivateModalBoards([]);
         setActivateModalBuildOnlyInner(false);
         setActivateModalActivateOnlyInner(false);
-        resetWorkflowPresentation(simDefault, false, false);
+        resetWorkflowPresentation(true, false, false);
         setActivateModalOpen(true);
-    }, [pipelineBoardIds, resetWorkflowPresentation]);
+    }, [resetWorkflowPresentation]);
 
     const closeActivateModal = useCallback(() => {
         if (workflowRunning) return;

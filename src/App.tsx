@@ -1,6 +1,7 @@
-import { ConfigProvider, theme, Spin } from 'antd';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ConfigProvider, theme } from 'antd';
+import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
+import type { CSSProperties, FC } from 'react';
 /* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
 import { Navigation } from './Components/Navigation';
@@ -8,6 +9,7 @@ import { NotFound } from './Pages/NotFound';
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
+import { LucyLoader } from './Components/LucyLoader';
 import {
     UI_ACCENT_GREEN,
     UI_BG_BLACK,
@@ -20,6 +22,71 @@ import {
 
 const Robot3DViewer = lazy(() => import('./Pages/Robot3DViewer').then(module => ({ default: module.default })));
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
+
+const CONTROL_PATH = '/';
+const CONFIG_PATH = '/configuration';
+const VIEWER_PATH = '/3d-viewer';
+const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH, VIEWER_PATH]);
+
+/**
+ * Render all main pages once and toggle visibility with `display: none`.
+ * Keeps page-local state (sliders, edits, expanded panels) alive when the
+ * user switches between CONTROL / CONFIGURATION / 3D VIEW. Lazy pages are
+ * only mounted after their first visit so the initial chunk stays small.
+ */
+const PersistentPages: FC = () => {
+    const { pathname } = useLocation();
+    const [configVisited, setConfigVisited] = useState(false);
+    const [viewerVisited, setViewerVisited] = useState(false);
+
+    useEffect(() => {
+        if (pathname === CONFIG_PATH) setConfigVisited(true);
+        if (pathname === VIEWER_PATH) setViewerVisited(true);
+    }, [pathname]);
+
+    const isKnown = KNOWN_PATHS.has(pathname);
+
+    const pageStyle = (active: boolean): CSSProperties => ({
+        display: active ? 'block' : 'none',
+    });
+
+    return (
+        <>
+            <div style={pageStyle(pathname === CONTROL_PATH)}>
+                <RobotControlPanel />
+            </div>
+            {configVisited ? (
+                <div style={pageStyle(pathname === CONFIG_PATH)}>
+                    <Suspense
+                        fallback={
+                            <LucyLoader
+                                label="LOADING CONFIGURATION"
+                                detail="Preparing the hardware configuration page."
+                            />
+                        }
+                    >
+                        <Configuration />
+                    </Suspense>
+                </div>
+            ) : null}
+            {viewerVisited ? (
+                <div style={pageStyle(pathname === VIEWER_PATH)}>
+                    <Suspense
+                        fallback={
+                            <LucyLoader
+                                label="LOADING 3D VIEW"
+                                detail="Initialising the robot 3D viewer."
+                            />
+                        }
+                    >
+                        <Robot3DViewer />
+                    </Suspense>
+                </div>
+            ) : null}
+            {!isKnown ? <NotFound /> : null}
+        </>
+    );
+};
 
 function App() {
     const localPassword: string | undefined = import.meta.env.VITE_LOCAL_PASSWORD;
@@ -106,21 +173,8 @@ function App() {
         >
             <Router>
                 <ActiveHardwareRosProvider>
-                <Navigation />
-                <Routes>
-                    <Route path="/" element={<RobotControlPanel />} />
-                    <Route path="/3d-viewer" element={
-                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
-                            <Robot3DViewer />
-                        </Suspense>
-                    } />
-                    <Route path="/configuration" element={
-                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
-                            <Configuration />
-                        </Suspense>
-                    } />
-<Route path="*" element={<NotFound />} />
-                </Routes>
+                    <Navigation />
+                    <PersistentPages />
                 </ActiveHardwareRosProvider>
             </Router>
         </ConfigProvider>

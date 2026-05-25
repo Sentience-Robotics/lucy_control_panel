@@ -47,6 +47,7 @@ import { degreeToRadian } from '../Utils/math.utils';
 
 /* Components */
 import { Page } from '../Components/Page';
+import { LucyLoader } from '../Components/LucyLoader';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
 import { PoseManager } from '../Components/PoseManager';
@@ -487,18 +488,13 @@ export const RobotControlPanel: React.FC = () => {
             removeScrollbars={false}
         >
             {!isConnected ? (
-                <Alert
-                    type="info"
-                    showIcon
-                    message={
-                        isConnecting ? 'Connecting to ROS bridge…' : 'Connect to ROS bridge'
-                    }
-                    description={
+                <LucyLoader
+                    label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
+                    detail={
                         isConnecting
                             ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
-                            : 'Use CONNECT in the header'
+                            : 'Use CONNECT in the header to start the link.'
                     }
-                    style={{ marginBottom: 12 }}
                 />
             ) : (
                 <>

@@ -4,6 +4,7 @@ import { Page } from '../../Components/Page.tsx';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
 import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigManager.tsx';
 import { LucyControlPanelHeader } from '../../Components/LucyControlPanelHeader.tsx';
+import { LucyLoader } from '../../Components/LucyLoader.tsx';
 import { UNPARSED_VALIDATION_KEY, GENERAL_VALIDATION_KEY } from '../../Utils/hardwareConfigServerErrors.ts';
 import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Constants/uiTheme.ts';
 import './configuration.switch.css';
@@ -136,14 +137,13 @@ const ConfigurationPage = () => {
             </div>
 
             {!hw.yamlDoc ? (
-                <Alert
-                    type="info"
-                    message={
+                <LucyLoader
+                    label={hw.loading ? 'LOADING HARDWARE CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
+                    detail={
                         hw.loading
-                            ? 'LOADING HARDWARE CONFIGURATION…'
-                            : 'CONNECT TO ROS SYSTEM FIRST'
+                            ? 'Fetching the active hardware preset and joint catalog.'
+                            : 'Use CONNECT in the header — the configuration loads automatically once linked.'
                     }
-                    showIcon
                 />
             ) : null}
 

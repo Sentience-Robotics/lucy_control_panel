@@ -374,10 +374,6 @@ function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff }) {
     const noun = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`;
     return (
         <Space direction="vertical" size={6} style={{ width: '100%' }}>
-            <Text style={{ fontSize: 12 }}>
-                gz_ros2_control loads the URDF + ros2_control blocks at robot spawn. To apply the
-                new xacro, restart Lucy with Gazebo using one of the following:
-            </Text>
             <div style={{ fontSize: 12 }}>
                 <Text strong>Recommended:</Text>{' '}
                 <Text>

@@ -1,0 +1,105 @@
+.lucy-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 32px 16px;
+    gap: 24px;
+    user-select: none;
+}
+
+.lucy-loader-compact {
+    min-height: 200px;
+}
+
+.lucy-loader-rings {
+    position: relative;
+    width: 96px;
+    height: 96px;
+}
+
+.lucy-loader-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    box-sizing: border-box;
+}
+
+.lucy-loader-ring-outer {
+    border-top-color: var(--lucy-loader-accent);
+    border-right-color: var(--lucy-loader-accent-soft);
+    animation: lucy-loader-spin 1.6s linear infinite;
+    box-shadow: 0 0 18px var(--lucy-loader-accent-glow);
+}
+
+.lucy-loader-ring-middle {
+    inset: 12px;
+    width: auto;
+    height: auto;
+    border-bottom-color: var(--lucy-loader-accent);
+    border-left-color: var(--lucy-loader-accent-soft);
+    animation: lucy-loader-spin-reverse 2.2s linear infinite;
+}
+
+.lucy-loader-ring-inner {
+    inset: 24px;
+    width: auto;
+    height: auto;
+    border-top-color: var(--lucy-loader-accent-soft);
+    border-bottom-color: var(--lucy-loader-accent);
+    animation: lucy-loader-spin 1.2s linear infinite;
+}
+
+.lucy-loader-core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border-radius: 50%;
+    background: var(--lucy-loader-accent);
+    box-shadow: 0 0 14px var(--lucy-loader-accent-glow);
+    animation: lucy-loader-pulse 1.4s ease-in-out infinite;
+}
+
+.lucy-loader-text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+@keyframes lucy-loader-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes lucy-loader-spin-reverse {
+    from {
+        transform: rotate(360deg);
+    }
+    to {
+        transform: rotate(0deg);
+    }
+}
+
+@keyframes lucy-loader-pulse {
+    0%,
+    100% {
+        opacity: 0.55;
+        transform: scale(0.85);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+}
