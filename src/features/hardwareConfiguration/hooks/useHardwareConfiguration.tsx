@@ -26,15 +26,31 @@ export function useHardwareConfiguration() {
     const [activateModalBoards, setActivateModalBoards] = useState<string[]>([]);
     const [activateModalBuildOnly, setActivateModalBuildOnlyInner] = useState(false);
     const [activateModalActivateOnly, setActivateModalActivateOnlyInner] = useState(false);
+    const [activateModalSimulationOnly, setActivateModalSimulationOnlyInner] = useState(false);
 
     const setActivateModalBuildOnly = useCallback((v: boolean) => {
         setActivateModalBuildOnlyInner(v);
-        if (v) setActivateModalActivateOnlyInner(false);
+        if (v) {
+            setActivateModalActivateOnlyInner(false);
+            setActivateModalSimulationOnlyInner(false);
+        }
     }, []);
 
     const setActivateModalActivateOnly = useCallback((v: boolean) => {
         setActivateModalActivateOnlyInner(v);
-        if (v) setActivateModalBuildOnlyInner(false);
+        if (v) {
+            setActivateModalBuildOnlyInner(false);
+            setActivateModalSimulationOnlyInner(false);
+        }
+    }, []);
+
+    const setActivateModalSimulationOnly = useCallback((v: boolean) => {
+        setActivateModalSimulationOnlyInner(v);
+        if (v) {
+            setActivateModalBuildOnlyInner(false);
+            setActivateModalActivateOnlyInner(false);
+            setActivateModalBoards([]);
+        }
     }, []);
 
     const lists = useHardwareConfigLists(isConnected, messageApi);
@@ -77,32 +93,44 @@ export function useHardwareConfiguration() {
 
     useEffect(() => {
         if (!activateModalOpen) return;
-        resetWorkflowPresentation(activateModalBuildOnly, activateModalActivateOnly);
+        resetWorkflowPresentation(
+            activateModalSimulationOnly,
+            activateModalBuildOnly,
+            activateModalActivateOnly,
+        );
     }, [
         activateModalOpen,
+        activateModalSimulationOnly,
         activateModalBuildOnly,
         activateModalActivateOnly,
         resetWorkflowPresentation,
     ]);
 
-    /** Empty board checkbox selection must not mean “flash everything” — force ACTIVATE ONLY. */
     useEffect(() => {
         if (!activateModalOpen || workflowRunning) return;
-        if (pipelineBoardIds.length === 0 || activateModalBoards.length > 0) return;
-        setActivateModalActivateOnly(true);
+        if (pipelineBoardIds.length === 0) {
+            setActivateModalSimulationOnlyInner(true);
+            return;
+        }
+        if (activateModalBoards.length === 0 && !activateModalSimulationOnly) {
+            setActivateModalActivateOnlyInner(true);
+        }
     }, [
         activateModalOpen,
         workflowRunning,
         pipelineBoardIds.length,
         activateModalBoards.length,
+        activateModalSimulationOnly,
         setActivateModalActivateOnly,
     ]);
 
     const openActivateModal = useCallback(() => {
-        setActivateModalBoards([...pipelineBoardIds]);
+        const simDefault = pipelineBoardIds.length === 0;
+        setActivateModalSimulationOnlyInner(simDefault);
+        setActivateModalBoards(simDefault ? [] : [...pipelineBoardIds]);
         setActivateModalBuildOnlyInner(false);
         setActivateModalActivateOnlyInner(false);
-        resetWorkflowPresentation(false, false);
+        resetWorkflowPresentation(simDefault, false, false);
         setActivateModalOpen(true);
     }, [pipelineBoardIds, resetWorkflowPresentation]);
 
@@ -111,22 +139,37 @@ export function useHardwareConfiguration() {
         setActivateModalOpen(false);
     }, [workflowRunning]);
 
+    const onActivateModalBoardsChange = useCallback(
+        (ids: string[]) => {
+            setActivateModalBoards(ids);
+            if (ids.length === 0) {
+                setActivateModalSimulationOnlyInner(true);
+            } else {
+                setActivateModalSimulationOnlyInner(false);
+            }
+        },
+        [],
+    );
+
     const runWorkflowFromModal = useCallback(async () => {
         const name = editor.loadConfigName.trim();
         if (!name) return;
-        const flashBoards = boardsToFlashGoal(activateModalBoards, pipelineBoardIds);
-        const noBoardsSelected = pipelineBoardIds.length > 0 && activateModalBoards.length === 0;
+        const simulationOnly = activateModalSimulationOnly || pipelineBoardIds.length === 0;
+        const flashBoards = simulationOnly ? [] : boardsToFlashGoal(activateModalBoards, pipelineBoardIds);
+        const noBoardsSelected = !simulationOnly && pipelineBoardIds.length > 0 && activateModalBoards.length === 0;
         await runActivateWorkflow({
             targetConfigName: name,
             boardsToFlash: flashBoards,
             buildOnly: activateModalBuildOnly,
             activateOnly: activateModalActivateOnly || noBoardsSelected,
+            simulationOnly,
             refreshSavedConfigs: editor.refreshConfigListForModal,
         });
     }, [
         activateModalBoards,
         activateModalActivateOnly,
         activateModalBuildOnly,
+        activateModalSimulationOnly,
         editor.loadConfigName,
         editor.refreshConfigListForModal,
         pipelineBoardIds,
@@ -136,7 +179,8 @@ export function useHardwareConfiguration() {
     const modalCanRun =
         Boolean(editor.selectedTargetConfigName.trim()) &&
         Boolean(serverRobotPackage.trim()) &&
-        (pipelineBoardIds.length === 0 ||
+        (activateModalSimulationOnly ||
+            pipelineBoardIds.length === 0 ||
             activateModalBoards.length > 0 ||
             activateModalActivateOnly);
 
@@ -150,11 +194,13 @@ export function useHardwareConfiguration() {
         serverRobotPackage,
         activateModalOpen,
         activateModalBoards,
-        setActivateModalBoards,
+        setActivateModalBoards: onActivateModalBoardsChange,
         activateModalBuildOnly,
         setActivateModalBuildOnly,
         activateModalActivateOnly,
         setActivateModalActivateOnly,
+        activateModalSimulationOnly,
+        setActivateModalSimulationOnly,
         openActivateModal,
         closeActivateModal,
         runWorkflowFromModal,

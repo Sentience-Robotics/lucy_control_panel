@@ -61,6 +61,8 @@ export interface ActivateConfigureWorkflowModalProps {
     onActivateModalBuildOnlyChange: (v: boolean) => void;
     activateModalActivateOnly: boolean;
     onActivateModalActivateOnlyChange: (v: boolean) => void;
+    activateModalSimulationOnly: boolean;
+    onActivateModalSimulationOnlyChange: (v: boolean) => void;
     /** Primary action */
     onRun: () => void | Promise<void>;
     onAbort: () => void;
@@ -86,6 +88,8 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         onActivateModalBuildOnlyChange,
         activateModalActivateOnly,
         onActivateModalActivateOnlyChange,
+        activateModalSimulationOnly,
+        onActivateModalSimulationOnlyChange,
         onRun,
         onAbort,
         workflowRunning,
@@ -128,6 +132,18 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                 ) : null}
 
                 <div>
+                    <Switch
+                        className="hardware-config-ant-switch"
+                        checked={activateModalSimulationOnly}
+                        onChange={onActivateModalSimulationOnlyChange}
+                        disabled={workflowRunning || pipelineBoardOptions.length === 0}
+                    />
+                    <Text style={{ marginLeft: 8 }}>SIMULATION ONLY (NO HARDWARE BUILD / FLASH)</Text>
+                </div>
+
+                {!activateModalSimulationOnly ? (
+                <>
+                <div>
                     <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12, marginBottom: 8, display: 'block' }}>
                         BOARDS
                         {pipelineBoardOptions.length > 0 ? (
@@ -156,7 +172,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         onChange={onActivateModalActivateOnlyChange}
                         disabled={workflowRunning}
                     />
-                    <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH)</Text>
+                    <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH / RELOAD)</Text>
                 </div>
                 <div>
                     <Switch
@@ -167,6 +183,8 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     />
                     <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
                 </div>
+                </>
+                ) : null}
 
                 <Card size="small" style={{ ...UI_CARD_SURFACE_STYLE }}>
                     <HardwareConfigPresetHeaderTag
@@ -195,12 +213,20 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     <div
                         style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
+                            gridTemplateColumns: activateModalSimulationOnly
+                                ? 'repeat(3, 1fr)'
+                                : 'repeat(5, 1fr)',
                             gap: 8,
                             marginTop: 12,
                         }}
                     >
-                        {workflowSteps.map((s) => (
+                        {(activateModalSimulationOnly
+                            ? (['validate', 'activate', 'reload'] as const)
+                            : (['validate', 'activate', 'build', 'flash', 'reload'] as const)
+                        )
+                            .map((id) => workflowSteps.find((s) => s.id === id))
+                            .filter((s): s is NonNullable<typeof s> => s != null)
+                            .map((s) => (
                             <Card
                                 key={s.id}
                                 size="small"

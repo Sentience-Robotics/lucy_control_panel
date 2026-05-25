@@ -210,6 +210,8 @@ const ConfigurationPage = () => {
                 onActivateModalBuildOnlyChange={hw.setActivateModalBuildOnly}
                 activateModalActivateOnly={hw.activateModalActivateOnly}
                 onActivateModalActivateOnlyChange={hw.setActivateModalActivateOnly}
+                activateModalSimulationOnly={hw.activateModalSimulationOnly}
+                onActivateModalSimulationOnlyChange={hw.setActivateModalSimulationOnly}
                 onRun={hw.runWorkflowFromModal}
                 onAbort={hw.abortWorkflow}
                 workflowRunning={hw.workflowRunning}

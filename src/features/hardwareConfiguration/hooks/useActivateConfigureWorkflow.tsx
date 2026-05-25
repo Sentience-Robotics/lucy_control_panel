@@ -8,7 +8,32 @@ import type {
     WorkflowStepSlice,
 } from '../activateWorkflowStepTypes.ts';
 
-function initialSteps(buildOnly: boolean, activateOnly: boolean): WorkflowStepSlice[] {
+function initialSteps(
+    simulationOnly: boolean,
+    buildOnly: boolean,
+    activateOnly: boolean,
+): WorkflowStepSlice[] {
+    if (simulationOnly) {
+        return [
+            { id: 'validate', title: 'VALIDATE', status: 'pending', fraction: 0, detail: '' },
+            { id: 'activate', title: 'ACTIVATE', status: 'pending', fraction: 0, detail: '' },
+            { id: 'reload', title: 'RELOAD', status: 'pending', fraction: 0, detail: '' },
+            {
+                id: 'build',
+                title: 'BUILD',
+                status: 'skipped',
+                fraction: 0,
+                detail: 'Skipped (simulation only)',
+            },
+            {
+                id: 'flash',
+                title: 'FLASH',
+                status: 'skipped',
+                fraction: 0,
+                detail: 'Skipped (simulation only)',
+            },
+        ];
+    }
     return [
         { id: 'validate', title: 'VALIDATE', status: 'pending', fraction: 0, detail: '' },
         { id: 'activate', title: 'ACTIVATE', status: 'pending', fraction: 0, detail: '' },
@@ -24,8 +49,13 @@ function initialSteps(buildOnly: boolean, activateOnly: boolean): WorkflowStepSl
             title: 'FLASH',
             status: buildOnly || activateOnly ? 'skipped' : 'pending',
             fraction: 0,
-            detail: buildOnly ? 'Skipped (build only)' : activateOnly ? 'Skipped (activate only)' : '',
+            detail: buildOnly
+                ? 'Skipped (build only)'
+                : activateOnly
+                  ? 'Skipped (activate only)'
+                  : '',
         },
+        { id: 'reload', title: 'RELOAD', status: 'pending', fraction: 0, detail: '' },
     ];
 }
 
@@ -59,6 +89,14 @@ function fractionForValidateDryRun(f: ConfigurePipelineFeedbackNormalized): numb
     return Math.max(0, Math.min(1, f.progress));
 }
 
+function fractionForWetSim(f: ConfigurePipelineFeedbackNormalized): number {
+    const p = f.phase?.toLowerCase() ?? '';
+    if (p === 'validate') return Math.max(0, Math.min(1, f.progress * 0.25));
+    if (p === 'generate') return Math.max(0, Math.min(1, 0.25 + f.progress * 0.35));
+    if (p === 'reload') return Math.max(0, Math.min(1, 0.6 + f.progress * 0.4));
+    return Math.max(0, Math.min(1, f.progress));
+}
+
 export interface UseActivateConfigureWorkflowParams {
     messageApi: MessageInstance;
     isConnected: boolean;
@@ -73,7 +111,7 @@ export function useActivateConfigureWorkflow({
     refetchActiveHardware,
 }: UseActivateConfigureWorkflowParams) {
     const [workflowRunning, setWorkflowRunning] = useState(false);
-    const [steps, setSteps] = useState<WorkflowStepSlice[]>(() => initialSteps(false, false));
+    const [steps, setSteps] = useState<WorkflowStepSlice[]>(() => initialSteps(false, false, false));
     const [detailLine, setDetailLine] = useState('');
     const abortRef = useRef<(() => void) | null>(null);
     const runIdRef = useRef(0);
@@ -85,10 +123,13 @@ export function useActivateConfigureWorkflow({
         abortRef.current = null;
     }, []);
 
-    const resetWorkflowPresentation = useCallback((buildOnly: boolean, activateOnly: boolean) => {
-        setSteps(initialSteps(buildOnly, activateOnly));
-        setDetailLine('');
-    }, []);
+    const resetWorkflowPresentation = useCallback(
+        (simulationOnly: boolean, buildOnly: boolean, activateOnly: boolean) => {
+            setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
+            setDetailLine('');
+        },
+        [],
+    );
 
     const patchStep = useCallback((id: WorkflowStepId, patch: Partial<Omit<WorkflowStepSlice, 'id' | 'title'>>) => {
         setSteps((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -100,9 +141,16 @@ export function useActivateConfigureWorkflow({
             boardsToFlash: string[];
             buildOnly: boolean;
             activateOnly: boolean;
+            simulationOnly: boolean;
             refreshSavedConfigs: () => Promise<unknown>;
         }) => {
-            const { targetConfigName, boardsToFlash, buildOnly, activateOnly } = params;
+            const {
+                targetConfigName,
+                boardsToFlash,
+                buildOnly,
+                activateOnly,
+                simulationOnly,
+            } = params;
             const rp = robotPackageName.trim();
             if (!isConnected) {
                 messageApi.error('Connect to ROS bridge first.');
@@ -120,7 +168,7 @@ export function useActivateConfigureWorkflow({
             const runId = ++runIdRef.current;
             abortRef.current = null;
             setWorkflowRunning(true);
-            setSteps(initialSteps(buildOnly, activateOnly));
+            setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
             setDetailLine('');
 
             const shouldContinue = () => runId === runIdRef.current;
@@ -143,6 +191,7 @@ export function useActivateConfigureWorkflow({
                         boards_to_flash: boardsToFlash,
                         dry_run: true,
                         build_only: false,
+                        simulation_only: simulationOnly,
                     },
                     {
                         onFeedback: (f) => {
@@ -186,7 +235,7 @@ export function useActivateConfigureWorkflow({
                 await params.refreshSavedConfigs();
                 await refetchActiveHardware();
 
-                if (activateOnly) {
+                if (activateOnly && !simulationOnly) {
                     patchStep('build', {
                         status: 'skipped',
                         fraction: 0,
@@ -197,19 +246,32 @@ export function useActivateConfigureWorkflow({
                         fraction: 0,
                         detail: 'Skipped (activate only)',
                     });
-                    setDetailLine('Activated — build and flash skipped.');
+                    patchStep('reload', {
+                        status: 'skipped',
+                        fraction: 0,
+                        detail: 'Skipped (activate only)',
+                    });
+                    setDetailLine('Activated — build, flash, and reload skipped.');
                     await refetchActiveHardware();
-                    messageApi.success('Configuration activated (build and flash skipped).');
+                    messageApi.success('Configuration activated (build, flash, and reload skipped).');
                     return;
                 }
 
-                patchStep('build', { status: 'running', fraction: 0, detail: '' });
-                if (!buildOnly) {
-                    patchStep('flash', { status: 'pending', fraction: 0, detail: '' });
+                if (!simulationOnly) {
+                    patchStep('build', { status: 'running', fraction: 0, detail: '' });
+                    if (!buildOnly) {
+                        patchStep('flash', { status: 'pending', fraction: 0, detail: '' });
+                    }
                 }
-                setDetailLine('BUILD — pipeline on active mapping…');
+                patchStep('reload', { status: 'pending', fraction: 0, detail: '' });
+                setDetailLine(
+                    simulationOnly
+                        ? 'SIMULATION — generate sim ros2_control and reload…'
+                        : 'BUILD — pipeline on active mapping…',
+                );
 
                 let sawFlash = false;
+                let sawReload = false;
                 const wet = startConfigurePipeline(
                     {
                         robot_package: rp,
@@ -217,6 +279,7 @@ export function useActivateConfigureWorkflow({
                         boards_to_flash: boardsToFlash,
                         dry_run: false,
                         build_only: buildOnly,
+                        simulation_only: simulationOnly,
                     },
                     {
                         onFeedback: (f: ConfigurePipelineFeedbackNormalized) => {
@@ -224,12 +287,37 @@ export function useActivateConfigureWorkflow({
                             const phase = (f.phase || '').toLowerCase();
                             setDetailLine(f.detail || `${phase.toUpperCase()}…`);
 
-                            if (phase === 'flash') {
+                            if (phase === 'reload') {
+                                sawReload = true;
+                                if (!simulationOnly) {
+                                    patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
+                                    if (buildOnly) {
+                                        patchStep('flash', {
+                                            status: 'skipped',
+                                            fraction: 0,
+                                            detail: 'Skipped (build only)',
+                                        });
+                                    } else {
+                                        patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                                    }
+                                }
+                                patchStep('reload', {
+                                    status: 'running',
+                                    fraction: Math.max(0, Math.min(1, f.progress)),
+                                    detail: f.detail || phase,
+                                });
+                            } else if (phase === 'flash') {
                                 sawFlash = true;
                                 patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
                                 patchStep('flash', {
                                     status: 'running',
                                     fraction: Math.max(0, Math.min(1, f.progress)),
+                                    detail: f.detail || phase,
+                                });
+                            } else if (simulationOnly) {
+                                patchStep('reload', {
+                                    status: 'running',
+                                    fraction: fractionForWetSim(f),
                                     detail: f.detail || phase,
                                 });
                             } else {
@@ -250,21 +338,25 @@ export function useActivateConfigureWorkflow({
 
                 if (!wetRes.success) {
                     const msg = wetRes.message || 'Configure pipeline failed';
-                    if (buildOnly || !sawFlash) failStep('build', msg);
+                    if (simulationOnly && sawReload) failStep('reload', msg);
+                    else if (buildOnly || !sawFlash) failStep('build', msg);
                     else failStep('flash', msg);
                     return;
                 }
 
-                patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
-                if (buildOnly) {
-                    patchStep('flash', {
-                        status: 'skipped',
-                        fraction: 0,
-                        detail: 'Skipped (build only)',
-                    });
-                } else {
-                    patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                if (!simulationOnly) {
+                    patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
+                    if (buildOnly) {
+                        patchStep('flash', {
+                            status: 'skipped',
+                            fraction: 0,
+                            detail: 'Skipped (build only)',
+                        });
+                    } else {
+                        patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                    }
                 }
+                patchStep('reload', { status: 'done', fraction: 1, detail: 'OK' });
                 setDetailLine(wetRes.message || 'Complete');
                 await refetchActiveHardware();
                 messageApi.success(`Workflow finished: ${wetRes.message || 'OK'}`);

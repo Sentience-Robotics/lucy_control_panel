@@ -170,6 +170,7 @@ export function startConfigurePipeline(
         boards_to_flash: input.boards_to_flash,
         dry_run: input.dry_run,
         build_only: input.build_only,
+        simulation_only: input.simulation_only ?? false,
     };
 
     let settled = false;
