@@ -26,8 +26,8 @@ export interface RobotConfig {
 }
 
 export const ROBOT_CONFIG: RobotConfig = {
-    // URDF file location
-    urdfPath: '/InMoov.urdf',
+    // URDF file location — served by the dev server from ROBOT_URDF_PATH in .env
+    urdfPath: '/robot.urdf',
 
     // Base mesh directory
     meshBasePath: '/meshes',
