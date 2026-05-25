@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
 /* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
-import { Stream } from "./Pages/Stream.tsx";
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
@@ -120,8 +119,7 @@ function App() {
                             <Configuration />
                         </Suspense>
                     } />
-                    <Route path="/stream" element={<Stream />} />
-                    <Route path="*" element={<NotFound />} />
+<Route path="*" element={<NotFound />} />
                 </Routes>
                 </ActiveHardwareRosProvider>
             </Router>

@@ -9,7 +9,7 @@ import {
     UI_BORDER_DIM,
     UI_BORDER_MUTED,
     UI_CHROME_SURFACE,
-    UI_ERROR_RED,
+    UI_ERROR,
     UI_GRADIENT_AUTH_PAGE,
     UI_PANEL_BG,
     UI_TEXT_ON_ACCENT,
@@ -32,11 +32,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
 
     const handleSubmit = async (values: { username: string; password: string }) => {
         setLoading(true);
-        
+
         try {
             const expectedPassword = import.meta.env.VITE_LOCAL_PASSWORD;
             const expectedUsername = import.meta.env.VITE_LOCAL_USERNAME;
-            
+
             if (!expectedPassword || !expectedUsername) {
                 throw new Error('Authentication not configured');
             }
@@ -90,9 +90,9 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                 bodyStyle={{ padding: '40px 32px' }}
             >
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
-                    <Title 
-                        level={2} 
-                        style={{ 
+                    <Title
+                        level={2}
+                        style={{
                             color: UI_ACCENT_GREEN,
                             fontFamily: 'monospace',
                             textShadow: UI_ACCENT_TEXT_SHADOW,
@@ -110,7 +110,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                     <Alert
                         message={error}
                         type="error"
-                        style={{ marginBottom: 24, backgroundColor: UI_AUTH_ALERT_SURFACE, borderColor: UI_ERROR_RED }}
+                        style={{ marginBottom: 24, backgroundColor: UI_AUTH_ALERT_SURFACE, borderColor: UI_ERROR }}
                     />
                 )}
 
@@ -190,8 +190,8 @@ export const AuthForm: React.FC<AuthFormProps> = ({ onLogin, error }) => {
                     </Form.Item>
                 </Form>
 
-                <div style={{ 
-                    textAlign: 'center', 
+                <div style={{
+                    textAlign: 'center',
                     marginTop: 24,
                     padding: '16px',
                     backgroundColor: UI_CHROME_SURFACE,

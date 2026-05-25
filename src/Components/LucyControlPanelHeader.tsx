@@ -2,16 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Typography } from 'antd';
 import { useRosConnection } from '../hooks/useRosConnection.hook.ts';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler.ts';
+import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler.ts';
 import {
     UI_ACCENT_BOX_SHADOW_SOFT,
     UI_ACCENT_GREEN,
-    UI_ACCENT_ORANGE,
+    UI_WARNING,
     UI_ACCENT_TEXT_SHADOW,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_CHROME_SURFACE,
     UI_COLOR_TRANSPARENT,
-    UI_ERROR_RED,
+    UI_ERROR,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
@@ -31,10 +32,7 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         connectionStatus,
         isConnected,
         isConnecting,
-        isReconnecting,
-        isDisconnected,
         connect,
-        reconnect,
         disconnect,
     } = useRosConnection();
 
@@ -53,6 +51,9 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);
     const [countState, setCountState] = useState<number>(0);
+    const [activeControllerId, setActiveControllerId] = useState<string>(
+        () => ControlModeHandler.getInstance().currentControllerId
+    );
 
     useEffect(() => {
         const handler = new ConnectedClientsHandler((count: number) => {
@@ -63,10 +64,15 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         };
     }, []);
 
+    useEffect(() => {
+        return ControlModeHandler.getInstance().onControllerChanged(setActiveControllerId);
+    }, []);
+
     const handleConnect = async () => {
         setConnectionError(null);
         try {
             if (isConnected) {
+                ControlModeHandler.getInstance().releaseControl();
                 disconnect();
             } else {
                 await connect(rosUrl);
@@ -77,24 +83,12 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         }
     };
 
-    const handleReconnect = async () => {
-        setConnectionError(null);
-        try {
-            await reconnect(rosUrl);
-            localStorage.setItem(ROS_URL_KEY, rosUrl);
-        } catch (error) {
-            setConnectionError(error instanceof Error ? error.message : 'Reconnection failed');
-        }
-    };
-
     const getConnectionStatusText = () => {
         switch (connectionStatus) {
             case 'connected':
                 return 'CONNECTED';
             case 'connecting':
                 return 'CONNECTING...';
-            case 'reconnecting':
-                return 'RECONNECTING...';
             case 'disconnected':
                 return 'DISCONNECTED';
             default:
@@ -104,23 +98,28 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
 
     const getConnectionStatusColor = () => {
         if (countState > 1) {
-            return UI_ACCENT_ORANGE;
+            return UI_WARNING;
         }
         switch (connectionStatus) {
             case 'connected':
                 return UI_ACCENT_GREEN;
             case 'connecting':
-                return UI_ACCENT_ORANGE;
-            case 'reconnecting':
-                return UI_ACCENT_ORANGE;
+                return UI_WARNING;
             case 'disconnected':
-                return UI_ERROR_RED;
+                return UI_ERROR;
             default:
                 return UI_TEXT_SECONDARY_MUTED;
         }
     };
 
+    const getControllerColor = () => {
+        if (activeControllerId === ControlModeHandler.getInstance().clientId) return UI_ACCENT_GREEN;
+        if (activeControllerId !== '') return UI_WARNING;
+        return UI_TEXT_SECONDARY_MUTED;
+    };
+
     const bridgeColor = getConnectionStatusColor();
+    const controllerColor = getControllerColor();
 
     return (
         <div style={{ width: '100%' }}>
@@ -192,12 +191,42 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                                 ROS BRIDGE:{countState > 0 ? ` ${countState}` : ''} {getConnectionStatusText()}
                             </Text>
                         </div>
+                        <div
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                padding: '4px 10px',
+                                borderRadius: 16,
+                                backgroundColor: UI_CHROME_SURFACE,
+                                border: `1px solid ${UI_BORDER_MUTED}`,
+                            }}
+                        >
+                            <span
+                                style={{
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: '50%',
+                                    backgroundColor: controllerColor,
+                                    boxShadow: `0 0 8px ${controllerColor}`,
+                                }}
+                            />
+                            <Text
+                                style={{
+                                    color: controllerColor,
+                                    fontFamily: 'monospace',
+                                    fontSize: 12,
+                                }}
+                            >
+                                {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
+                            </Text>
+                        </div>
                         <Input
                             size="small"
                             placeholder="ROS BRIDGE URL"
                             value={rosUrl}
                             onChange={(e) => setRosUrl(e.target.value)}
-                            disabled={isConnecting || isReconnecting}
+                            disabled={isConnecting}
                             style={{
                                 width: 200,
                                 backgroundColor: UI_CHROME_SURFACE,
@@ -210,7 +239,7 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                         <Button
                             size="small"
                             onClick={() => void handleConnect()}
-                            disabled={isConnecting || isReconnecting}
+                            disabled={isConnecting}
                             style={{
                                 backgroundColor: isConnected ? UI_COLOR_TRANSPARENT : UI_ACCENT_GREEN,
                                 color: isConnected ? UI_TEXT_PRIMARY_ON_DARK : UI_TEXT_ON_ACCENT,
@@ -219,21 +248,6 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
                             }}
                         >
                             {isConnected ? 'DISCONNECT' : 'CONNECT'}
-                        </Button>
-                        <Button
-                            size="small"
-                            onClick={() => void handleReconnect()}
-                            disabled={isDisconnected || isConnecting || isReconnecting}
-                            style={{
-                                backgroundColor:
-                                    isConnected || isReconnecting ? UI_ACCENT_ORANGE : UI_COLOR_TRANSPARENT,
-                                color: isConnected || isReconnecting ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                borderColor: isConnected || isReconnecting ? UI_ACCENT_ORANGE : UI_BORDER_SOFT,
-                                boxShadow:
-                                    isConnected || isReconnecting ? `0 0 8px ${UI_ACCENT_ORANGE}` : 'none',
-                            }}
-                        >
-                            {isReconnecting ? 'RECONNECTING...' : 'RECONNECT'}
                         </Button>
                     </div>
                 </div>

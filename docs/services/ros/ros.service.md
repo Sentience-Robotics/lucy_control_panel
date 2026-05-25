@@ -21,7 +21,7 @@ It is the single source of truth for connection state and the `ROSLIB.Ros` objec
 ### `ConnectionStatus`
 
 ```typescript
-type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 ```
 
 | Value | When set |
@@ -29,7 +29,6 @@ type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnect
 | `'disconnected'` | Initial state, after `disconnect()`, on error, on socket close, on timeout |
 | `'connecting'` | Immediately after `connect()` is called |
 | `'connected'` | When the ROSLIB `connection` event fires |
-| `'reconnecting'` | Immediately after `reconnect()` is called (before delegating to `connect()`) |
 
 ---
 
@@ -56,17 +55,6 @@ Opens a WebSocket connection to the given ROS Bridge URL.
 
 ```typescript
 await RosBridgeService.getInstance().connect('ws://robot.local:9090');
-```
-
----
-
-### `reconnect(url: string): Promise<void>`
-
-Sets status to `'reconnecting'`, then delegates to `connect()`.
-Reverts to `'disconnected'` if `connect()` throws.
-
-```typescript
-await service.reconnect(url);
 ```
 
 ---

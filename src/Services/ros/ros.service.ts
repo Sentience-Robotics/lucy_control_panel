@@ -3,7 +3,7 @@
 import ROSLIB from 'roslib';
 import { logger } from "../../Utils/logger.utils.ts";
 
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting';
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
 class RosBridgeService {
     private static instance: RosBridgeService;
@@ -138,16 +138,6 @@ class RosBridgeService {
                 reject(error);
             }
         });
-    }
-
-    async reconnect(url: string): Promise<void> {
-        this.setConnectionStatus('reconnecting');
-        try {
-            await this.connect(url);
-        } catch (error) {
-            this.setConnectionStatus('disconnected');
-            throw error;
-        }
     }
 
     disconnect(): void {

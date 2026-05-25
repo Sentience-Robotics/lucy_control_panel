@@ -16,6 +16,8 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 ## 🚀 Features
 
 - **🎮 Real-time Joint Control** - Individual control of all robot joints with precision sliders and input fields
+- **👥 Multi-client exclusive control** - Multiple browsers can connect simultaneously; only one publishes at a time — see [Connection & Control user flow](docs/guides/connection-and-control.md)
+- **📡 Live motor feedback** - Shows the actual joint position in real time
 - **🎯 URDF Parser** - Automatic parsing of InMoov URDF files to extract joint configurations and constraints
 - **💾 Pose Management** - Save, load, and manage multiple robot poses with custom names
 - **🔄 Drag & Drop Categories** - Reorganize joint categories (Head, Arms, Torso, etc.) via intuitive drag-and-drop

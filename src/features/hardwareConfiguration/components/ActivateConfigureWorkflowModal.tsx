@@ -12,13 +12,13 @@ import {
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_CARD_SURFACE_STYLE,
-    UI_ERROR_RED,
+    UI_ERROR,
     UI_MODAL_MASK_BG,
     UI_PRIMARY_GREEN_BUTTON_STYLE,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
     UI_TEXT_SUBTLE,
-    UI_WARNING_AMBER,
+    UI_WARNING,
 } from '../../../Constants/uiTheme.ts';
 import type { WorkflowStepRuntimeStatus, WorkflowStepSlice } from '../activateWorkflowStepTypes.ts';
 import '../configuration.switch.css';
@@ -31,7 +31,7 @@ const modalStyles = {
 
 function stepIcon(status: WorkflowStepRuntimeStatus) {
     if (status === 'done') return <CheckCircleOutlined style={{ color: UI_ACCENT_GREEN }} />;
-    if (status === 'error') return <CloseCircleOutlined style={{ color: UI_ERROR_RED }} />;
+    if (status === 'error') return <CloseCircleOutlined style={{ color: UI_ERROR }} />;
     if (status === 'skipped') return <MinusCircleOutlined style={{ color: UI_TEXT_SECONDARY_MUTED }} />;
     if (status === 'running') return <LoadingOutlined style={{ color: UI_ACCENT_GREEN }} />;
     return (
@@ -103,7 +103,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                 </Title>
             }
             open={open}
-            onCancel={workflowRunning ? () => {} : onClose}
+            onCancel={workflowRunning ? () => { } : onClose}
             footer={null}
             keyboard={!workflowRunning}
             width={720}
@@ -222,7 +222,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                                             percent={Math.round(s.fraction * 100)}
                                             size="small"
                                             showInfo={false}
-                                            strokeColor={UI_WARNING_AMBER}
+                                            strokeColor={UI_WARNING}
                                         />
                                     ) : null}
                                     {s.detail ? (
