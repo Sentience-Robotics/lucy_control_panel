@@ -37,6 +37,8 @@ export interface StreamSource {
     name: string;
     topic: string;
     messageType: string;
+    /** True for virtual sources that render a custom component instead of a ROS image topic. */
+    virtual?: boolean;
 }
 
 export const STREAM_SOURCES: StreamSource[] = [
@@ -63,7 +65,14 @@ export const STREAM_SOURCES: StreamSource[] = [
         name: 'Realsense Aligned Depth',
         topic: '/realsense/realsense2_camera/aligned_depth_to_color/image_raw/compressed',
         messageType: 'sensor_msgs/msg/CompressedImage'
-    }
+    },
+    {
+        id: '3d-view',
+        name: '3D View',
+        topic: '',
+        messageType: '',
+        virtual: true,
+    },
 ];
 
 export const DEFAULT_STREAM_SOURCE = STREAM_SOURCES[0];
