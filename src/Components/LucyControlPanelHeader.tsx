@@ -256,7 +256,11 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
             {connectionError ? (
                 <Alert
                     message="CONNECTION ERROR"
-                    description={connectionError}
+                    description={
+                        <div style={{ whiteSpace: 'pre-line', fontFamily: 'monospace' }}>
+                            {connectionError}
+                        </div>
+                    }
                     type="error"
                     showIcon
                     closable

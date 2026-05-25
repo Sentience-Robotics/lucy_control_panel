@@ -1,4 +1,5 @@
 import type { CellErrorOpts } from '../../../Utils/hardwareConfigServerErrors.ts';
+import { listIgnoreUrdfJoints, listPassiveUrdfJoints } from './passiveUrdf.ts';
 
 export function asMapping(v: unknown): Record<string, unknown> | null {
     return v !== null && typeof v === 'object' && !Array.isArray(v)
@@ -49,30 +50,39 @@ export function usedUrdfJointsOnOtherRows(actuators: Record<string, unknown>[], 
     return s;
 }
 
+/**
+ * Build the JOINT select options for one actuator row.
+ *
+ * `catalog` is the pool of joint names assignable to actuators (typically
+ * `assignableUrdfJointsFromYaml(doc)` — passive joints minus ignore minus already-assigned).
+ * `usedElsewhere` is the set of joints assigned on *other* actuator rows (defensive filter:
+ * a stale entry leaking into `catalog` is still hidden).
+ * `currentJoint` is the joint name on the row being edited; it is always kept in the list so
+ * legacy rows whose joint is no longer in the pool remain visible (and re-selectable).
+ *
+ * Options are always selectable — the previous "disable" behaviour produced a fully greyed-out
+ * dropdown for any new actuator row (every option was on some other row, current was empty).
+ */
 export function jointSelectOptions(
     catalog: string[],
     usedElsewhere: Set<string>,
     currentJoint: string,
-): { value: string; label: string; disabled: boolean }[] {
+): { value: string; label: string }[] {
     const cur = currentJoint.trim();
-    const catSorted = [...catalog].sort();
     const ordered: string[] = [];
     const seen = new Set<string>();
-    if (cur && !catalog.includes(cur)) {
+    if (cur) {
         ordered.push(cur);
         seen.add(cur);
     }
+    const catSorted = [...catalog].sort();
     for (const j of catSorted) {
-        if (!seen.has(j)) {
-            ordered.push(j);
-            seen.add(j);
-        }
+        if (seen.has(j)) continue;
+        if (usedElsewhere.has(j)) continue;
+        ordered.push(j);
+        seen.add(j);
     }
-    return ordered.map((j) => ({
-        value: j,
-        label: j,
-        disabled: Boolean(j !== cur && usedElsewhere.has(j)),
-    }));
+    return ordered.map((j) => ({ value: j, label: j }));
 }
 
 /** Physical pins already claimed on `boardId`, optionally ignoring one actuator or sensor row (YAML array index). */
@@ -250,21 +260,32 @@ export function defaultNewPressureSensorRow(
     };
 }
 
-/** URDF joints allowed for actuators: optional root `candidate_urdf_joints` ∪ each actuator's `urdf_joint`. */
-export function catalogUrdfJointsFromYaml(doc: Record<string, unknown>): string[] {
-    const names = new Set<string>();
+/**
+ * URDF joints currently free to assign to an actuator row.
+ *
+ * Pool source: `passive_urdf_joints` (and synonyms `urdf_passive`, `urdf_passive_joints`) —
+ * the canonical "unassigned URDF joints" list maintained by the editor itself
+ * (see `passiveUrdf.ts::appendPassiveUrdfJointIfUnassigned`, fired on delete / clear).
+ *
+ * Filters:
+ *   - Drop anything in `ignore_urdf_joints` (and synonyms): those are URDF joints the operator
+ *     never wants exposed as actuator candidates (fixed fingers, helper links, …).
+ *   - Drop joints already mapped to any actuator row — they're "taken", not assignable.
+ *
+ * Note: per-row exclusions (everything assigned on *other* rows while keeping the row's own
+ * value visible) are still applied in `jointSelectOptions` for safety.
+ */
+export function assignableUrdfJointsFromYaml(doc: Record<string, unknown>): string[] {
+    const ignore = new Set<string>(listIgnoreUrdfJoints(doc));
+    const assigned = new Set<string>();
     if (Array.isArray(doc.actuators)) {
         for (const a of doc.actuators) {
             const m = asMapping(a);
             const j = String(m?.urdf_joint ?? '').trim();
-            if (j) names.add(j);
+            if (j) assigned.add(j);
         }
     }
-    const extra = doc.candidate_urdf_joints;
-    if (Array.isArray(extra)) {
-        for (const x of extra) {
-            if (typeof x === 'string' && x.trim()) names.add(x.trim());
-        }
-    }
-    return [...names].sort();
+
+    const pool = new Set<string>(listPassiveUrdfJoints(doc));
+    return [...pool].filter((j) => !ignore.has(j) && !assigned.has(j)).sort();
 }

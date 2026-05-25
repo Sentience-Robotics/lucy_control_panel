@@ -1,4 +1,4 @@
-export type WorkflowStepId = 'validate' | 'activate' | 'build' | 'flash';
+export type WorkflowStepId = 'validate' | 'activate' | 'build' | 'flash' | 'reload';
 
 export type WorkflowStepRuntimeStatus = 'pending' | 'running' | 'done' | 'error' | 'skipped';
 
