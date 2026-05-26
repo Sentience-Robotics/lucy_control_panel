@@ -87,7 +87,7 @@ See the [Configuration](#️-configuration) section below for all available envi
 Starts the Vite dev server with hot-module replacement.
 
 ```sh
-yarn dev
+yarn run dev
 ```
 
 The app is available at `http://localhost:3000` by default (or the port set in `VITE_PORT`).

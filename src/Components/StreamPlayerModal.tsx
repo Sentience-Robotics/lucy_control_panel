@@ -3,6 +3,7 @@ import { Select } from 'antd';
 import { StreamPlayer } from "./StreamPlayer.tsx";
 import { StreamMetrics } from "./StreamMetrics.tsx";
 import { MovableModal } from './MovableModal.tsx';
+import Robot3DViewer from '../Pages/Robot3DViewer.tsx';
 import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
 import type { StreamSource } from '../Constants/rosConfig';
 import {
@@ -44,7 +45,7 @@ export function StreamPlayerModal({
     onClose,
     initialPosition = { x: 100, y: 100 },
     initialSize = { w: 480, h: 320 },
-    aspectRatio = 4.5 / 3
+    aspectRatio = 4.5 / 3,
 }: StreamPlayerModalProps) {
     const [frameDelay, setFrameDelay] = useState<number>(0);
     const [fps, setFps] = useState<number>(0);
@@ -55,7 +56,7 @@ export function StreamPlayerModal({
         const source = STREAM_SOURCES.find(s => s.id === value);
         if (source) {
             setSelectedStreamSource(source);
-            setHasEmptyDataWarning(false); // Reset warning when switching
+            setHasEmptyDataWarning(false);
         }
     };
 
@@ -66,6 +67,8 @@ export function StreamPlayerModal({
         })),
         []
     );
+
+    const is3DView = selectedStreamSource.virtual === true;
 
     return (
         <MovableModal
@@ -81,7 +84,7 @@ export function StreamPlayerModal({
                         popupMatchSelectWidth={false}
                         styles={SELECT_POPUP_STYLE}
                     />
-                    <StreamMetrics fps={fps} frameDelay={frameDelay} />
+                    {!is3DView && <StreamMetrics fps={fps} frameDelay={frameDelay} />}
                     {hasEmptyDataWarning && (
                         <span
                             style={WARNING_BADGE_STYLE}
@@ -98,12 +101,16 @@ export function StreamPlayerModal({
             initialSize={initialSize}
             aspectRatio={aspectRatio}
         >
-            <StreamPlayer
-                onFrameDelayChange={setFrameDelay}
-                onFpsChange={setFps}
-                streamSource={selectedStreamSource}
-                onEmptyDataWarning={setHasEmptyDataWarning}
-            />
+            {is3DView ? (
+                <Robot3DViewer embedded />
+            ) : (
+                <StreamPlayer
+                    onFrameDelayChange={setFrameDelay}
+                    onFpsChange={setFps}
+                    streamSource={selectedStreamSource}
+                    onEmptyDataWarning={setHasEmptyDataWarning}
+                />
+            )}
         </MovableModal>
     );
 }

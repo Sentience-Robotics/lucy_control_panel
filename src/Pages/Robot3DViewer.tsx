@@ -1,200 +1,86 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Environment, Grid } from '@react-three/drei';
+import { OrbitControls, Grid } from '@react-three/drei';
 import { Typography, Button, Spin, Alert } from 'antd';
-import {isWebGLAvailable, STLLoader} from 'three-stdlib';
-import * as THREE from 'three';
-// import { RobotPathResolver } from '../Constants/robotConfig';
 import { Page } from '../Components/Page';
+import { RobotFKModel } from '../Components/RobotFKModel';
+import { useRobotModel } from '../hooks/useRobotModel';
+import { useRosConnection } from '../hooks/useRosConnection.hook';
+import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
 import {
     UI_ACCENT_GREEN,
     UI_BG_BLACK,
     UI_BORDER_MUTED,
     UI_MODAL_MASK_BG,
     UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
-interface MeshData {
-    geometry: THREE.BufferGeometry;
-    position: [number, number, number];
-    rotation: [number, number, number];
-    scale: [number, number, number];
-    name: string;
+interface Robot3DViewerProps {
+    /** When true: compact canvas only, no page wrapper or control overlays. */
+    embedded?: boolean;
 }
 
-interface STLMeshProps {
-    meshData: MeshData;
-    opacity: number;
-    wireframe: boolean;
-}
+const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
+    const { linkMeshes, urdfJoints, loading, loadingStatus, error, reload } = useRobotModel();
+    const { isConnected } = useRosConnection();
+    const jointAngles = useThrottledJointAngles(isConnected);
 
-const STLMesh: React.FC<STLMeshProps> = ({ meshData, opacity, wireframe }) => {
-    return (
-        <mesh
-            geometry={meshData.geometry}
-            position={meshData.position}
-            rotation={meshData.rotation}
-            scale={meshData.scale}
-        >
-            <meshStandardMaterial
-                key={`${wireframe}-${opacity}`}
-                color={UI_ACCENT_GREEN}
-                transparent
-                opacity={opacity}
-                wireframe={wireframe}
-                roughness={0.3}
-                metalness={0.7}
-            />
-        </mesh>
-    );
-};
-
-const RobotModel: React.FC<{ meshes: MeshData[]; opacity: number; wireframe: boolean }> = ({ meshes, opacity, wireframe }) => {
-    return (
-        <group>
-            {meshes.map((mesh, index) => (
-                <STLMesh key={`${mesh.name}-${index}`} meshData={mesh} opacity={opacity} wireframe={wireframe} />
-            ))}
-        </group>
-    );
-};
-
-const Robot3DViewer: React.FC = () => {
-    // @ts-expect-error unused
-    const [meshes, setMeshes] = useState<MeshData[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
     const [wireframe, setWireframe] = useState(false);
-    const [opacity, setOpacity] = useState(0.8);
-    const [showGrid, setShowGrid] = useState(true);
-    // @ts-expect-error unused
-    const loaderRef = useRef(new STLLoader());
+    const [opacity, setOpacity] = useState(embedded ? 0.85 : 0.8);
+    const [showGrid, setShowGrid] = useState(!embedded);
 
-    const loadRobotModel = async () => {
-        if (!isWebGLAvailable()) {
-            setError('WebGL is not supported or activated in your browser. Please use a WebGL-compatible browser.');
-            setLoading(false);
-            return;
-        }
-        setError("This page is currently not usable, as our URDF file is not finished yet. Please check back later.");
-        setLoading(false);
-        return;
-
-        // try {
-        //     setLoading(true);
-        //     setError(null);
-        //
-        //     // Load URDF file
-        //     const urdfResponse = await fetch(RobotPathResolver.getUrdfPath());
-        //     if (!urdfResponse.ok) {
-        //         throw new Error('Failed to load URDF file');
-        //     }
-        //
-        //     const urdfContent = await urdfResponse.text();
-        //
-        //     // Parse URDF to extract mesh references and transforms
-        //     const parser = new DOMParser();
-        //     const urdfDocument = parser.parseFromString(urdfContent, 'text/xml');
-        //
-        //     const visualElements = urdfDocument.querySelectorAll('visual');
-        //     const meshDataArray: MeshData[] = [];
-        //
-        //     for (const visual of visualElements) {
-        //         const meshElement = visual.querySelector('mesh');
-        //     if (!meshElement) {
-        //         continue;
-        //     }
-        //
-        //     const filename = meshElement.getAttribute('filename');
-        //     if (!filename) {
-        //         continue;
-        //     }
-        //
-        //     // Convert URDF path to public path using configuration
-        //     const stlPath = RobotPathResolver.resolveUrdfMeshPath(filename);
-        //
-        //     try {
-        //         // Load STL geometry
-        //         const geometry = await new Promise<THREE.BufferGeometry>((resolve, reject) => {
-        //         loaderRef.current.load(
-        //             stlPath,
-        //             (geometry) => {
-        //             geometry.computeVertexNormals();
-        //             geometry.center();
-        //             resolve(geometry);
-        //             },
-        //             undefined,
-        //             (error) => reject(error)
-        //         );
-        //         });
-        //
-        //         // Extract transform information
-        //         const origin = visual.parentElement?.querySelector('origin');
-        //         let position: [number, number, number] = [0, 0, 0];
-        //         let rotation: [number, number, number] = [0, 0, 0];
-        //
-        //         if (origin) {
-        //         const xyz = origin.getAttribute('xyz');
-        //         const rpy = origin.getAttribute('rpy');
-        //
-        //         if (xyz) {
-        //             const coords = xyz.split(' ').map(Number);
-        //             position = [coords[0] || 0, coords[1] || 0, coords[2] || 0];
-        //         }
-        //
-        //         if (rpy) {
-        //             const angles = rpy.split(' ').map(Number);
-        //             rotation = [angles[0] || 0, angles[1] || 0, angles[2] || 0];
-        //         }
-        //         }
-        //
-        //         // Extract scale
-        //         const scaleAttr = meshElement.getAttribute('scale');
-        //         let scale: [number, number, number] = [1, 1, 1];
-        //         if (scaleAttr) {
-        //             const scaleValues = scaleAttr.split(' ').map(Number);
-        //             scale = [scaleValues[0] || 1, scaleValues[1] || 1, scaleValues[2] || 1];
-        //         }
-        //
-        //         meshDataArray.push({
-        //             geometry,
-        //             position,
-        //             rotation,
-        //             scale,
-        //             name: filename
-        //         });
-        //     } catch (meshError) {
-        //         console.warn(`Failed to load mesh ${stlPath}:`, meshError);
-        //     }
-        // }
-        //     setMeshes(meshDataArray);
-        // } catch (err) {
-        //     setError(err instanceof Error ? err.message : 'Failed to load robot model');
-        // } finally {
-        //     setLoading(false);
-        // }
-    };
-
-    useEffect(() => {
-        loadRobotModel();
-    }, []);
-
+    // --- Loading state ---
     if (loading) {
+        if (embedded) {
+            return (
+                <div style={{
+                    width: '100%', height: '100%',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    gap: 8, background: UI_BG_BLACK,
+                }}>
+                    <Spin size="default" />
+                    {loadingStatus && (
+                        <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, fontFamily: 'monospace' }}>
+                            {loadingStatus}
+                        </Text>
+                    )}
+                </div>
+            );
+        }
         return (
-            <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Spin size="large" />
-                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
-                    Loading 3D robot model...
-                </Text>
+            <Page contentStyle={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <Spin size="large" />
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Loading 3D robot model...</Text>
+                </div>
+                {loadingStatus && (
+                    <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 11, fontFamily: 'monospace' }}>
+                        {loadingStatus}
+                    </Text>
+                )}
             </Page>
         );
     }
 
+    // --- Error state ---
     if (error) {
+        if (embedded) {
+            return (
+                <div style={{
+                    width: '100%', height: '100%',
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    gap: 8, background: UI_BG_BLACK, padding: 12,
+                }}>
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 11, textAlign: 'center' }}>{error}</Text>
+                    <button onClick={reload} style={{ fontFamily: 'monospace', cursor: 'pointer' }}>Retry</button>
+                </div>
+            );
+        }
         return (
             <Page>
                 <Alert
@@ -202,171 +88,130 @@ const Robot3DViewer: React.FC = () => {
                     description={error}
                     type="error"
                     showIcon
-                    action={
-                        <Button size="small" onClick={loadRobotModel}>
-                            Retry
-                        </Button>
-                    }
+                    action={<Button size="small" onClick={reload}>Retry</Button>}
                 />
             </Page>
         );
     }
 
-  const headerContent = (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>WIREFRAME:</Text>
-        <div className="tui-toggle">
-          <button
-            onClick={() => setWireframe(false)}
-            className={`tui-toggle-button ${!wireframe ? 'active' : ''}`}
-          >
-            OFF
-          </button>
-          <div className="tui-toggle-divider" />
-          <button
-            onClick={() => setWireframe(true)}
-            className={`tui-toggle-button ${wireframe ? 'active' : ''}`}
-          >
-            ON
-          </button>
-        </div>
-
-        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>GRID:</Text>
-        <div className="tui-toggle">
-          <button
-            onClick={() => setShowGrid(false)}
-            className={`tui-toggle-button ${!showGrid ? 'active' : ''}`}
-          >
-            OFF
-          </button>
-          <div className="tui-toggle-divider" />
-          <button
-            onClick={() => setShowGrid(true)}
-            className={`tui-toggle-button ${showGrid ? 'active' : ''}`}
-          >
-            ON
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  return (
-    <Page
-      showHeader
-      title="LUCY 3D VIEWER"
-      headerContent={headerContent}
-      contentStyle={{ height: 'calc(100vh - 70px)', position: 'relative', padding: 0 }}
-    >
+    // --- Canvas ---
+    const canvas = (
         <Canvas
-          camera={{
-            position: [5, 5, 5],
-            fov: 50,
-            near: 0.1,
-            far: 1000
-          }}
-          style={{ background: UI_BG_BLACK }}
+            camera={embedded
+                ? { position: [0, 8, 40], fov: 50, near: 0.1, far: 500 }
+                : { position: [0, 8, 40], fov: 50, near: 0.1, far: 500 }
+            }
+            style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
         >
-          <ambientLight intensity={0.6} />
-          <directionalLight
-            position={[10, 10, 5]}
-            intensity={1}
-            castShadow
-            shadow-mapSize={[2048, 2048]}
-          />
-          <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN} />
+            <ambientLight intensity={0.6} />
+            <directionalLight position={[10, 10, 5]} intensity={1} castShadow={!embedded} shadow-mapSize={[2048, 2048]} />
+            {!embedded && <pointLight position={[-10, -10, -5]} intensity={0.5} color={UI_ACCENT_GREEN} />}
 
-          {showGrid && (
-            <Grid
-              args={[20, 20]}
-              cellSize={1}
-              cellThickness={0.5}
-              cellColor={UI_ACCENT_GREEN}
-              sectionSize={5}
-              sectionThickness={1}
-              sectionColor={UI_TEXT_PRIMARY_ON_DARK}
-              fadeDistance={30}
-              fadeStrength={1}
+            {!embedded && showGrid && (
+                <Grid
+                    args={[60, 60]}
+                    cellSize={2}
+                    cellThickness={0.5}
+                    cellColor={UI_ACCENT_GREEN}
+                    sectionSize={10}
+                    sectionThickness={1}
+                    sectionColor={UI_TEXT_PRIMARY_ON_DARK}
+                    fadeDistance={80}
+                    fadeStrength={1}
+                />
+            )}
+
+            <RobotFKModel
+                linkMeshes={linkMeshes}
+                urdfJoints={urdfJoints}
+                jointAngles={jointAngles}
+                opacity={opacity}
+                wireframe={!embedded && wireframe}
             />
-          )}
 
-          <RobotModel meshes={meshes} opacity={opacity} wireframe={wireframe} />
+            <OrbitControls
+                target={[0, 8, 0]}
+                enablePan={!embedded}
+                enableZoom
+                enableRotate
+                dampingFactor={embedded ? 0.1 : 0.05}
+                minDistance={embedded ? 10 : 1}
+                maxDistance={embedded ? 100 : 200}
+            />
 
-          <OrbitControls
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-            dampingFactor={0.05}
-            screenSpacePanning={false}
-            minDistance={1}
-            maxDistance={50}
-          />
-
-          <Environment preset="warehouse" />
         </Canvas>
+    );
 
-        {/* Overlay controls */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 16,
-            left: 16,
-            backgroundColor: UI_MODAL_MASK_BG,
-            border: `1px solid ${UI_BORDER_MUTED}`,
-            padding: 16,
-            fontFamily: 'monospace',
-            color: UI_TEXT_PRIMARY_ON_DARK,
-            fontSize: '12px'
-          }}
-        >
-          <div style={{ marginBottom: 8 }}>
-            <Text style={{ color: UI_ACCENT_GREEN }}>CONTROLS:</Text>
-          </div>
-          <div>• Mouse: Rotate view</div>
-          <div>• Wheel: Zoom in/out</div>
-          <div>• Right click + drag: Pan</div>
-          <div style={{ marginTop: 8 }}>
-            <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {meshes.length}</Text>
-          </div>
-        </div>
+    // --- Embedded: bare canvas ---
+    if (embedded) return canvas;
 
-        {/* Opacity control */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 16,
-            left: 16,
-            backgroundColor: UI_MODAL_MASK_BG,
-            border: `1px solid ${UI_BORDER_MUTED}`,
-            padding: 16,
-            fontFamily: 'monospace',
-            color: UI_TEXT_PRIMARY_ON_DARK,
-            fontSize: '12px',
-            minWidth: 200
-          }}
-        >
-          <Text style={{ color: UI_ACCENT_GREEN, marginBottom: 8, display: 'block' }}>
-            TRANSPARENCY: {Math.round(opacity * 100)}%
-          </Text>
-          <input
-            type="range"
-            min="0.1"
-            max="1"
-            step="0.1"
-            value={opacity}
-            onChange={(e) => setOpacity(parseFloat(e.target.value))}
-            style={{
-              width: '100%',
-              background: UI_BORDER_MUTED,
-              outline: 'none',
-              height: '4px',
-              borderRadius: '0'
-            }}
-          />
+    // --- Full page: canvas + overlays + header controls ---
+    const headerContent = (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>WIREFRAME:</Text>
+                <div className="tui-toggle">
+                    <button onClick={() => setWireframe(false)} className={`tui-toggle-button ${!wireframe ? 'active' : ''}`}>OFF</button>
+                    <div className="tui-toggle-divider" />
+                    <button onClick={() => setWireframe(true)} className={`tui-toggle-button ${wireframe ? 'active' : ''}`}>ON</button>
+                </div>
+                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>GRID:</Text>
+                <div className="tui-toggle">
+                    <button onClick={() => setShowGrid(false)} className={`tui-toggle-button ${!showGrid ? 'active' : ''}`}>OFF</button>
+                    <div className="tui-toggle-divider" />
+                    <button onClick={() => setShowGrid(true)} className={`tui-toggle-button ${showGrid ? 'active' : ''}`}>ON</button>
+                </div>
+            </div>
         </div>
-      </Page>
-  );
+    );
+
+    return (
+        <Page
+            showHeader
+            title="LUCY 3D VIEWER"
+            headerContent={headerContent}
+            contentStyle={{ height: 'calc(100vh - 70px)', position: 'relative', padding: 0 }}
+        >
+            {canvas}
+
+            {/* Controls overlay — top-left */}
+            <div style={{
+                position: 'absolute', top: 16, left: 16,
+                backgroundColor: UI_MODAL_MASK_BG, border: `1px solid ${UI_BORDER_MUTED}`,
+                padding: 16, fontFamily: 'monospace', color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px',
+            }}>
+                <div style={{ marginBottom: 8 }}><Text style={{ color: UI_ACCENT_GREEN }}>CONTROLS:</Text></div>
+                <div>• Mouse: Rotate view</div>
+                <div>• Wheel: Zoom in/out</div>
+                <div>• Right click + drag: Pan</div>
+                <div style={{ marginTop: 8 }}>
+                    <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {linkMeshes.length}</Text>
+                </div>
+                <div style={{ marginTop: 4 }}>
+                    <Text style={{ color: jointAngles.size > 0 ? UI_ACCENT_GREEN : UI_TEXT_SECONDARY_MUTED }}>
+                        JOINTS: {jointAngles.size > 0 ? `LIVE (${jointAngles.size})` : 'STATIC'}
+                    </Text>
+                </div>
+            </div>
+
+            {/* Opacity control — bottom-left */}
+            <div style={{
+                position: 'absolute', bottom: 16, left: 16,
+                backgroundColor: UI_MODAL_MASK_BG, border: `1px solid ${UI_BORDER_MUTED}`,
+                padding: 16, fontFamily: 'monospace', color: UI_TEXT_PRIMARY_ON_DARK,
+                fontSize: '12px', minWidth: 200,
+            }}>
+                <Text style={{ color: UI_ACCENT_GREEN, marginBottom: 8, display: 'block' }}>
+                    TRANSPARENCY: {Math.round(opacity * 100)}%
+                </Text>
+                <input
+                    type="range" min="0.1" max="1" step="0.1" value={opacity}
+                    onChange={e => setOpacity(parseFloat(e.target.value))}
+                    style={{ width: '100%', background: UI_BORDER_MUTED, outline: 'none', height: '4px', borderRadius: '0' }}
+                />
+            </div>
+        </Page>
+    );
 };
 
 export default Robot3DViewer;
