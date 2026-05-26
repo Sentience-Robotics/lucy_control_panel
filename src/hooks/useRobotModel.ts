@@ -117,6 +117,49 @@ export function useRobotModel(): UseRobotModelReturn {
             setLoading(true);
             setError(null);
 
+            // ------------------------------------------------------------------
+            // Pre-flight: ask the dev server whether .env paths are configured.
+            // The /robot-env-check endpoint is injected by vite.config.ts and
+            // only exists in dev mode — if it's absent we just proceed.
+            // ------------------------------------------------------------------
+            setLoadingStatus('Checking .env configuration…');
+            const envCheck = await fetch('/robot-env-check').catch(() => null);
+            if (envCheck?.ok) {
+                const status: {
+                    urdfConfigured: boolean;
+                    meshesConfigured: boolean;
+                    urdfExists: boolean;
+                    meshesExists: boolean;
+                    isXacro: boolean;
+                } = await envCheck.json();
+
+                const missing: string[] = [];
+                if (!status.urdfConfigured)   missing.push('ROBOT_URDF_PATH');
+                if (!status.meshesConfigured) missing.push('ROBOT_MESHES_PATH');
+                if (missing.length > 0) {
+                    throw new Error(
+                        `.env misconfiguration — missing variable(s): ${missing.join(', ')}.\n` +
+                        'Add them to your .env file (see .env.example).',
+                    );
+                }
+                if (!status.urdfExists) {
+                    const hint = status.isXacro
+                        ? 'If you just changed .env, restart the dev server so the new path is picked up.'
+                        : 'Check the path in your .env file.';
+                    throw new Error(
+                        `.env misconfiguration — ROBOT_URDF_PATH points to a file that does not exist on disk.\n${hint}`,
+                    );
+                }
+                if (!status.meshesExists) {
+                    const hint = status.isXacro
+                        ? 'For a .xacro URDF, ROBOT_MESHES_PATH should be the meshes root (e.g. …/robot_description/meshes), not the dae/ subfolder.'
+                        : 'Check the path in your .env file.';
+                    throw new Error(
+                        `.env misconfiguration — ROBOT_MESHES_PATH points to a directory that does not exist on disk.\n${hint}`,
+                    );
+                }
+            }
+
             setLoadingStatus('Fetching URDF…');
             const res = await fetch(RobotPathResolver.getUrdfPath());
             if (!res.ok) throw new Error('Failed to load URDF file');

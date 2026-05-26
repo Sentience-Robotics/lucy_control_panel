@@ -72,6 +72,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
 
     // --- Error state ---
     if (error) {
+        const isEnvError = error.includes('.env');
+        const errorLines = error.split('\n');
+
         if (embedded) {
             return (
                 <div style={{
@@ -80,7 +83,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                     alignItems: 'center', justifyContent: 'center',
                     gap: 8, background: UI_BG_BLACK, padding: 12,
                 }}>
-                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 11, textAlign: 'center' }}>{error}</Text>
+                    {errorLines.map((line, i) => (
+                        <Text key={i} style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 11, textAlign: 'center' }}>
+                            {line}
+                        </Text>
+                    ))}
                     <button onClick={reload} style={{ fontFamily: 'monospace', cursor: 'pointer' }}>Retry</button>
                 </div>
             );
@@ -88,8 +95,19 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
         return (
             <Page>
                 <Alert
-                    message="Error Loading 3D Model"
-                    description={error}
+                    message={isEnvError ? '.env Configuration Error' : 'Error Loading 3D Model'}
+                    description={
+                        <div style={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                            {errorLines.map((line, i) => (
+                                <div key={i}>{line}</div>
+                            ))}
+                            {isEnvError && (
+                                <div style={{ marginTop: 8, opacity: 0.75 }}>
+                                    See <code>.env.example</code> for the required variables.
+                                </div>
+                            )}
+                        </div>
+                    }
                     type="error"
                     showIcon
                     action={<Button size="small" onClick={loadRobotModel}>Retry</Button>}
