@@ -2,10 +2,6 @@ import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import { Typography, Button, Spin, Alert } from 'antd';
-import { isWebGLAvailable, STLLoader } from 'three-stdlib';
-import * as THREE from 'three';
-import ROSLIB from 'roslib';
-import { RobotPathResolver } from '../Constants/robotConfig';
 import { Page } from '../Components/Page';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { useRobotModel } from '../hooks/useRobotModel';
@@ -110,12 +106,11 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                     }
                     type="error"
                     showIcon
-                    action={<Button size="small" onClick={loadRobotModel}>Retry</Button>}
+                    action={<Button size="small" onClick={reload}>Retry</Button>}
                 />
             </Page>
         );
     }
-
 
     // --- Canvas ---
     const canvas = (

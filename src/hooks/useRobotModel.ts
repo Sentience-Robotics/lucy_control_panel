@@ -69,7 +69,6 @@ export function useRobotModel(): UseRobotModelReturn {
                     meshesConfigured: boolean;
                     urdfExists: boolean;
                     meshesExists: boolean;
-                    isXacro: boolean;
                 } = await envCheck.json();
 
                 const missing: string[] = [];
@@ -82,19 +81,15 @@ export function useRobotModel(): UseRobotModelReturn {
                     );
                 }
                 if (!status.urdfExists) {
-                    const hint = status.isXacro
-                        ? 'If you just changed .env, restart the dev server so the new path is picked up.'
-                        : 'Check the path in your .env file.';
                     throw new Error(
-                        `.env misconfiguration — ROBOT_URDF_PATH points to a file that does not exist on disk.\n${hint}`,
+                        '.env misconfiguration — ROBOT_URDF_PATH points to a file that does not exist on disk.\n' +
+                        'Check the path in your .env file.',
                     );
                 }
                 if (!status.meshesExists) {
-                    const hint = status.isXacro
-                        ? 'For a .xacro URDF, ROBOT_MESHES_PATH should be the meshes root (e.g. …/robot_description/meshes), not the dae/ subfolder.'
-                        : 'Check the path in your .env file.';
                     throw new Error(
-                        `.env misconfiguration — ROBOT_MESHES_PATH points to a directory that does not exist on disk.\n${hint}`,
+                        '.env misconfiguration — ROBOT_MESHES_PATH points to a directory that does not exist on disk.\n' +
+                        'Check the path in your .env file.',
                     );
                 }
             }
