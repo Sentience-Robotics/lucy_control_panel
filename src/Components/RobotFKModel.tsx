@@ -133,7 +133,73 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         }
     }
 
+    // Group rotation from .env (VITE_ROBOT_GROUP_ROTATION="rx,ry,rz" in radians).
+    // DAE/xacro URDFs: ColladaLoader already converts Z-up→Y-up, so use "0,0,0".
+    // STL URDFs: vertices are Z-up, so use "-1.5708,0,0" (Rx(-π/2)).
+    const groupRotation = useMemo<[number, number, number]>(() => {
+        const raw = import.meta.env.VITE_ROBOT_GROUP_ROTATION as string | undefined;
+        if (!raw) return [-Math.PI / 2, 0, 0]; // safe default for STL URDFs
+        const parts = raw.split(',').map(Number);
+        if (parts.length === 3 && parts.every(n => !isNaN(n))) {
+            return parts as [number, number, number];
+        }
+        return [-Math.PI / 2, 0, 0];
+    }, []);
+
+    // Detect mesh format: DAE (Collada) meshes have global Y-up vertices baked in by
+    // ColladaLoader — skip FK and visual origins, just pass geometry through at identity.
+    // STL meshes are in link-local Z-up space and need the full FK chain.
+    const isDae = linkMeshes.length > 0 && linkMeshes[0].name.toLowerCase().endsWith('.dae');
+
     const resolvedMeshes = useMemo<ResolvedMesh[]>(() => {
+        if (isDae) {
+            // Pre-compute the conjugation factors once for all meshes.
+            const Rx_neg90 = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0));
+            const Rx_pos90 = new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI / 2, 0, 0));
+
+            const result = linkMeshes.map(lm => {
+                // The visual RPY in this URDF has two distinct meanings:
+                //
+                // 1. Small values (e.g. 0.066 tilt, ±π/2 joint-angle baked into vertices):
+                //    The mesh was exported from Blender with the rotation already baked into
+                //    vertex positions.  Applying the RPY again would double-rotate it.
+                //    → Use identity quaternion.
+                //
+                // 2. Near-π values (|rpy| > 2.9 rad): the mesh was exported with inverted
+                //    normals / mirrored orientation (right-side parts, base stand).
+                //    Backface culling makes them invisible; a π-flip corrects normals.
+                //    → Apply the conjugated RPY so normals face outward.
+                const hasNearPi = lm.visualRpy.some(v => Math.abs(v) > 2.9);
+                let visualQ: THREE.Quaternion;
+                if (hasNearPi) {
+                    const q_urdf = new THREE.Quaternion().setFromEuler(
+                        new THREE.Euler(lm.visualRpy[0], lm.visualRpy[1], lm.visualRpy[2], 'ZYX'),
+                    );
+                    // Conjugate: convert the URDF Z-up RPY into Three.js Y-up space:
+                    //   q_yup = Rx(-90°) ∘ q_urdf ∘ Rx(+90°)
+                    visualQ = Rx_neg90.clone().multiply(q_urdf).multiply(Rx_pos90);
+                } else {
+                    visualQ = new THREE.Quaternion(); // identity — baked-in vertices
+                }
+
+                const e = new THREE.Euler().setFromQuaternion(visualQ);
+                console.debug(
+                    `[3DViewer DAE] ${lm.name.split('/').pop()} | rpy=(${lm.visualRpy.map(v => v.toFixed(3)).join(',')})` +
+                    ` nearPi=${hasNearPi} → euler=(${[e.x, e.y, e.z].map(v => v.toFixed(3)).join(',')})`,
+                );
+
+                return {
+                    geometry: lm.geometry,
+                    position: [0, 0, 0] as [number, number, number],
+                    quaternion: visualQ,
+                    scale: lm.scale,
+                    name: lm.name,
+                };
+            });
+            return result;
+        }
+
+        // --- Standard FK path for STL / local-space meshes ---
         const cache = new Map<string, THREE.Matrix4>();
 
         const getLinkWorldMat = (linkName: string): THREE.Matrix4 => {
@@ -185,11 +251,11 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
                 name: lm.name,
             };
         });
-    }, [linkMeshes, urdfJoints, jointAngles]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [linkMeshes, urdfJoints, jointAngles, isDae]);
 
-    // URDF is Z-up; Rx(-π/2) maps URDF +Z → Three.js +Y (robot stands upright).
     return (
-        <group rotation={[-Math.PI / 2, 0, 0]}>
+        <group rotation={groupRotation}>
             {resolvedMeshes.map((mesh, i) => (
                 <STLMesh key={`${mesh.name}-${i}`} mesh={mesh} opacity={opacity} wireframe={wireframe} />
             ))}
