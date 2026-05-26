@@ -28,7 +28,7 @@ interface Robot3DViewerProps {
 }
 
 const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
-    const { linkMeshes, urdfJoints, loading, loadingStatus, error, reload } = useRobotModel();
+    const { robot, loading, loadingStatus, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
 
@@ -141,13 +141,14 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                 />
             )}
 
-            <RobotModel
-                linkMeshes={linkMeshes}
-                urdfJoints={urdfJoints}
-                jointAngles={jointAngles}
-                opacity={opacity}
-                wireframe={!embedded && wireframe}
-            />
+            {robot && (
+                <RobotFKModel
+                    robot={robot}
+                    jointAngles={jointAngles}
+                    opacity={opacity}
+                    wireframe={!embedded && wireframe}
+                />
+            )}
 
             <OrbitControls
                 target={[0, 8, 0]}
@@ -204,11 +205,13 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                 <div>• Wheel: Zoom in/out</div>
                 <div>• Right click + drag: Pan</div>
                 <div style={{ marginTop: 8 }}>
-                    <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {linkMeshes.length}</Text>
+                    <Text style={{ color: UI_ACCENT_GREEN }}>
+                        JOINTS: {robot ? Object.keys(robot.joints).length : 0}
+                    </Text>
                 </div>
                 <div style={{ marginTop: 4 }}>
                     <Text style={{ color: jointAngles.size > 0 ? UI_ACCENT_GREEN : UI_TEXT_SECONDARY_MUTED }}>
-                        JOINTS: {jointAngles.size > 0 ? `LIVE (${jointAngles.size})` : 'STATIC'}
+                        {jointAngles.size > 0 ? `LIVE (${jointAngles.size})` : 'STATIC'}
                     </Text>
                 </div>
             </div>
