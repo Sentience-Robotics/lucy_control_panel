@@ -40,10 +40,17 @@ export const LucyControlPanelHeader: React.FC<LucyControlPanelHeaderProps> = ({ 
         if (typeof window === 'undefined') {
             throw new Error('Window is undefined');
         }
+        const meta: string = import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_SERVER_URL;
+        if (meta) {
+            return meta
+        }
+
         const stored = localStorage.getItem(ROS_URL_KEY);
-        if (stored) return stored;
+        if (stored) {
+            return stored;
+        }
+
         return (
-            import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_URL ||
             `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`
         );
     }, []);
