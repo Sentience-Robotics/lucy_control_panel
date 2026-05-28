@@ -88,6 +88,8 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
         setAddActuatorBoard: table.setAddActuatorBoard,
         addPressureSensorActuatorId: table.addPressureSensorActuatorId,
         setAddPressureSensorActuatorId: table.setAddPressureSensorActuatorId,
+        actuatorSearchQuery: table.actuatorSearchQuery,
+        setActuatorSearchQuery: table.setActuatorSearchQuery,
         handleAddActuator: mutations.handleAddActuator,
         handleAddPressureSensor: mutations.handleAddPressureSensor,
         serverErrorRows,

@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Page } from '../../Components/Page.tsx';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
@@ -242,6 +242,13 @@ const ConfigurationPage = () => {
                         style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}
                         extra={
                             <Space wrap align="center" size="small">
+                                <Input.Search
+                                    placeholder="Search actuators"
+                                    value={hw.actuatorSearchQuery}
+                                    onChange={(e) => hw.setActuatorSearchQuery(e.target.value)}
+                                    style={{ width: 200 }}
+                                    allowClear
+                                />
                                 <Select
                                     size="small"
                                     placeholder="BOARD"
