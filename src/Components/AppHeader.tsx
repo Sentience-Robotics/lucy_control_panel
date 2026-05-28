@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Tooltip, Typography } from 'antd';
-import { SettingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { SettingOutlined, ThunderboltOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
@@ -114,6 +114,7 @@ export const AppHeader: React.FC = () => {
 
     const bridgeColor = getConnectionStatusColor();
     const controllerColor = getControllerColor();
+    const documentationUrl = import.meta.env.VITE_DOCUMENTATION_URL;
 
     return (
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%', gap: 12 }}>
@@ -177,6 +178,13 @@ export const AppHeader: React.FC = () => {
                     {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
                 </Text>
             </div>
+            {documentationUrl && (
+                <Tooltip title="Documentation">
+                    <Button onClick={() => window.open(documentationUrl, '_blank')}>
+                        Documentation
+                    </Button>
+                </Tooltip>
+            )}
             <Tooltip title="Settings">
                 <Button icon={<SettingOutlined />} onClick={() => setIsSettingsModalVisible(true)} />
             </Tooltip>
