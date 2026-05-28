@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Tooltip, Typography } from 'antd';
-import { SettingOutlined, ThunderboltOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { SettingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
