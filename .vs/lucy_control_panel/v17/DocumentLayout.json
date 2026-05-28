@@ -1,0 +1,54 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Dev\\lucy_control_panel\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Dev\\lucy_control_panel\\src\\Components\\MediapipeHandTracker.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Components\\MediapipeHandTracker.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Dev\\lucy_control_panel\\src\\Pages\\RobotControlPanel.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Pages\\RobotControlPanel.tsx||{0F2454B1-A556-402D-A7D0-1FDE7F99DEE0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 1,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "RobotControlPanel.tsx",
+              "DocumentMoniker": "C:\\Dev\\lucy_control_panel\\src\\Pages\\RobotControlPanel.tsx",
+              "RelativeDocumentMoniker": "src\\Pages\\RobotControlPanel.tsx",
+              "ToolTip": "C:\\Dev\\lucy_control_panel\\src\\Pages\\RobotControlPanel.tsx",
+              "RelativeToolTip": "src\\Pages\\RobotControlPanel.tsx",
+              "ViewState": "AgIAAMkBAAAAAAAAAAAgwNcBAAAOAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-05-16T08:27:17.839Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "MediapipeHandTracker.tsx",
+              "DocumentMoniker": "C:\\Dev\\lucy_control_panel\\src\\Components\\MediapipeHandTracker.tsx",
+              "RelativeDocumentMoniker": "src\\Components\\MediapipeHandTracker.tsx",
+              "ToolTip": "C:\\Dev\\lucy_control_panel\\src\\Components\\MediapipeHandTracker.tsx*",
+              "RelativeToolTip": "src\\Components\\MediapipeHandTracker.tsx*",
+              "ViewState": "AgIAAFUAAAAAAAAAAAAcwBgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-05-16T08:27:00.369Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -378,8 +378,8 @@ export const Page: React.FC<PageProps> = ({
             padding: '0 24px',
             height: 'auto',
             lineHeight: 'normal',
-            paddingTop: 16,
-            paddingBottom: 16,
+            paddingTop: 8,
+            paddingBottom: 8,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -392,6 +392,7 @@ export const Page: React.FC<PageProps> = ({
                   fontFamily: 'monospace',
                   textShadow: UI_ACCENT_TEXT_SHADOW,
                   fontSize: '18px',
+                  whiteSpace: 'nowrap',
                 }}
               >
                 ▲ {title}
