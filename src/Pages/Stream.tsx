@@ -1,20 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import { Space, Typography, Select } from "antd";
+import { Space, Select } from "antd";
 import { Page } from '../Components/Page';
 import { StreamPlayer } from '../Components/StreamPlayer';
 import { StreamMetrics } from '../Components/StreamMetrics';
 import type { StreamSource } from '../Constants/rosConfig';
 import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
 import {
-    UI_ACCENT_GREEN,
     UI_WARNING,
-    UI_ACCENT_TEXT_SHADOW,
     UI_BORDER_MUTED,
     UI_CHROME_SURFACE,
     UI_INPUT_SURFACE,
 } from '../Constants/uiTheme.ts';
-
-const Text = Typography;
 
 const SELECT_POPUP_STYLE = {
     popup: {
@@ -57,54 +53,35 @@ export const Stream: React.FC = () => {
         []
     );
 
-    const headerContent = (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div>
-                <Space align="center">
-                    <Text
-                        style={{
-                            margin: 0,
-                            color: UI_ACCENT_GREEN,
-                            fontFamily: 'monospace',
-                            textShadow: UI_ACCENT_TEXT_SHADOW,
-                            fontSize: '18px',
-                            fontWeight: 'bold',
-                        }}
-                    >
-                        ▲ LUCY CONTROL PANEL
-                    </Text>
-                </Space>
-            </div>
-            <Space align="center" size="middle">
-                <Select
-                    size="small"
-                    value={selectedStreamSource.id}
-                    onChange={handleStreamSourceChange}
-                    style={{ width: 200 }}
-                    options={selectOptions}
-                    popupMatchSelectWidth={false}
-                    styles={SELECT_POPUP_STYLE}
-                />
-                <StreamMetrics fps={fps} frameDelay={frameDelay} fontSize={12} />
-                {hasEmptyDataWarning && (
-                    <span
-                        style={WARNING_BADGE_STYLE}
-                        title="Topic is not publishing compressed image data. Check ROS configuration."
-                    >
-                        ⚠️ NO DATA
-                    </span>
-                )}
-            </Space>
-        </div>
-    );
-
     return (
         <Page
             showHeader
-            headerContent={headerContent}
+            title="LUCY STREAM"
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                <Space align="center" size="middle">
+                    <Select
+                        size="small"
+                        value={selectedStreamSource.id}
+                        onChange={handleStreamSourceChange}
+                        style={{ width: 200 }}
+                        options={selectOptions}
+                        popupMatchSelectWidth={false}
+                        styles={SELECT_POPUP_STYLE}
+                    />
+                    <StreamMetrics fps={fps} frameDelay={frameDelay} fontSize={12} />
+                    {hasEmptyDataWarning && (
+                        <span
+                            style={WARNING_BADGE_STYLE}
+                            title="Topic is not publishing compressed image data. Check ROS configuration."
+                        >
+                            ⚠️ NO DATA
+                        </span>
+                    )}
+                </Space>
+            </div>
             <StreamPlayer
                 onFrameDelayChange={setFrameDelay}
                 onFpsChange={setFps}

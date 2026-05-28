@@ -3,7 +3,6 @@ import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/i
 import { Page } from '../../Components/Page.tsx';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
 import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigManager.tsx';
-import { LucyControlPanelHeader } from '../../Components/LucyControlPanelHeader.tsx';
 import { LucyLoader } from '../../Components/LucyLoader.tsx';
 import { UNPARSED_VALIDATION_KEY, GENERAL_VALIDATION_KEY } from '../../Utils/hardwareConfigServerErrors.ts';
 import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Constants/uiTheme.ts';
@@ -18,59 +17,13 @@ const ConfigurationPage = () => {
     const hw = useHardwareConfiguration();
     const editorLocked = hw.editorLocked;
 
-    const headerContent = (
-        <LucyControlPanelHeader>
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'auto auto',
-                    columnGap: 12,
-                    rowGap: 6,
-                    alignItems: 'center',
-                }}
-            >
-                <span style={{ gridColumn: 1, gridRow: 1 }} aria-hidden />
-                <div style={{ gridColumn: 2, gridRow: 1 }}>
-                    <HardwareConfigPresetHeaderTag
-                        variant="loaded"
-                        label="LOADED"
-                        value={hw.resolvedName || ''}
-                        title="Configuration YAML currently open in the editor"
-                    />
-                </div>
-                <Tag
-                    title="ROS package wired on lucy_config_pipeline (from config/get)"
-                    style={{ gridColumn: 1, gridRow: 2, margin: 0 }}
-                >
-                    <span style={{ fontWeight: 600 }}>ROBOT PACKAGE:</span> {hw.serverRobotPackage || '—'}
-                </Tag>
-                <div style={{ gridColumn: 2, gridRow: 2 }}>
-                    <HardwareConfigPresetHeaderTag
-                        variant="active"
-                        label="ACTIVE"
-                        value={hw.serverActiveConfigName || ''}
-                        title="Current active hardware configuration from config/list"
-                    />
-                </div>
-                <span style={{ gridColumn: 1, gridRow: 3 }} aria-hidden />
-                <div style={{ gridColumn: 2, gridRow: 3 }}>
-                    <HardwareConfigPresetHeaderTag
-                        variant="flashed"
-                        label="FLASHED"
-                        value={hw.serverFlashedConfigName || ''}
-                        title={
-                            hw.serverFlashedAt
-                                ? `Last successful pipeline flash (UTC): ${hw.serverFlashedAt}`
-                                : 'Preset last written to boards via configure_pipeline flash (from active_meta / config/get)'
-                        }
-                    />
-                </div>
-            </div>
-        </LucyControlPanelHeader>
-    );
-
     return (
-        <Page showHeader headerContent={headerContent} contentStyle={{ padding: 12, position: 'relative' }} removeScrollbars={false}>
+        <Page
+            showHeader
+            title="LUCY CONTROL PANEL"
+            contentStyle={{ padding: 12, position: 'relative' }}
+            removeScrollbars={false}
+        >
             {hw.contextHolderMessage}
 
             <div
@@ -84,6 +37,52 @@ const ConfigurationPage = () => {
                     marginBottom: 12,
                 }}
             >
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'auto auto',
+                        columnGap: 12,
+                        rowGap: 6,
+                        alignItems: 'center',
+                    }}
+                >
+                    <span style={{ gridColumn: 1, gridRow: 1 }} aria-hidden />
+                    <div style={{ gridColumn: 2, gridRow: 1 }}>
+                        <HardwareConfigPresetHeaderTag
+                            variant="loaded"
+                            label="LOADED"
+                            value={hw.resolvedName || ''}
+                            title="Configuration YAML currently open in the editor"
+                        />
+                    </div>
+                    <Tag
+                        title="ROS package wired on lucy_config_pipeline (from config/get)"
+                        style={{ gridColumn: 1, gridRow: 2, margin: 0 }}
+                    >
+                        <span style={{ fontWeight: 600 }}>ROBOT PACKAGE:</span> {hw.serverRobotPackage || '—'}
+                    </Tag>
+                    <div style={{ gridColumn: 2, gridRow: 2 }}>
+                        <HardwareConfigPresetHeaderTag
+                            variant="active"
+                            label="ACTIVE"
+                            value={hw.serverActiveConfigName || ''}
+                            title="Current active hardware configuration from config/list"
+                        />
+                    </div>
+                    <span style={{ gridColumn: 1, gridRow: 3 }} aria-hidden />
+                    <div style={{ gridColumn: 2, gridRow: 3 }}>
+                        <HardwareConfigPresetHeaderTag
+                            variant="flashed"
+                            label="FLASHED"
+                            value={hw.serverFlashedConfigName || ''}
+                            title={
+                                hw.serverFlashedAt
+                                    ? `Last successful pipeline flash (UTC): ${hw.serverFlashedAt}`
+                                    : 'Preset last written to boards via configure_pipeline flash (from active_meta / config/get)'
+                            }
+                        />
+                    </div>
+                </div>
                 <Space wrap align="center">
                     <Button
                         icon={<ReloadOutlined />}

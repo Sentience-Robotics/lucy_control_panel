@@ -146,10 +146,39 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
     // --- Embedded: bare canvas ---
     if (embedded) return canvas;
 
-    // --- Full page: canvas + overlays + header controls ---
-    const headerContent = (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+    return (
+        <Page
+            showHeader
+            title="LUCY CONTROL PANEL"
+            contentStyle={{ height: 'calc(100vh - 70px)', position: 'relative', padding: 0 }}
+        >
+            {canvas}
+
+            {/* Controls overlay — top-left */}
+            <div style={{
+                position: 'absolute', top: 16, left: 16,
+                backgroundColor: UI_MODAL_MASK_BG, border: `1px solid ${UI_BORDER_MUTED}`,
+                padding: 16, fontFamily: 'monospace', color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px',
+            }}>
+                <div style={{ marginBottom: 8 }}><Text style={{ color: UI_ACCENT_GREEN }}>CONTROLS:</Text></div>
+                <div>• Left mouse Click: Rotate view</div>
+                <div>• Mouse wheel: Zoom in/out</div>
+                <div>• Right mouse click + drag: Pan</div>
+                <div style={{ marginTop: 8 }}>
+                    <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {linkMeshes.length}</Text>
+                </div>
+                <div style={{ marginTop: 4 }}>
+                    <Text style={{ color: jointAngles.size > 0 ? UI_ACCENT_GREEN : UI_TEXT_SECONDARY_MUTED }}>
+                        JOINTS: {jointAngles.size > 0 ? `LIVE (${jointAngles.size})` : 'STATIC'}
+                    </Text>
+                </div>
+            </div>
+
+            {/* View controls — top-right */}
+            <div style={{
+                position: 'absolute', top: 16, right: 16,
+                display: 'flex', alignItems: 'center', gap: 16
+            }}>
                 <Tooltip title="View the robot model as a wire mesh instead of solid shapes">
                     <ToggleSwitch
                         isOn={wireframe}
@@ -166,37 +195,6 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                         width={120}
                     />
                 </Tooltip>
-            </div>
-        </div>
-    );
-
-    return (
-        <Page
-            showHeader
-            title="LUCY 3D VIEWER"
-            headerContent={headerContent}
-            contentStyle={{ height: 'calc(100vh - 70px)', position: 'relative', padding: 0 }}
-        >
-            {canvas}
-
-            {/* Controls overlay — top-left */}
-            <div style={{
-                position: 'absolute', top: 16, left: 16,
-                backgroundColor: UI_MODAL_MASK_BG, border: `1px solid ${UI_BORDER_MUTED}`,
-                padding: 16, fontFamily: 'monospace', color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px',
-            }}>
-                <div style={{ marginBottom: 8 }}><Text style={{ color: UI_ACCENT_GREEN }}>CONTROLS:</Text></div>
-                <div>• Mouse: Rotate view</div>
-                <div>• Wheel: Zoom in/out</div>
-                <div>• Right click + drag: Pan</div>
-                <div style={{ marginTop: 8 }}>
-                    <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {linkMeshes.length}</Text>
-                </div>
-                <div style={{ marginTop: 4 }}>
-                    <Text style={{ color: jointAngles.size > 0 ? UI_ACCENT_GREEN : UI_TEXT_SECONDARY_MUTED }}>
-                        JOINTS: {jointAngles.size > 0 ? `LIVE (${jointAngles.size})` : 'STATIC'}
-                    </Text>
-                </div>
             </div>
 
             {/* Opacity control — bottom-left */}

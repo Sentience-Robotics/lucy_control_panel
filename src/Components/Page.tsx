@@ -16,6 +16,7 @@ import {
   UI_TEXT_SECONDARY_MUTED,
   uiAccentRgba,
 } from '../Constants/uiTheme.ts';
+import { AppHeader } from './AppHeader.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -23,7 +24,6 @@ const { Title } = Typography;
 interface PageProps {
   children: ReactNode;
   title?: string;
-  headerContent?: ReactNode;
   showHeader?: boolean;
   contentStyle?: React.CSSProperties;
   removeScrollbars?: boolean;
@@ -33,7 +33,6 @@ interface PageProps {
 export const Page: React.FC<PageProps> = ({
   children,
   title,
-  headerContent,
   showHeader = false,
   contentStyle = {},
   removeScrollbars = true,
@@ -398,7 +397,7 @@ export const Page: React.FC<PageProps> = ({
                 ▲ {title}
               </Title>
             )}
-            {headerContent && <div style={{ width: '100%' }}>{headerContent}</div>}
+            <div style={{ width: '100%' }}><AppHeader /></div>
           </div>
         </Header>
       )}
