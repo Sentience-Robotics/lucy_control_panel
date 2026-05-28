@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
-import { Select, Button } from 'antd';
+import { Select, Button, Tooltip } from 'antd';
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { StreamPlayer } from "./StreamPlayer.tsx";
 import { StreamMetrics } from "./StreamMetrics.tsx";
@@ -102,15 +102,17 @@ export function StreamPlayerModal({
             modalName="STREAM"
             header={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Select
-                        size="small"
-                        value={selectedStreamSource.id}
-                        onChange={handleStreamSourceChange}
-                        style={{ width: 150 }}
-                        options={selectOptions}
-                        popupMatchSelectWidth={false}
-                        styles={SELECT_POPUP_STYLE}
-                    />
+                    <Tooltip title="Select the video stream or 3D model to display">
+                        <Select
+                            size="small"
+                            value={selectedStreamSource.id}
+                            onChange={handleStreamSourceChange}
+                            style={{ width: 150 }}
+                            options={selectOptions}
+                            popupMatchSelectWidth={false}
+                            styles={SELECT_POPUP_STYLE}
+                        />
+                    </Tooltip>
                     {!is3DView && <StreamMetrics fps={fps} frameDelay={frameDelay} />}
                     {hasEmptyDataWarning && (
                         <span
