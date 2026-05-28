@@ -5,6 +5,8 @@ import { logger } from "../../Utils/logger.utils.ts";
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
+export const ROS_URL_KEY = 'rosBridgeUrl';
+
 /**
  * roslib forwards the raw websocket `error` Event when the bridge is
  * unreachable, which stringifies as "[object Event]" — useless for users.
@@ -23,21 +25,42 @@ function describeRosBridgeFailure(error: unknown, url: string, opts?: { timeout?
     })();
     const suffix = detail ? ` (${detail})` : '';
     return [
-        `Could not reach the ROS bridge at ${url}${suffix}.`,
-        'Launch lucy bringup first:',
-        'ros2 launch lucy_bringup lucy.launch.py gazebo:=true rviz:=true',
+        `Could not reach the ROS bridge at ${url}${suffix}.`
     ].join('\n');
+}
+
+export function getDefaultRosUrl(): string {
+    if (typeof window === 'undefined') {
+        throw new Error('Window is undefined');
+    }
+    const meta: string = import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_SERVER_URL;
+    if (meta) {
+        return meta
+    }
+
+    const stored = localStorage.getItem(ROS_URL_KEY);
+    if (stored) {
+        return stored;
+    }
+
+    return (
+        `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`
+    );
 }
 
 class RosBridgeService {
     private static instance: RosBridgeService;
     private ros: ROSLIB.Ros | null = null;
     private _connectionStatus: ConnectionStatus = 'disconnected';
-    private url: string = '';
+    private url: string;
     private connectionTimeout: NodeJS.Timeout | null = null;
     private statusListeners: ((status: ConnectionStatus) => void)[] = [];
     private pendingConnectReject: ((reason: Error) => void) | null = null;
     static readonly CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
+
+    private constructor() {
+        this.url = getDefaultRosUrl();
+    }
 
     private setConnectionStatus(status: ConnectionStatus) {
         if (this._connectionStatus !== status) {
@@ -132,11 +155,16 @@ class RosBridgeService {
         return new Promise((resolve, reject) => {
             logger(`Attempting to connect to ROS Bridge at ${url}...`);
             if (this._connectionStatus === 'connecting' || this._connectionStatus === 'connected') {
-                resolve();
-                return;
+                if (this.url === url) {
+                    resolve();
+                    return;
+                }
+                // If connecting to a different URL, disconnect first
+                this.disconnect();
             }
 
             this.url = url;
+            localStorage.setItem(ROS_URL_KEY, url);
 
             if (this.ros) {
                 this.ros.close();

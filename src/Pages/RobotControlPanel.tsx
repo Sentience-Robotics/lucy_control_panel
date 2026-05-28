@@ -483,8 +483,9 @@ export const RobotControlPanel: React.FC = () => {
                     detail={
                         isConnecting
                             ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
-                            : 'Use CONNECT in the header to start the link.'
+                            : 'Use Quick Connect in the header to start the link.'
                     }
+                    showSpinner={isConnecting}
                 />
             ) : (
                 <>

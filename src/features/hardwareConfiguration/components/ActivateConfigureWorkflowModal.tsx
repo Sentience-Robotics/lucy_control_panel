@@ -393,6 +393,7 @@ function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff }) {
                 </Text>
                 <div style={{ marginTop: 4 }}>
                     <Text code copyable style={{ fontSize: 11 }}>
+                        Choose gazebo from the TUI core list or
                         ros2 launch lucy_bringup lucy.launch.py gazebo:=true rviz:=true
                     </Text>
                 </div>

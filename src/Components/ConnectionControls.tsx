@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Alert, Button, Input } from 'antd';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
+import { getDefaultRosUrl, ROS_URL_KEY } from '../Services/ros/ros.service';
 import {
     UI_ACCENT_GREEN,
     UI_ACCENT_BOX_SHADOW_SOFT,
@@ -13,29 +14,10 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
 } from '../Constants/uiTheme';
 
-const ROS_URL_KEY = 'lucy_ros_url';
-
 export const ConnectionControls: React.FC = () => {
     const { isConnected, isConnecting, connect, disconnect } = useRosConnection();
 
-    const defaultRosUrl = useMemo(() => {
-        if (typeof window === 'undefined') {
-            throw new Error('Window is undefined');
-        }
-        const meta: string = import.meta.env.VITE_OVERRIDE_ROS_BRIDGE_SERVER_URL;
-        if (meta) {
-            return meta
-        }
-
-        const stored = localStorage.getItem(ROS_URL_KEY);
-        if (stored) {
-            return stored;
-        }
-
-        return (
-            `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`
-        );
-    }, []);
+    const defaultRosUrl = useMemo(() => getDefaultRosUrl(), []);
 
     const [rosUrl, setRosUrl] = useState<string>(defaultRosUrl);
     const [connectionError, setConnectionError] = useState<string | null>(null);

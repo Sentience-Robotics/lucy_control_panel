@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Typography } from 'antd';
+import React, { useEffect, useState, useRef } from 'react';
+import { Button, Tooltip, Typography } from 'antd';
+import { SettingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
@@ -11,15 +12,27 @@ import {
     UI_ERROR,
     UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme';
+import { SettingsModal, AUTO_CONNECT_KEY } from './SettingsModal';
 
 const { Text } = Typography;
 
 export const AppHeader: React.FC = () => {
-    const { connectionStatus, isConnected } = useRosConnection();
+    const { connectionStatus, isConnected, connect, currentUrl } = useRosConnection();
     const [countState, setCountState] = useState<number>(0);
+    const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
     const [activeControllerId, setActiveControllerId] = useState<string>(
         () => ControlModeHandler.getInstance().currentControllerId
     );
+    const connectionStatusRef = useRef(connectionStatus);
+    const currentUrlRef = useRef(currentUrl);
+
+    useEffect(() => {
+        connectionStatusRef.current = connectionStatus;
+    }, [connectionStatus]);
+
+    useEffect(() => {
+        currentUrlRef.current = currentUrl;
+    }, [currentUrl]);
 
     useEffect(() => {
         const handler = new ConnectedClientsHandler((count: number) => {
@@ -33,6 +46,36 @@ export const AppHeader: React.FC = () => {
     useEffect(() => {
         return ControlModeHandler.getInstance().onControllerChanged(setActiveControllerId);
     }, []);
+
+    useEffect(() => {
+        let timer: ReturnType<typeof setInterval> | null = null;
+
+        const checkAutoConnect = () => {
+            const isAutoConnectEnabled = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
+            if (isAutoConnectEnabled && connectionStatusRef.current === 'disconnected') {
+                connect(currentUrlRef.current).catch(() => {});
+            }
+        };
+
+        // Check on mount
+        checkAutoConnect();
+
+        // Start interval
+        timer = setInterval(checkAutoConnect, 5000); // 5 seconds
+
+        const handleAutoConnectChange = () => {
+            if (localStorage.getItem(AUTO_CONNECT_KEY) === 'true') {
+                checkAutoConnect();
+            }
+        };
+
+        window.addEventListener('autoConnectChanged', handleAutoConnectChange);
+
+        return () => {
+            if (timer) clearInterval(timer);
+            window.removeEventListener('autoConnectChanged', handleAutoConnectChange);
+        };
+    }, [connect]);
 
     const getConnectionStatusText = () => {
         switch (connectionStatus) {
@@ -134,6 +177,16 @@ export const AppHeader: React.FC = () => {
                     {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
                 </Text>
             </div>
+            <Tooltip title="Settings">
+                <Button icon={<SettingOutlined />} onClick={() => setIsSettingsModalVisible(true)} />
+            </Tooltip>
+            <Tooltip title="Quick Connect">
+                <Button icon={<ThunderboltOutlined />} onClick={() => connect(currentUrl)} loading={connectionStatus === 'connecting'} />
+            </Tooltip>
+            <SettingsModal
+                visible={isSettingsModalVisible}
+                onClose={() => setIsSettingsModalVisible(false)}
+            />
         </div>
     );
 };

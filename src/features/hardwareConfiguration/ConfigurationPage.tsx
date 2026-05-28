@@ -141,7 +141,7 @@ const ConfigurationPage = () => {
                     detail={
                         hw.loading
                             ? 'Fetching the active hardware preset and joint catalog.'
-                            : 'Use CONNECT in the header — the configuration loads automatically once linked.'
+                            : 'Use Quick Connect in the header — the configuration loads automatically once linked.'
                     }
                 />
             ) : null}

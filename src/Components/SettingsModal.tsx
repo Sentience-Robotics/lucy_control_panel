@@ -1,19 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Input, Button, Switch, Tooltip, Typography, Form } from 'antd';
+import { Modal, Input, Button, Switch, Form, Typography, Space } from 'antd';
+import { InfoCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+import {
+    UI_ACCENT_GREEN,
+    UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
+    UI_MODAL_MASK_BG,
+    UI_TEXT_ON_ACCENT,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_ERROR,
+} from '../Constants/uiTheme';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 interface SettingsModalProps {
     visible: boolean;
     onClose: () => void;
 }
 
-const AUTO_CONNECT_KEY = 'autoConnectEnabled';
+export const AUTO_CONNECT_KEY = 'autoConnectEnabled';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
-    const { connect, currentUrl, connectionStatus } = useRosConnection();
+    const { connect, disconnect, currentUrl, connectionStatus, isConnected } = useRosConnection();
+    const { activeHardwareConfigName, controllerConfigsFromActive } = useActiveHardwareRos();
+
     const [rosUrl, setRosUrl] = useState(currentUrl);
     const [autoConnect, setAutoConnect] = useState(() => {
         return localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
@@ -25,7 +37,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
 
     useEffect(() => {
         localStorage.setItem(AUTO_CONNECT_KEY, String(autoConnect));
-        // Logic for auto-connect will be handled in a higher-level component or service
+        window.dispatchEvent(new Event('autoConnectChanged'));
     }, [autoConnect]);
 
     const handleSave = async () => {
@@ -37,22 +49,68 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         }
     };
 
+    const handleDisconnect = () => {
+        disconnect();
+        onClose();
+    };
+
+    const jointsLoaded = controllerConfigsFromActive
+        ? controllerConfigsFromActive.reduce((acc, config) => acc + config.joints.length, 0)
+        : 0;
+
     return (
         <Modal
-            title="Settings"
-            visible={visible}
+            title={
+                <Title level={4} style={{ color: UI_TEXT_PRIMARY_ON_DARK, margin: 0 }}>
+                    <SettingOutlined /> Settings
+                </Title>
+            }
+            open={visible}
             onCancel={onClose}
             footer={[
-                <Button key="back" onClick={onClose}>
+                <Button
+                    key="back"
+                    onClick={onClose}
+                    style={{
+                        backgroundColor: UI_COLOR_TRANSPARENT,
+                        borderColor: UI_BORDER_SOFT,
+                        color: UI_TEXT_PRIMARY_ON_DARK,
+                    }}
+                >
                     Cancel
                 </Button>,
-                <Button key="submit" type="primary" onClick={handleSave} loading={connectionStatus === 'connecting'}>
+                isConnected && (
+                    <Button
+                        key="disconnect"
+                        onClick={handleDisconnect}
+                        style={{
+                            backgroundColor: UI_ERROR,
+                            borderColor: UI_ERROR,
+                            color: UI_TEXT_ON_ACCENT,
+                        }}
+                    >
+                        Disconnect
+                    </Button>
+                ),
+                <Button
+                    key="submit"
+                    type="primary"
+                    onClick={handleSave}
+                    loading={connectionStatus === 'connecting'}
+                    style={{
+                        backgroundColor: UI_ACCENT_GREEN,
+                        borderColor: UI_ACCENT_GREEN,
+                        color: UI_TEXT_ON_ACCENT,
+                    }}
+                >
                     Save & Connect
                 </Button>,
             ]}
+            styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
+            className="dark-modal"
         >
             <Form layout="vertical">
-                <Form.Item label="ROS Bridge URL">
+                <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>ROS Bridge URL</Text>}>
                     <Input
                         value={rosUrl}
                         onChange={(e) => setRosUrl(e.target.value)}
@@ -60,16 +118,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     />
                 </Form.Item>
                 <Form.Item
-                    label="Auto-connect"
-                    tooltip={{ title: 'When enabled, the application will attempt to connect to the ROS bridge automatically on startup and after a disconnection.', icon: <InfoCircleOutlined /> }}
+                    label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Auto-connect</Text>}
+                    tooltip={{ title: 'When enabled, the application will attempt to connect to the ROS bridge automatically on startup and periodically when disconnected.', icon: <InfoCircleOutlined /> }}
                 >
                     <Switch checked={autoConnect} onChange={setAutoConnect} />
                 </Form.Item>
-                <Form.Item label="Connection Info">
-                    <Text>Status: {connectionStatus}</Text><br/>
-                    {/* Placeholder for more info */}
-                    <Text>Joints Loaded: N/A</Text><br/>
-                    <Text>Active Configuration: N/A</Text>
+                <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Connection Info</Text>}>
+                    <Space direction="vertical">
+                        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Status: {connectionStatus}</Text>
+                        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Joints Loaded: {jointsLoaded}</Text>
+                        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Active Configuration: {activeHardwareConfigName || 'N/A'}</Text>
+                    </Space>
                 </Form.Item>
             </Form>
         </Modal>
