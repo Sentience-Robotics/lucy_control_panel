@@ -23,7 +23,7 @@ const { Title } = Typography;
 
 interface PageProps {
   children: ReactNode;
-  title?: string;
+  title?: boolean;
   showHeader?: boolean;
   contentStyle?: React.CSSProperties;
   removeScrollbars?: boolean;
@@ -395,7 +395,7 @@ export const Page: React.FC<PageProps> = ({
                   whiteSpace: 'nowrap',
                 }}
               >
-                ▲ {title}
+                ▲ LUCY CONTROL PANEL
               </Title>
             )}
             <div style={{ width: '100%' }}><AppHeader /></div>

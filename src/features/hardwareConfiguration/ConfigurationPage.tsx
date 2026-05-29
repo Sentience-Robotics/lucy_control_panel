@@ -20,7 +20,7 @@ const ConfigurationPage = () => {
     return (
         <Page
             showHeader
-            title="LUCY CONTROL PANEL"
+            title
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >

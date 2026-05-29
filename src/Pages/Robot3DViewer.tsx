@@ -149,7 +149,7 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
     return (
         <Page
             showHeader
-            title="LUCY CONTROL PANEL"
+            title
             contentStyle={{ height: 'calc(100vh - 70px)', position: 'relative', padding: 0 }}
         >
             {canvas}

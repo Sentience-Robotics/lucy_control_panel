@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Input, Button, Switch, Form, Typography, Space } from 'antd';
+import { Modal, Input, Button, Form, Typography, Space } from 'antd';
 import { InfoCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
@@ -12,6 +12,7 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
     UI_ERROR,
 } from '../Constants/uiTheme';
+import { ToggleSwitch } from './ToggleSwitch';
 
 const { Text, Title } = Typography;
 
@@ -118,10 +119,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     />
                 </Form.Item>
                 <Form.Item
-                    label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Auto-connect</Text>}
                     tooltip={{ title: 'When enabled, the application will attempt to connect to the ROS bridge automatically on startup and periodically when disconnected.', icon: <InfoCircleOutlined /> }}
                 >
-                    <Switch checked={autoConnect} onChange={setAutoConnect} />
+                    <ToggleSwitch
+                        isOn={autoConnect}
+                        onToggle={setAutoConnect}
+                        title="Auto-connect"
+                        width={120}
+                    />
                 </Form.Item>
                 <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Connection Info</Text>}>
                     <Space direction="vertical">
