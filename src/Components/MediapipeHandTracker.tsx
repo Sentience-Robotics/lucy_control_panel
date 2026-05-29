@@ -98,14 +98,24 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const now = Date.now();
         if (now - lastProcessTimeRef.current >= 1000) {
             lastProcessTimeRef.current = now;
-            processHands(results.multiHandLandmarks);
+            processHands(results.multiHandLandmarks, results.multiHandedness);
         }
 
         ctx.restore();
     };
 
-    function processHands(hands: NormalizedLandmark[][]) {
+    function processHands(hands: NormalizedLandmark[][], handednesses: any[]) {
         hands.forEach((hand, handIndex) => {
+
+            const handedness = handednesses[handIndex];
+            const label = handedness.classification[0].label;
+
+            // MediaPipe returns "Left" or "Right"
+            const side =
+                label === "Left"
+                    ? "leftHand"
+                    : "rightHand";
+
             for (let i = 0; i < 5; i++) {
                 processFinger({
                     tip: hand[Fingers[i].idx.TIP],
@@ -113,7 +123,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                     pip: hand[Fingers[i].idx.PIP],
                     mcp: hand[Fingers[i].idx.MCP],
                     wrist: hand[0],
-                    jointName: Fingers[i].name.replace("side", handIndex === 0 ? "leftHand" : "rightHand")
+                    jointName: Fingers[i].name.replace("side", side)
                 });
             }
         });
