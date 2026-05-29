@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
-import { Select } from 'antd';
+import { useState, useMemo, useRef } from 'react';
+import { Select, Button, Tooltip } from 'antd';
+import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { StreamPlayer } from "./StreamPlayer.tsx";
 import { StreamMetrics } from "./StreamMetrics.tsx";
 import { MovableModal } from './MovableModal.tsx';
@@ -51,12 +52,29 @@ export function StreamPlayerModal({
     const [fps, setFps] = useState<number>(0);
     const [selectedStreamSource, setSelectedStreamSource] = useState<StreamSource>(DEFAULT_STREAM_SOURCE);
     const [hasEmptyDataWarning, setHasEmptyDataWarning] = useState<boolean>(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const handleStreamSourceChange = (value: string) => {
         const source = STREAM_SOURCES.find(s => s.id === value);
         if (source) {
             setSelectedStreamSource(source);
             setHasEmptyDataWarning(false);
+        }
+    };
+
+    const handleFullscreenToggle = () => {
+        const container = containerRef.current;
+        if (!container) return;
+
+        if (!document.fullscreenElement) {
+            container.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => {
+                console.error(`Error attempting to enable fullscreen: ${err.message}`);
+            });
+        } else {
+            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => {
+                console.error(`Error attempting to disable fullscreen: ${err.message}`);
+            });
         }
     };
 
@@ -70,20 +88,31 @@ export function StreamPlayerModal({
 
     const is3DView = selectedStreamSource.virtual === true;
 
+    // Track fullscreen change event in case user exits with Esc
+    useMemo(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
     return (
         <MovableModal
             modalName="STREAM"
             header={
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Select
-                        size="small"
-                        value={selectedStreamSource.id}
-                        onChange={handleStreamSourceChange}
-                        style={{ width: 150 }}
-                        options={selectOptions}
-                        popupMatchSelectWidth={false}
-                        styles={SELECT_POPUP_STYLE}
-                    />
+                    <Tooltip title="Select the video stream or 3D model to display">
+                        <Select
+                            size="small"
+                            value={selectedStreamSource.id}
+                            onChange={handleStreamSourceChange}
+                            style={{ width: 150 }}
+                            options={selectOptions}
+                            popupMatchSelectWidth={false}
+                            styles={SELECT_POPUP_STYLE}
+                        />
+                    </Tooltip>
                     {!is3DView && <StreamMetrics fps={fps} frameDelay={frameDelay} />}
                     {hasEmptyDataWarning && (
                         <span
@@ -93,6 +122,13 @@ export function StreamPlayerModal({
                             ⚠️ NO DATA
                         </span>
                     )}
+                    <Button 
+                        size="small" 
+                        type="text" 
+                        icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} 
+                        onClick={handleFullscreenToggle}
+                        title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                    />
                 </div>
             }
             isVisible={isVisible}
@@ -101,16 +137,18 @@ export function StreamPlayerModal({
             initialSize={initialSize}
             aspectRatio={aspectRatio}
         >
-            {is3DView ? (
-                <Robot3DViewer embedded />
-            ) : (
-                <StreamPlayer
-                    onFrameDelayChange={setFrameDelay}
-                    onFpsChange={setFps}
-                    streamSource={selectedStreamSource}
-                    onEmptyDataWarning={setHasEmptyDataWarning}
-                />
-            )}
+            <div ref={containerRef} style={{ width: '100%', height: '100%', backgroundColor: 'black' }}>
+                {is3DView ? (
+                    <Robot3DViewer embedded />
+                ) : (
+                    <StreamPlayer
+                        onFrameDelayChange={setFrameDelay}
+                        onFpsChange={setFps}
+                        streamSource={selectedStreamSource}
+                        onEmptyDataWarning={setHasEmptyDataWarning}
+                    />
+                )}
+            </div>
         </MovableModal>
     );
 }

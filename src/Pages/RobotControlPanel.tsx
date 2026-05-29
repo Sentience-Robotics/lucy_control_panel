@@ -55,7 +55,6 @@ import { AnimationManager } from '../Components/AnimationManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
-import { ControlPanelHeaderStats, LucyControlPanelHeader } from '../Components/LucyControlPanelHeader.tsx';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
     UI_ACCENT_BOX_SHADOW_STRONG,
@@ -471,19 +470,10 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
-    const headerContent = (
-        <LucyControlPanelHeader>
-            <ControlPanelHeaderStats
-                jointCount={joints.length}
-                categoryCount={Object.keys(categorizedJoints).length}
-            />
-        </LucyControlPanelHeader>
-    );
-
     return (
         <Page
             showHeader
-            headerContent={headerContent}
+            title
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
@@ -493,8 +483,9 @@ export const RobotControlPanel: React.FC = () => {
                     detail={
                         isConnecting
                             ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
-                            : 'Use CONNECT in the header to start the link.'
+                            : 'Use Quick Connect in the header to start the link.'
                     }
+                    showSpinner={isConnecting}
                 />
             ) : (
                 <>

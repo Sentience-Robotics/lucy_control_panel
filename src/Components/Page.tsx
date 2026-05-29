@@ -16,14 +16,14 @@ import {
   UI_TEXT_SECONDARY_MUTED,
   uiAccentRgba,
 } from '../Constants/uiTheme.ts';
+import { AppHeader } from './AppHeader.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
 
 interface PageProps {
   children: ReactNode;
-  title?: string;
-  headerContent?: ReactNode;
+  title?: boolean;
   showHeader?: boolean;
   contentStyle?: React.CSSProperties;
   removeScrollbars?: boolean;
@@ -33,7 +33,6 @@ interface PageProps {
 export const Page: React.FC<PageProps> = ({
   children,
   title,
-  headerContent,
   showHeader = false,
   contentStyle = {},
   removeScrollbars = true,
@@ -379,8 +378,8 @@ export const Page: React.FC<PageProps> = ({
             padding: '0 24px',
             height: 'auto',
             lineHeight: 'normal',
-            paddingTop: 16,
-            paddingBottom: 16,
+            paddingTop: 8,
+            paddingBottom: 8,
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -393,12 +392,13 @@ export const Page: React.FC<PageProps> = ({
                   fontFamily: 'monospace',
                   textShadow: UI_ACCENT_TEXT_SHADOW,
                   fontSize: '18px',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                ▲ {title}
+                ▲ LUCY CONTROL PANEL
               </Title>
             )}
-            {headerContent && <div style={{ width: '100%' }}>{headerContent}</div>}
+            <div style={{ width: '100%' }}><AppHeader /></div>
           </div>
         </Header>
       )}

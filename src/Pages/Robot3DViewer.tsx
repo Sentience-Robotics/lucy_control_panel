@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { Typography, Button, Spin, Alert } from 'antd';
+import { Typography, Button, Spin, Alert, Tooltip, Slider } from 'antd';
 import { Page } from '../Components/Page';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { useRobotModel } from '../hooks/useRobotModel';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useThrottledJointAngles } from '../hooks/useThrottledJointAngles';
+import { ToggleSwitch } from '../Components/ToggleSwitch';
 import {
     UI_ACCENT_GREEN,
     UI_BG_BLACK,
@@ -145,31 +146,10 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
     // --- Embedded: bare canvas ---
     if (embedded) return canvas;
 
-    // --- Full page: canvas + overlays + header controls ---
-    const headerContent = (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>WIREFRAME:</Text>
-                <div className="tui-toggle">
-                    <button onClick={() => setWireframe(false)} className={`tui-toggle-button ${!wireframe ? 'active' : ''}`}>OFF</button>
-                    <div className="tui-toggle-divider" />
-                    <button onClick={() => setWireframe(true)} className={`tui-toggle-button ${wireframe ? 'active' : ''}`}>ON</button>
-                </div>
-                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontFamily: 'monospace' }}>GRID:</Text>
-                <div className="tui-toggle">
-                    <button onClick={() => setShowGrid(false)} className={`tui-toggle-button ${!showGrid ? 'active' : ''}`}>OFF</button>
-                    <div className="tui-toggle-divider" />
-                    <button onClick={() => setShowGrid(true)} className={`tui-toggle-button ${showGrid ? 'active' : ''}`}>ON</button>
-                </div>
-            </div>
-        </div>
-    );
-
     return (
         <Page
             showHeader
-            title="LUCY 3D VIEWER"
-            headerContent={headerContent}
+            title
             contentStyle={{ height: 'calc(100vh - 70px)', position: 'relative', padding: 0 }}
         >
             {canvas}
@@ -181,9 +161,9 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                 padding: 16, fontFamily: 'monospace', color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px',
             }}>
                 <div style={{ marginBottom: 8 }}><Text style={{ color: UI_ACCENT_GREEN }}>CONTROLS:</Text></div>
-                <div>• Mouse: Rotate view</div>
-                <div>• Wheel: Zoom in/out</div>
-                <div>• Right click + drag: Pan</div>
+                <div>• Left mouse Click: Rotate view</div>
+                <div>• Mouse wheel: Zoom in/out</div>
+                <div>• Right mouse click + drag: Pan</div>
                 <div style={{ marginTop: 8 }}>
                     <Text style={{ color: UI_ACCENT_GREEN }}>MESHES LOADED: {linkMeshes.length}</Text>
                 </div>
@@ -194,22 +174,56 @@ const Robot3DViewer: React.FC<Robot3DViewerProps> = ({ embedded = false }) => {
                 </div>
             </div>
 
-            {/* Opacity control — bottom-left */}
+            {/* View controls — top-right */}
             <div style={{
-                position: 'absolute', bottom: 16, left: 16,
-                backgroundColor: UI_MODAL_MASK_BG, border: `1px solid ${UI_BORDER_MUTED}`,
-                padding: 16, fontFamily: 'monospace', color: UI_TEXT_PRIMARY_ON_DARK,
-                fontSize: '12px', minWidth: 200,
+                position: 'absolute', top: 16, right: 16,
+                display: 'flex', alignItems: 'center', gap: 16
             }}>
-                <Text style={{ color: UI_ACCENT_GREEN, marginBottom: 8, display: 'block' }}>
-                    TRANSPARENCY: {Math.round(opacity * 100)}%
-                </Text>
-                <input
-                    type="range" min="0.1" max="1" step="0.1" value={opacity}
-                    onChange={e => setOpacity(parseFloat(e.target.value))}
-                    style={{ width: '100%', background: UI_BORDER_MUTED, outline: 'none', height: '4px', borderRadius: '0' }}
-                />
+                <Tooltip title="View the robot model as a wire mesh instead of solid shapes">
+                    <ToggleSwitch
+                        isOn={wireframe}
+                        onToggle={setWireframe}
+                        title="WIREFRAME"
+                        width={120}
+                    />
+                </Tooltip>
+                <Tooltip title="Show or hide the floor grid">
+                    <ToggleSwitch
+                        isOn={showGrid}
+                        onToggle={setShowGrid}
+                        title="GRID"
+                        width={120}
+                    />
+                </Tooltip>
             </div>
+
+            {/* Opacity control — bottom-left */}
+            <Tooltip title="Adjust how see-through the robot model is" placement="right">
+                <div style={{
+                    position: 'absolute', bottom: 16, left: 16,
+                    backgroundColor: UI_MODAL_MASK_BG, border: `1px solid ${UI_BORDER_MUTED}`,
+                    padding: '12px 16px', fontFamily: 'monospace', color: UI_TEXT_PRIMARY_ON_DARK,
+                    fontSize: '12px', minWidth: 240, cursor: 'help'
+                }}>
+                    <Text style={{ color: UI_ACCENT_GREEN, marginBottom: 4, display: 'block', textTransform: 'uppercase', fontSize: 11, letterSpacing: 0.5 }}>
+                        TRANSPARENCY
+                    </Text>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <Slider
+                            min={0.1}
+                            max={1}
+                            step={0.1}
+                            value={opacity}
+                            onChange={setOpacity}
+                            style={{ flex: 1, margin: 0 }}
+                            tooltip={{ formatter: (value) => `${Math.round((value || 0) * 100)}%` }}
+                        />
+                        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, width: 40 }}>
+                            {`${Math.round(opacity * 100)}%`}
+                        </Text>
+                    </div>
+                </div>
+            </Tooltip>
         </Page>
     );
 };

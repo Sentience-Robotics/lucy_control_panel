@@ -4,7 +4,6 @@ import {
     UI_ACCENT_GREEN,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
-    uiAccentRgba,
 } from '../Constants/uiTheme.ts';
 import './LucyLoader.css';
 
@@ -19,11 +18,11 @@ export interface LucyLoaderProps {
     detail?: string;
     /** Compact = no full-viewport min-height (use inside cards). */
     compact?: boolean;
+    /** Show the spinner animation. */
+    showSpinner?: boolean;
 }
 
 /**
- * Animated Lucy loader: a triple-ring spinner around the brand mark.
- *
  * Used in place of static "Connect to ROS" messages while a page is waiting on
  * the ROS bridge or the active hardware config.
  */
@@ -32,25 +31,11 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
     label,
     detail,
     compact = false,
+    showSpinner = true,
 }) => {
     return (
         <div className={`lucy-loader${compact ? ' lucy-loader-compact' : ''}`}>
-            <div
-                className="lucy-loader-rings"
-                style={
-                    {
-                        '--lucy-loader-accent': UI_ACCENT_GREEN,
-                        '--lucy-loader-accent-soft': uiAccentRgba(0.25),
-                        '--lucy-loader-accent-glow': uiAccentRgba(0.45),
-                    } as React.CSSProperties
-                }
-                aria-hidden
-            >
-                <span className="lucy-loader-ring lucy-loader-ring-outer" />
-                <span className="lucy-loader-ring lucy-loader-ring-middle" />
-                <span className="lucy-loader-ring lucy-loader-ring-inner" />
-                <span className="lucy-loader-core" />
-            </div>
+            {showSpinner && <div className="lucy-loader-spinner" />}
             <div className="lucy-loader-text">
                 <Text
                     strong
