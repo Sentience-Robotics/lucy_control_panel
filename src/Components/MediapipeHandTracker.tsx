@@ -1,10 +1,9 @@
-import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark} from "@mediapipe/hands";
-import React, { useEffect, useRef, useState } from "react";
+import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
+import React, { useEffect, useRef } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
-import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 
 interface MediapipeHandTrackerProps {
     width?: number;
@@ -104,26 +103,22 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         ctx.restore();
     };
 
-    function processHands(hands: NormalizedLandmark[][], handednesses: any[]) {
+    function processHands(hands: NormalizedLandmark[][], handedness: Handedness[]) {
         hands.forEach((hand, handIndex) => {
+            for (let i = 0; i < 5; i++) {
 
-            const handedness = handednesses[handIndex];
-            const label = handedness.classification[0].label;
-
-            // MediaPipe returns "Left" or "Right"
-            const side =
-                label === "Left"
+                const label: string =
+                handedness[handIndex].label === "Left"
                     ? "leftHand"
                     : "rightHand";
 
-            for (let i = 0; i < 5; i++) {
                 processFinger({
                     tip: hand[Fingers[i].idx.TIP],
                     dip: hand[Fingers[i].idx.DIP],
                     pip: hand[Fingers[i].idx.PIP],
                     mcp: hand[Fingers[i].idx.MCP],
                     wrist: hand[0],
-                    jointName: Fingers[i].name.replace("side", side)
+                    jointName: Fingers[i].name.replace("side", label)
                 });
             }
         });
