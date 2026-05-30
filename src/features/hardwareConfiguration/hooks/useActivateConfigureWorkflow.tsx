@@ -3,12 +3,42 @@ import { useCallback, useRef, useState } from 'react';
 import type { ConfigurePipelineFeedbackNormalized } from '../../../Constants/hardwareConfigTypes.ts';
 import { HardwareConfigHandler } from '../../../Services/ros/handlers/HardwareConfig.handler.ts';
 import { startConfigurePipeline } from '../../../Services/ros/handlers/ConfigurePipeline.handler.ts';
+import { parseHardwareConfigYaml } from '../../../Utils/hardwareConfigYaml.ts';
 import type {
     WorkflowStepId,
     WorkflowStepSlice,
 } from '../activateWorkflowStepTypes.ts';
+import {
+    computeHardwareConfigDiff,
+    type HardwareConfigDiff,
+} from '../model/hardwareConfigDiff.ts';
 
-function initialSteps(buildOnly: boolean, activateOnly: boolean): WorkflowStepSlice[] {
+function initialSteps(
+    simulationOnly: boolean,
+    buildOnly: boolean,
+    activateOnly: boolean,
+): WorkflowStepSlice[] {
+    if (simulationOnly) {
+        return [
+            { id: 'validate', title: 'VALIDATE', status: 'pending', fraction: 0, detail: '' },
+            { id: 'activate', title: 'ACTIVATE', status: 'pending', fraction: 0, detail: '' },
+            { id: 'reload', title: 'RELOAD', status: 'pending', fraction: 0, detail: '' },
+            {
+                id: 'build',
+                title: 'BUILD',
+                status: 'skipped',
+                fraction: 0,
+                detail: 'Skipped (simulation only)',
+            },
+            {
+                id: 'flash',
+                title: 'FLASH',
+                status: 'skipped',
+                fraction: 0,
+                detail: 'Skipped (simulation only)',
+            },
+        ];
+    }
     return [
         { id: 'validate', title: 'VALIDATE', status: 'pending', fraction: 0, detail: '' },
         { id: 'activate', title: 'ACTIVATE', status: 'pending', fraction: 0, detail: '' },
@@ -24,8 +54,13 @@ function initialSteps(buildOnly: boolean, activateOnly: boolean): WorkflowStepSl
             title: 'FLASH',
             status: buildOnly || activateOnly ? 'skipped' : 'pending',
             fraction: 0,
-            detail: buildOnly ? 'Skipped (build only)' : activateOnly ? 'Skipped (activate only)' : '',
+            detail: buildOnly
+                ? 'Skipped (build only)'
+                : activateOnly
+                  ? 'Skipped (activate only)'
+                  : '',
         },
+        { id: 'reload', title: 'RELOAD', status: 'pending', fraction: 0, detail: '' },
     ];
 }
 
@@ -59,11 +94,25 @@ function fractionForValidateDryRun(f: ConfigurePipelineFeedbackNormalized): numb
     return Math.max(0, Math.min(1, f.progress));
 }
 
+function fractionForWetSim(f: ConfigurePipelineFeedbackNormalized): number {
+    const p = f.phase?.toLowerCase() ?? '';
+    if (p === 'validate') return Math.max(0, Math.min(1, f.progress * 0.25));
+    if (p === 'generate') return Math.max(0, Math.min(1, 0.25 + f.progress * 0.35));
+    if (p === 'reload') return Math.max(0, Math.min(1, 0.6 + f.progress * 0.4));
+    return Math.max(0, Math.min(1, f.progress));
+}
+
 export interface UseActivateConfigureWorkflowParams {
     messageApi: MessageInstance;
     isConnected: boolean;
     robotPackageName: string;
     refetchActiveHardware: () => Promise<unknown>;
+    /**
+     * Returns the parsed YAML of the currently-active hardware doc on the system,
+     * captured by the parent right before the workflow starts so the diff is
+     * computed against the state Gazebo originally loaded — not the post-activate state.
+     */
+    getPreRunActiveSnapshot: () => Record<string, unknown> | null;
 }
 
 export function useActivateConfigureWorkflow({
@@ -71,12 +120,19 @@ export function useActivateConfigureWorkflow({
     isConnected,
     robotPackageName,
     refetchActiveHardware,
+    getPreRunActiveSnapshot,
 }: UseActivateConfigureWorkflowParams) {
     const [workflowRunning, setWorkflowRunning] = useState(false);
-    const [steps, setSteps] = useState<WorkflowStepSlice[]>(() => initialSteps(false, false));
+    const [steps, setSteps] = useState<WorkflowStepSlice[]>(() => initialSteps(false, false, false));
     const [detailLine, setDetailLine] = useState('');
+    const [lastRunSucceeded, setLastRunSucceeded] = useState(false);
+    const [lastRunDiff, setLastRunDiff] = useState<HardwareConfigDiff | null>(null);
     const abortRef = useRef<(() => void) | null>(null);
     const runIdRef = useRef(0);
+    /** Snapshot of pre-run active doc, captured at the start of each run. */
+    const preRunActiveDocRef = useRef<Record<string, unknown> | null>(null);
+    /** Parsed YAML of the target preset (loaded once per run). */
+    const targetDocRef = useRef<Record<string, unknown> | null>(null);
 
     const workflowOverallPercent = computeWorkflowOverallPercent(steps);
 
@@ -85,9 +141,26 @@ export function useActivateConfigureWorkflow({
         abortRef.current = null;
     }, []);
 
-    const resetWorkflowPresentation = useCallback((buildOnly: boolean, activateOnly: boolean) => {
-        setSteps(initialSteps(buildOnly, activateOnly));
-        setDetailLine('');
+    const resetWorkflowPresentation = useCallback(
+        (simulationOnly: boolean, buildOnly: boolean, activateOnly: boolean) => {
+            setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
+            setDetailLine('');
+            setLastRunSucceeded(false);
+            setLastRunDiff(null);
+            preRunActiveDocRef.current = null;
+            targetDocRef.current = null;
+        },
+        [],
+    );
+
+    const computeAndStoreDiff = useCallback(() => {
+        const before = preRunActiveDocRef.current;
+        const after = targetDocRef.current;
+        if (!before || !after) {
+            setLastRunDiff(null);
+            return;
+        }
+        setLastRunDiff(computeHardwareConfigDiff(before, after));
     }, []);
 
     const patchStep = useCallback((id: WorkflowStepId, patch: Partial<Omit<WorkflowStepSlice, 'id' | 'title'>>) => {
@@ -100,9 +173,16 @@ export function useActivateConfigureWorkflow({
             boardsToFlash: string[];
             buildOnly: boolean;
             activateOnly: boolean;
+            simulationOnly: boolean;
             refreshSavedConfigs: () => Promise<unknown>;
         }) => {
-            const { targetConfigName, boardsToFlash, buildOnly, activateOnly } = params;
+            const {
+                targetConfigName,
+                boardsToFlash,
+                buildOnly,
+                activateOnly,
+                simulationOnly,
+            } = params;
             const rp = robotPackageName.trim();
             if (!isConnected) {
                 messageApi.error('Connect to ROS bridge first.');
@@ -120,8 +200,24 @@ export function useActivateConfigureWorkflow({
             const runId = ++runIdRef.current;
             abortRef.current = null;
             setWorkflowRunning(true);
-            setSteps(initialSteps(buildOnly, activateOnly));
+            setLastRunSucceeded(false);
+            setLastRunDiff(null);
+            setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
             setDetailLine('');
+
+            // Snapshot the active doc the running system loaded so we can later
+            // diff it against the target preset. Failing to capture either side
+            // just means we won't surface a Gazebo-restart prompt.
+            preRunActiveDocRef.current = getPreRunActiveSnapshot();
+            targetDocRef.current = null;
+            try {
+                const targetRes = await HardwareConfigHandler.getConfig(targetConfigName.trim());
+                if (targetRes.success) {
+                    targetDocRef.current = parseHardwareConfigYaml(targetRes.config_yaml || '');
+                }
+            } catch {
+                targetDocRef.current = null;
+            }
 
             const shouldContinue = () => runId === runIdRef.current;
 
@@ -143,6 +239,7 @@ export function useActivateConfigureWorkflow({
                         boards_to_flash: boardsToFlash,
                         dry_run: true,
                         build_only: false,
+                        simulation_only: simulationOnly,
                     },
                     {
                         onFeedback: (f) => {
@@ -186,7 +283,7 @@ export function useActivateConfigureWorkflow({
                 await params.refreshSavedConfigs();
                 await refetchActiveHardware();
 
-                if (activateOnly) {
+                if (activateOnly && !simulationOnly) {
                     patchStep('build', {
                         status: 'skipped',
                         fraction: 0,
@@ -197,19 +294,34 @@ export function useActivateConfigureWorkflow({
                         fraction: 0,
                         detail: 'Skipped (activate only)',
                     });
-                    setDetailLine('Activated — build and flash skipped.');
+                    patchStep('reload', {
+                        status: 'skipped',
+                        fraction: 0,
+                        detail: 'Skipped (activate only)',
+                    });
+                    setDetailLine('Activated — build, flash, and reload skipped.');
                     await refetchActiveHardware();
-                    messageApi.success('Configuration activated (build and flash skipped).');
+                    messageApi.success('Configuration activated (build, flash, and reload skipped).');
+                    computeAndStoreDiff();
+                    setLastRunSucceeded(true);
                     return;
                 }
 
-                patchStep('build', { status: 'running', fraction: 0, detail: '' });
-                if (!buildOnly) {
-                    patchStep('flash', { status: 'pending', fraction: 0, detail: '' });
+                if (!simulationOnly) {
+                    patchStep('build', { status: 'running', fraction: 0, detail: '' });
+                    if (!buildOnly) {
+                        patchStep('flash', { status: 'pending', fraction: 0, detail: '' });
+                    }
                 }
-                setDetailLine('BUILD — pipeline on active mapping…');
+                patchStep('reload', { status: 'pending', fraction: 0, detail: '' });
+                setDetailLine(
+                    simulationOnly
+                        ? 'SIMULATION — generate sim ros2_control and reload…'
+                        : 'BUILD — pipeline on active mapping…',
+                );
 
                 let sawFlash = false;
+                let sawReload = false;
                 const wet = startConfigurePipeline(
                     {
                         robot_package: rp,
@@ -217,6 +329,7 @@ export function useActivateConfigureWorkflow({
                         boards_to_flash: boardsToFlash,
                         dry_run: false,
                         build_only: buildOnly,
+                        simulation_only: simulationOnly,
                     },
                     {
                         onFeedback: (f: ConfigurePipelineFeedbackNormalized) => {
@@ -224,12 +337,37 @@ export function useActivateConfigureWorkflow({
                             const phase = (f.phase || '').toLowerCase();
                             setDetailLine(f.detail || `${phase.toUpperCase()}…`);
 
-                            if (phase === 'flash') {
+                            if (phase === 'reload') {
+                                sawReload = true;
+                                if (!simulationOnly) {
+                                    patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
+                                    if (buildOnly) {
+                                        patchStep('flash', {
+                                            status: 'skipped',
+                                            fraction: 0,
+                                            detail: 'Skipped (build only)',
+                                        });
+                                    } else {
+                                        patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                                    }
+                                }
+                                patchStep('reload', {
+                                    status: 'running',
+                                    fraction: Math.max(0, Math.min(1, f.progress)),
+                                    detail: f.detail || phase,
+                                });
+                            } else if (phase === 'flash') {
                                 sawFlash = true;
                                 patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
                                 patchStep('flash', {
                                     status: 'running',
                                     fraction: Math.max(0, Math.min(1, f.progress)),
+                                    detail: f.detail || phase,
+                                });
+                            } else if (simulationOnly) {
+                                patchStep('reload', {
+                                    status: 'running',
+                                    fraction: fractionForWetSim(f),
                                     detail: f.detail || phase,
                                 });
                             } else {
@@ -250,24 +388,30 @@ export function useActivateConfigureWorkflow({
 
                 if (!wetRes.success) {
                     const msg = wetRes.message || 'Configure pipeline failed';
-                    if (buildOnly || !sawFlash) failStep('build', msg);
+                    if (simulationOnly && sawReload) failStep('reload', msg);
+                    else if (buildOnly || !sawFlash) failStep('build', msg);
                     else failStep('flash', msg);
                     return;
                 }
 
-                patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
-                if (buildOnly) {
-                    patchStep('flash', {
-                        status: 'skipped',
-                        fraction: 0,
-                        detail: 'Skipped (build only)',
-                    });
-                } else {
-                    patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                if (!simulationOnly) {
+                    patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
+                    if (buildOnly) {
+                        patchStep('flash', {
+                            status: 'skipped',
+                            fraction: 0,
+                            detail: 'Skipped (build only)',
+                        });
+                    } else {
+                        patchStep('flash', { status: 'done', fraction: 1, detail: 'OK' });
+                    }
                 }
+                patchStep('reload', { status: 'done', fraction: 1, detail: 'OK' });
                 setDetailLine(wetRes.message || 'Complete');
                 await refetchActiveHardware();
                 messageApi.success(`Workflow finished: ${wetRes.message || 'OK'}`);
+                computeAndStoreDiff();
+                setLastRunSucceeded(true);
             } catch (e) {
                 if (!shouldContinue()) return;
                 const msg = e instanceof Error ? e.message : 'Workflow failed';
@@ -283,7 +427,15 @@ export function useActivateConfigureWorkflow({
                 if (runId === runIdRef.current) setWorkflowRunning(false);
             }
         },
-        [isConnected, messageApi, patchStep, refetchActiveHardware, robotPackageName],
+        [
+            isConnected,
+            messageApi,
+            patchStep,
+            refetchActiveHardware,
+            robotPackageName,
+            getPreRunActiveSnapshot,
+            computeAndStoreDiff,
+        ],
     );
 
     return {
@@ -291,6 +443,8 @@ export function useActivateConfigureWorkflow({
         workflowSteps: steps,
         workflowOverallPercent,
         workflowDetailLine: detailLine,
+        workflowLastRunSucceeded: lastRunSucceeded,
+        workflowLastRunDiff: lastRunDiff,
         runActivateWorkflow,
         abortWorkflow,
         resetWorkflowPresentation,

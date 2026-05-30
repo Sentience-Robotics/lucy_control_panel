@@ -9,7 +9,7 @@ import {
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
     UI_DECORATIVE_CORAL,
-    UI_ERROR_RED,
+    UI_ERROR,
     UI_INPUT_SURFACE,
     UI_PANEL_BG,
     UI_TEXT_ON_ACCENT,
@@ -111,11 +111,11 @@ export const NotFound: React.FC = () => {
         <div style={{ marginBottom: '20px' }}>
           <Text
             style={{
-              color: UI_ERROR_RED,
+              color: UI_ERROR,
               fontFamily: 'monospace',
               fontSize: '24px',
               fontWeight: 'bold',
-              textShadow: `0 0 15px ${UI_ERROR_RED}`,
+              textShadow: `0 0 15px ${UI_ERROR}`,
               display: 'block',
               marginBottom: '10px'
             }}
@@ -213,7 +213,7 @@ export const NotFound: React.FC = () => {
             textAlign: 'center'
           }}>
             <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>STATUS</Text>
-            <Text style={{ color: UI_ERROR_RED, fontFamily: 'monospace', fontSize: '14px' }}>LOST</Text>
+            <Text style={{ color: UI_ERROR, fontFamily: 'monospace', fontSize: '14px' }}>LOST</Text>
           </div>
           <div style={{
             backgroundColor: UI_INPUT_SURFACE,
@@ -222,7 +222,7 @@ export const NotFound: React.FC = () => {
             textAlign: 'center'
           }}>
             <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>CODE</Text>
-            <Text style={{ color: UI_ERROR_RED, fontFamily: 'monospace', fontSize: '14px' }}>404</Text>
+            <Text style={{ color: UI_ERROR, fontFamily: 'monospace', fontSize: '14px' }}>404</Text>
           </div>
           <div style={{
             backgroundColor: UI_INPUT_SURFACE,

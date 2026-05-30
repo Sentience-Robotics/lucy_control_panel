@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     asMapping,
+    assignableUrdfJointsFromYaml,
     boardSlots,
-    catalogUrdfJointsFromYaml,
     freePhysicalPinsOnBoard,
     sortedBoardIds,
 } from '../model/documentHelpers.ts';
@@ -14,6 +14,7 @@ import type { ActuatorTableRecord, BoardRow, PressureSensorTableRecord } from '.
 export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | null) {
     const [addActuatorBoard, setAddActuatorBoard] = useState<string | undefined>();
     const [addPressureSensorActuatorId, setAddPressureSensorActuatorId] = useState<string | undefined>();
+    const [actuatorSearchQuery, setActuatorSearchQuery] = useState('');
 
     const boardsEligibleForNewActuator = useMemo(() => {
         if (!yamlDoc) return [];
@@ -72,12 +73,22 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
 
     const actuatorRows: ActuatorTableRecord[] = useMemo(() => {
         if (!yamlDoc || !Array.isArray(yamlDoc.actuators)) return [];
-        return yamlDoc.actuators.map((row, index) => ({
+        const allRows = yamlDoc.actuators.map((row, index) => ({
             key: `act-${index}`,
             index,
             row: asMapping(row) ?? {},
         }));
-    }, [yamlDoc]);
+        if (!actuatorSearchQuery) {
+            return allRows;
+        }
+        const query = actuatorSearchQuery.toLowerCase();
+        return allRows.filter(({ row }) => {
+            const name = String(row.name ?? '').toLowerCase();
+            const id = String(row.id ?? '').toLowerCase();
+            const joint = String(row.joint ?? '').toLowerCase();
+            return name.includes(query) || id.includes(query) || joint.includes(query);
+        });
+    }, [yamlDoc, actuatorSearchQuery]);
 
     const pressureSensorRows: PressureSensorTableRecord[] = useMemo(() => {
         if (!yamlDoc || !Array.isArray(yamlDoc.sensors)) return [];
@@ -97,7 +108,10 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
         return typeof v === 'string' ? v.trim() : '';
     }, [yamlDoc]);
 
-    const yamlJointCatalog = useMemo(() => (yamlDoc ? catalogUrdfJointsFromYaml(yamlDoc) : []), [yamlDoc]);
+    const assignableUrdfJoints = useMemo(
+        () => (yamlDoc ? assignableUrdfJointsFromYaml(yamlDoc) : []),
+        [yamlDoc],
+    );
 
     return {
         boardsEligibleForNewActuator,
@@ -106,10 +120,12 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
         actuatorRows,
         pressureSensorRows,
         hardwareRobotName,
-        yamlJointCatalog,
+        assignableUrdfJoints,
         addActuatorBoard,
         setAddActuatorBoard,
         addPressureSensorActuatorId,
         setAddPressureSensorActuatorId,
+        actuatorSearchQuery,
+        setActuatorSearchQuery,
     };
 }

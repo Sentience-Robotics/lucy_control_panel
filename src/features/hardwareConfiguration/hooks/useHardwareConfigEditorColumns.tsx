@@ -13,7 +13,7 @@ import { buildPressureSensorColumns } from '../tables/pressureSensorColumns.tsx'
 export interface HardwareConfigEditorColumnsParams {
     yamlDoc: Record<string, unknown> | null;
     serverFieldErrors: Map<string, string[]>;
-    yamlJointCatalog: string[];
+    assignableUrdfJoints: string[];
     patchDoc: (next: Record<string, unknown>) => void;
     actuatorIdOnFocusRef: RefObject<Record<number, string>>;
     deleteActuatorAt: (index: number) => void;
@@ -23,7 +23,7 @@ export interface HardwareConfigEditorColumnsParams {
 export function useHardwareConfigEditorColumns({
     yamlDoc,
     serverFieldErrors,
-    yamlJointCatalog,
+    assignableUrdfJoints,
     patchDoc,
     actuatorIdOnFocusRef,
     deleteActuatorAt,
@@ -49,12 +49,20 @@ export function useHardwareConfigEditorColumns({
                 yamlDoc,
                 serverFieldErrors,
                 outlineBorders,
-                yamlJointCatalog,
+                assignableUrdfJoints,
                 patchDoc,
                 actuatorIdOnFocusRef,
                 deleteActuatorAt,
             }),
-        [yamlDoc, serverFieldErrors, outlineBorders, yamlJointCatalog, patchDoc, actuatorIdOnFocusRef, deleteActuatorAt],
+        [
+            yamlDoc,
+            serverFieldErrors,
+            outlineBorders,
+            assignableUrdfJoints,
+            patchDoc,
+            actuatorIdOnFocusRef,
+            deleteActuatorAt,
+        ],
     );
 
     const pressureSensorColumns = useMemo(

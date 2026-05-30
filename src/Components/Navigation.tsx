@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Space } from 'antd';
-import { EyeOutlined, ControlOutlined, CameraOutlined, SettingOutlined } from '@ant-design/icons';
+import { EyeOutlined, ControlOutlined, SettingOutlined } from '@ant-design/icons';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
@@ -16,7 +16,6 @@ const navigationItems = [
     { to: '/', label: 'CONTROL', icon: <ControlOutlined /> },
     { to: '/configuration', label: 'CONFIGURATION', icon: <SettingOutlined />},
     { to: '/3d-viewer', label: '3D VIEW', icon: <EyeOutlined /> },
-    { to: '/stream', label: 'STREAM', icon: <CameraOutlined /> }
 ];
 
 export const Navigation: React.FC = () => {

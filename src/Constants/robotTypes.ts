@@ -30,6 +30,8 @@ export interface JointControlState {
   name: string;
   currentValue: number;
   targetValue: number;
+  /** Actual position reported by /joint_states — undefined until first feedback arrives. */
+  actualValue?: number;
   minValue: number;
   maxValue: number;
   type: Joint['type'];

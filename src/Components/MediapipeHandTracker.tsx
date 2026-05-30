@@ -5,6 +5,8 @@ import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
 
+const UPDATE_HZ_S = 5;
+
 interface MediapipeHandTrackerProps {
     width?: number;
     height?: number;
@@ -95,7 +97,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         }
         // calls the processHands() function once a second
         const now = Date.now();
-        if (now - lastProcessTimeRef.current >= 1000) {
+        if (now - lastProcessTimeRef.current >= 1000 / UPDATE_HZ_S) {
             lastProcessTimeRef.current = now;
             processHands(results.multiHandLandmarks, results.multiHandedness);
         }

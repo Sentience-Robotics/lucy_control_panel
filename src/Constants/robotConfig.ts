@@ -26,8 +26,8 @@ export interface RobotConfig {
 }
 
 export const ROBOT_CONFIG: RobotConfig = {
-    // URDF file location
-    urdfPath: '/InMoov.urdf',
+    // URDF file location — served by the dev server from ROBOT_URDF_PATH in .env
+    urdfPath: '/robot.urdf',
 
     // Base mesh directory
     meshBasePath: '/meshes',
@@ -86,13 +86,38 @@ export class RobotPathResolver {
     }
 
     /**
-     * Resolve relative mesh path from URDF to absolute path
+     * Resolve a URDF mesh filename to a browser-fetchable URL.
+     *
+     * Handles three path formats emitted by different URDF/xacro pipelines:
+     *  - `file:///abs/path/to/meshes/dae/foo.dae`  — compiled xacro with file:// scheme
+     *  - `package://pkg_name/meshes/dae/foo.dae`    — ROS package:// convention
+     *  - `../meshes/stl/foo.stl`                    — relative path (older style)
+     *
+     * In all cases the dev server middleware maps `/meshes/*` → ROBOT_MESHES_PATH/* (set in .env).
      */
     static resolveUrdfMeshPath(urdfMeshPath: string): string {
-        // URDF paths are typically relative like "../meshes/stl/filename.stl"
-        // Convert to absolute path for web serving
+        // file:// absolute path — strip scheme, find "/meshes/" and keep from there
+        if (urdfMeshPath.startsWith('file://')) {
+            const fsPath = urdfMeshPath.replace(/^file:\/\//, '');
+            const idx = fsPath.indexOf('/meshes/');
+            if (idx !== -1) return fsPath.slice(idx); // → /meshes/dae/filename.dae
+            // Fallback: just serve by filename from the meshes root
+            const filename = fsPath.split('/').pop() ?? '';
+            return `${ROBOT_CONFIG.meshBasePath}/${filename}`;
+        }
+
+        // package:// ROS convention — strip scheme + package name, map "meshes/…" → /meshes/…
+        if (urdfMeshPath.startsWith('package://')) {
+            const withoutScheme = urdfMeshPath.replace(/^package:\/\/[^/]+\//, '');
+            const idx = withoutScheme.indexOf('meshes/');
+            if (idx !== -1) {
+                return `${ROBOT_CONFIG.meshBasePath}/${withoutScheme.slice(idx + 'meshes/'.length)}`;
+            }
+            return `${ROBOT_CONFIG.meshBasePath}/${withoutScheme.split('/').pop()}`;
+        }
+
+        // Relative path like "../meshes/stl/filename.stl"
         if (urdfMeshPath.startsWith('../meshes/')) {
-            // Extract the part after "../meshes/"
             const relativePath = urdfMeshPath.replace('../meshes/', '');
             return `${ROBOT_CONFIG.meshBasePath}/${relativePath}`;
         }
