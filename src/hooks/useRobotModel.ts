@@ -87,11 +87,10 @@ export function useRobotModel(): UseRobotModelReturn {
             setError(null);
             setLoadingStatus('Parsing URDF model…');
 
-            // Fetch each mesh over the ROS service and parse its Collada text,
-            // instead of letting urdf-loader fetch a URL. urdf-loader invokes
-            // this synchronously per <mesh> during parse() and wires the result
-            // into the scene graph whenever `done` fires — so we collect the
-            // fetches and run them, pooled, after the structure is built.
+            // urdf-loader calls loadMeshCb synchronously per <mesh> during parse()
+            // and wires the result into the scene graph when `done` fires. We fetch
+            // each mesh over the ROS service, so the fetches are queued here and run
+            // pooled after parse() returns.
             const colladaLoader = new ColladaLoader();
             const meshText = new Map<string, Promise<string>>(); // dedupe shared meshes
             const tasks: Array<() => Promise<void>> = [];
