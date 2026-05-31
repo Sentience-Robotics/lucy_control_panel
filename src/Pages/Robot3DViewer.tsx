@@ -22,6 +22,44 @@ const { Text } = Typography;
  *  opacity slider stretches to fill — both react to this single value. */
 const SETTINGS_BOX_WIDTH = 150;
 
+const MOUSE_HINTS = ['drag · rotate', 'scroll · zoom', 'R-drag · pan'];
+
+const CENTERED_FILL: React.CSSProperties = {
+    width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'center', justifyContent: 'center',
+    gap: 8, background: UI_BG_BLACK,
+};
+
+/** Shared chrome for the floating overlay panels (each adds its own position). */
+const OVERLAY_BOX: React.CSSProperties = {
+    position: 'absolute',
+    left: 10,
+    backgroundColor: UI_MODAL_MASK_BG,
+    border: `1px solid ${UI_BORDER_MUTED}`,
+    padding: '8px 12px',
+    fontFamily: 'monospace',
+    fontSize: 10,
+    color: UI_TEXT_PRIMARY_ON_DARK,
+    display: 'flex',
+    flexDirection: 'column',
+};
+
+const SWITCH_ROW: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+};
+
+const SwitchRow: React.FC<{
+    label: string;
+    value: boolean;
+    onChange: (value: boolean) => void;
+}> = ({ label, value, onChange }) => (
+    <div style={SWITCH_ROW}>
+        <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>{label}</span>
+        <StreamSwitch value={value} onChange={onChange} />
+    </div>
+);
+
 const Robot3DViewer: React.FC = () => {
     const { robot, loading, loadingStatus, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -35,12 +73,7 @@ const Robot3DViewer: React.FC = () => {
 
     if (loading) {
         return (
-            <div style={{
-                width: '100%', height: '100%',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                gap: 8, background: UI_BG_BLACK,
-            }}>
+            <div style={CENTERED_FILL}>
                 <Spin size="default" />
                 {loadingStatus && (
                     <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, fontFamily: 'monospace' }}>
@@ -53,12 +86,7 @@ const Robot3DViewer: React.FC = () => {
 
     if (error) {
         return (
-            <div style={{
-                width: '100%', height: '100%',
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                gap: 8, background: UI_BG_BLACK, padding: 12,
-            }}>
+            <div style={{ ...CENTERED_FILL, padding: 12 }}>
                 {error.split('\n').map((line, i) => (
                     <Text key={i} style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: 11, textAlign: 'center' }}>
                         {line}
@@ -117,47 +145,16 @@ const Robot3DViewer: React.FC = () => {
             </Canvas>
 
             {/* Controls hint — top-left */}
-            <div style={{
-                position: 'absolute',
-                top: 10,
-                left: 10,
-                backgroundColor: UI_MODAL_MASK_BG,
-                border: `1px solid ${UI_BORDER_MUTED}`,
-                padding: '8px 12px',
-                fontFamily: 'monospace',
-                fontSize: 10,
-                color: UI_TEXT_PRIMARY_ON_DARK,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-                pointerEvents: 'none',
-                userSelect: 'none',
-            }}>
+            <div style={{ ...OVERLAY_BOX, top: 10, gap: 4, pointerEvents: 'none', userSelect: 'none' }}>
                 <span style={{ color: UI_ACCENT_GREEN, fontWeight: 'bold', letterSpacing: 1 }}>CONTROLS:</span>
                 <div style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 9, lineHeight: 1.6 }}>
-                    <div>• drag · rotate</div>
-                    <div>• scroll · zoom</div>
-                    <div>• R-drag · pan</div>
+                    {MOUSE_HINTS.map(hint => <div key={hint}>• {hint}</div>)}
                 </div>
             </div>
 
             {/* Settings — bottom-left */}
-            <div style={{
-                position: 'absolute',
-                bottom: 45,
-                left: 10,
-                backgroundColor: UI_MODAL_MASK_BG,
-                border: `1px solid ${UI_BORDER_MUTED}`,
-                padding: '8px 12px',
-                width: SETTINGS_BOX_WIDTH,
-                fontFamily: 'monospace',
-                fontSize: 10,
-                color: UI_TEXT_PRIMARY_ON_DARK,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-            }}>
-                {/* Opacity — GRN mode only */}
+            <div style={{ ...OVERLAY_BOX, bottom: 45, width: SETTINGS_BOX_WIDTH, gap: 6 }}>
+                {/* Opacity & wireframe only affect the green override */}
                 {isGreenMode && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                         <span style={{ color: UI_ACCENT_GREEN }}>OPACITY {Math.round(opacity * 100)}%</span>
@@ -168,26 +165,9 @@ const Robot3DViewer: React.FC = () => {
                         />
                     </div>
                 )}
-
-                {/* Wireframe — GRN mode only */}
-                {isGreenMode && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                        <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>WIRE</span>
-                        <StreamSwitch value={wireframe} onChange={setWireframe} />
-                    </div>
-                )}
-
-                {/* Texture */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                    <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>TEXTURE</span>
-                    <StreamSwitch value={useOriginalTexture} onChange={setUseOriginalTexture} />
-                </div>
-
-                {/* Grid — always last */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                    <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>GRID</span>
-                    <StreamSwitch value={showGrid} onChange={setShowGrid} />
-                </div>
+                {isGreenMode && <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />}
+                <SwitchRow label="TEXTURE" value={useOriginalTexture} onChange={setUseOriginalTexture} />
+                <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
             </div>
         </div>
     );
