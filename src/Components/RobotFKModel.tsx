@@ -53,11 +53,6 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
             robotOriginalMaterials.set(robot, originals);
         }
 
-        // Ignore URDF joint limits — real ROS angles may exceed them.
-        for (const joint of Object.values(robot.joints)) {
-            joint.ignoreLimits = true;
-        }
-
         robot.traverse(child => {
             const mesh = child as THREE.Mesh;
             if (!mesh.isMesh) return;
