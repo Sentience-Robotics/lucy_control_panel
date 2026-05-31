@@ -1,4 +1,4 @@
-import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark} from "@mediapipe/hands";
+import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
 import React, { useEffect, useRef } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
@@ -99,22 +99,28 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const now = Date.now();
         if (now - lastProcessTimeRef.current >= 1000 / UPDATE_HZ_S) {
             lastProcessTimeRef.current = now;
-            processHands(results.multiHandLandmarks);
+            processHands(results.multiHandLandmarks, results.multiHandedness);
         }
 
         ctx.restore();
     };
 
-    function processHands(hands: NormalizedLandmark[][]) {
+    function processHands(hands: NormalizedLandmark[][], handedness: Handedness[]) {
         hands.forEach((hand, handIndex) => {
             for (let i = 0; i < 5; i++) {
+
+                const label: string =
+                handedness[handIndex].label === "Left"
+                    ? "leftHand"
+                    : "rightHand";
+
                 processFinger({
                     tip: hand[Fingers[i].idx.TIP],
                     dip: hand[Fingers[i].idx.DIP],
                     pip: hand[Fingers[i].idx.PIP],
                     mcp: hand[Fingers[i].idx.MCP],
                     wrist: hand[0],
-                    jointName: Fingers[i].name.replace("side", handIndex === 0 ? "leftHand" : "rightHand")
+                    jointName: Fingers[i].name.replace("side", label)
                 });
             }
         });
