@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { Typography, Spin } from 'antd';
+import { Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { StreamSwitch } from '../Components/StreamSwitch';
 import { useRobotModel } from '../hooks/useRobotModel';
@@ -22,7 +22,7 @@ const { Text } = Typography;
  *  opacity slider stretches to fill — both react to this single value. */
 const SETTINGS_BOX_WIDTH = 150;
 
-const MOUSE_HINTS = ['drag · rotate', 'scroll · zoom', 'R-drag · pan'];
+const MOUSE_HINTS = ['L-drag · rotate', 'scroll · zoom', 'R-drag · pan'];
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
@@ -60,8 +60,34 @@ const SwitchRow: React.FC<{
     </div>
 );
 
+/** Green load bar overlaid at the top of the view: indeterminate slide until
+ *  mesh progress is known, then fills left-to-right. */
+const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
+    const indeterminate = progress <= 0;
+    return (
+        <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+            background: UI_BORDER_MUTED, overflow: 'hidden', zIndex: 10,
+        }}>
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    background: UI_ACCENT_GREEN,
+                    boxShadow: `0 0 8px ${UI_ACCENT_GREEN}`,
+                    ...(indeterminate
+                        ? { width: '40%', animation: 'urdfLoadSlide 1.1s ease-in-out infinite' }
+                        : { left: 0, width: `${Math.round(progress * 100)}%`, transition: 'width 0.2s ease' }),
+                }}
+            />
+            <style>{'@keyframes urdfLoadSlide { 0% { left: -40%; } 100% { left: 100%; } }'}</style>
+        </div>
+    );
+};
+
 const Robot3DViewer: React.FC = () => {
-    const { robot, loading, loadingStatus, error, reload } = useRobotModel();
+    const { robot, loading, progress, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
     const jointAngles = useThrottledJointAngles(isConnected);
 
@@ -70,19 +96,6 @@ const Robot3DViewer: React.FC = () => {
     const [showGrid, setShowGrid] = useState(true);
     const [opacity, setOpacity] = useState(0.85);
     const [wireframe, setWireframe] = useState(false);
-
-    if (loading) {
-        return (
-            <div style={CENTERED_FILL}>
-                <Spin size="default" />
-                {loadingStatus && (
-                    <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: 10, fontFamily: 'monospace' }}>
-                        {loadingStatus}
-                    </Text>
-                )}
-            </div>
-        );
-    }
 
     if (error) {
         return (
@@ -101,6 +114,7 @@ const Robot3DViewer: React.FC = () => {
 
     return (
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+            {loading && <LoadingBar progress={progress} />}
             <Canvas
                 camera={{ position: [0, 8, 40], fov: 50, near: 0.1, far: 500 }}
                 style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
