@@ -122,10 +122,10 @@ export function StreamPlayerModal({
                             ⚠️ NO DATA
                         </span>
                     )}
-                    <Button 
-                        size="small" 
-                        type="text" 
-                        icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} 
+                    <Button
+                        size="small"
+                        type="text"
+                        icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                         onClick={handleFullscreenToggle}
                         title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                     />
@@ -139,7 +139,7 @@ export function StreamPlayerModal({
         >
             <div ref={containerRef} style={{ width: '100%', height: '100%', backgroundColor: 'black' }}>
                 {is3DView ? (
-                    <Robot3DViewer embedded />
+                    <Robot3DViewer />
                 ) : (
                     <StreamPlayer
                         onFrameDelayChange={setFrameDelay}

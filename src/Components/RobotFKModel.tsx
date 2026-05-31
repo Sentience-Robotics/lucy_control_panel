@@ -11,7 +11,7 @@
  *   rotated Rx(-π/2) — exactly what robot_viewer does with its world object.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
@@ -23,6 +23,8 @@ export interface RobotFKModelProps {
     jointAngles: Map<string, number>;
     opacity?: number;
     wireframe?: boolean;
+    /** When true, restores the original DAE/mesh materials instead of the green override. */
+    useOriginalTexture?: boolean;
 }
 
 export const RobotFKModel: React.FC<RobotFKModelProps> = ({
@@ -30,38 +32,25 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     jointAngles,
     opacity = 0.85,
     wireframe = false,
+    useOriginalTexture = true,
 }) => {
-    const materialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
+    const originalMaterialsRef = useRef<Map<THREE.Mesh, THREE.Material | THREE.Material[]>>(new Map());
+    const greenMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
 
     // ------------------------------------------------------------------
-    // Apply our green material to every mesh in the robot.
-    // Runs on mount and whenever opacity / wireframe changes.
+    // useLayoutEffect runs synchronously after commit, before useEffect.
+    // This guarantees originals are captured before any green is applied,
+    // even if the canvas renders a frame between layout and passive effects.
+    // Cleanup restores originals so the next mount re-captures a clean state.
     // ------------------------------------------------------------------
-    useEffect(() => {
-        // Dispose any previously cloned materials.
-        materialsRef.current.forEach(m => m.dispose());
-        materialsRef.current = [];
-
+    useLayoutEffect(() => {
+        const originals = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
         robot.traverse(child => {
             if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                const mat = new THREE.MeshStandardMaterial({
-                    color: UI_ACCENT_GREEN,
-                    transparent: true,
-                    opacity,
-                    wireframe,
-                    roughness: 0.3,
-                    metalness: 0.7,
-                    side: THREE.DoubleSide,
-                });
-                // Dispose the original material to avoid GPU leaks.
-                if (mesh.material && !Array.isArray(mesh.material)) {
-                    (mesh.material as THREE.Material).dispose();
-                }
-                mesh.material = mat;
-                materialsRef.current.push(mat);
+                originals.set(child as THREE.Mesh, (child as THREE.Mesh).material);
             }
         });
+        originalMaterialsRef.current = originals;
 
         // Ignore URDF joint limits — real ROS angles may exceed them.
         for (const joint of Object.values(robot.joints)) {
@@ -69,10 +58,49 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
         }
 
         return () => {
-            materialsRef.current.forEach(m => m.dispose());
-            materialsRef.current = [];
+            originals.forEach((mat, mesh) => { mesh.material = mat; });
         };
-    }, [robot, opacity, wireframe]);
+    }, [robot]);
+
+    // ------------------------------------------------------------------
+    // Apply green or original materials whenever appearance props change.
+    // Runs after useLayoutEffect so originalMaterialsRef is always populated.
+    // ------------------------------------------------------------------
+    useEffect(() => {
+        greenMaterialsRef.current.forEach(m => m.dispose());
+        greenMaterialsRef.current = [];
+
+        robot.traverse(child => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                if (useOriginalTexture) {
+                    const orig = originalMaterialsRef.current.get(mesh);
+                    if (orig) {
+                        mesh.material = orig;
+                        const mats = Array.isArray(orig) ? orig : [orig];
+                        mats.forEach(m => { m.needsUpdate = true; });
+                    }
+                } else {
+                    const mat = new THREE.MeshStandardMaterial({
+                        color: UI_ACCENT_GREEN,
+                        transparent: true,
+                        opacity,
+                        wireframe,
+                        roughness: 0.3,
+                        metalness: 0.7,
+                        side: THREE.DoubleSide,
+                    });
+                    mesh.material = mat;
+                    greenMaterialsRef.current.push(mat);
+                }
+            }
+        });
+
+        return () => {
+            greenMaterialsRef.current.forEach(m => m.dispose());
+            greenMaterialsRef.current = [];
+        };
+    }, [robot, opacity, wireframe, useOriginalTexture]);
 
     // ------------------------------------------------------------------
     // Push live joint angles into the urdf-loader scene graph each frame.

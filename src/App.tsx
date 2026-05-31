@@ -20,28 +20,24 @@ import {
     UI_TEXT_SUBTLE,
 } from './Constants/uiTheme.ts';
 
-const Robot3DViewer = lazy(() => import('./Pages/Robot3DViewer').then(module => ({ default: module.default })));
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
 
 const CONTROL_PATH = '/';
 const CONFIG_PATH = '/configuration';
-const VIEWER_PATH = '/3d-viewer';
-const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH, VIEWER_PATH]);
+const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH]);
 
 /**
  * Render all main pages once and toggle visibility with `display: none`.
  * Keeps page-local state (sliders, edits, expanded panels) alive when the
- * user switches between CONTROL / CONFIGURATION / 3D VIEW. Lazy pages are
- * only mounted after their first visit so the initial chunk stays small.
+ * user switches between CONTROL / CONFIGURATION. Lazy pages are only mounted
+ * after their first visit so the initial chunk stays small.
  */
 const PersistentPages: FC = () => {
     const { pathname } = useLocation();
     const [configVisited, setConfigVisited] = useState(false);
-    const [viewerVisited, setViewerVisited] = useState(false);
 
     useEffect(() => {
         if (pathname === CONFIG_PATH) setConfigVisited(true);
-        if (pathname === VIEWER_PATH) setViewerVisited(true);
     }, [pathname]);
 
     const isKnown = KNOWN_PATHS.has(pathname);
@@ -66,20 +62,6 @@ const PersistentPages: FC = () => {
                         }
                     >
                         <Configuration />
-                    </Suspense>
-                </div>
-            ) : null}
-            {viewerVisited ? (
-                <div style={pageStyle(pathname === VIEWER_PATH)}>
-                    <Suspense
-                        fallback={
-                            <LucyLoader
-                                label="LOADING 3D VIEW"
-                                detail="Initialising the robot 3D viewer."
-                            />
-                        }
-                    >
-                        <Robot3DViewer />
                     </Suspense>
                 </div>
             ) : null}
