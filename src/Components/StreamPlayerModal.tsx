@@ -59,12 +59,10 @@ export function StreamPlayerModal({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Camera topics that actually have a publisher while the modal is open
-    // (null = unknown → fail open).
+    // Camera topics with a live publisher (null = unknown → assume available).
     const availableTopics = useAvailableTopics(CAMERA_TOPICS, isVisible);
 
-    /* A source is selectable if it's virtual, has a live publisher, or we
-     * simply can't tell yet (availableTopics === null → fail open). */
+    // Selectable if virtual, has a publisher, or availability is still unknown.
     const isSourceAvailable = (source: StreamSource): boolean =>
         source.virtual === true || availableTopics === null || availableTopics.has(source.topic);
 
@@ -76,10 +74,9 @@ export function StreamPlayerModal({
         }
     };
 
-    // What we actually render: the user's pick if available, otherwise the
-    // first available source. 3D View is virtual (always available), so there
-    // is always a fallback. The pick is remembered and restored if its topic
-    // comes back.
+    // What we render: the user's pick if available, else the first available
+    // source (3D View is virtual, so there's always a fallback). The pick is
+    // kept and restored if its publisher comes back.
     const activeSource = isSourceAvailable(selectedStreamSource)
         ? selectedStreamSource
         : STREAM_SOURCES.find(isSourceAvailable) ?? selectedStreamSource;

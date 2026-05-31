@@ -2,17 +2,15 @@ import { useEffect, useState } from 'react';
 import { RosBridgeService } from '../Services/ros/ros.service.ts';
 
 /**
- * Of the given `topics`, the subset that currently has at least one publisher,
- * refreshed while `enabled` and whenever the connection (re)establishes.
+ * Of the given `topics`, the subset that currently has a publisher — refreshed
+ * while `enabled` and on every (re)connection.
  *
- * Availability is based on *publishers*, not topic existence: a rosbridge
- * subscription (which our own stream viewer creates) makes a topic appear in
- * the graph, so "does the topic exist" gives false positives. "Does anything
- * publish it" does not.
+ * Returns `null` while unknown (not yet fetched, disconnected, or rosapi
+ * absent). Treat `null` as "assume available" so a working stream is never
+ * wrongly blocked.
  *
- * Returns `null` while unknown — not yet fetched, disconnected, or the lookup
- * failed (e.g. no rosapi). Callers should treat `null` as "can't tell, assume
- * available" so a genuinely-working stream is never blocked.
+ * See RosBridgeService.getPublishers for why we check publishers, not mere
+ * topic existence.
  */
 export function useAvailableTopics(topics: string[], enabled: boolean): Set<string> | null {
     const [published, setPublished] = useState<Set<string> | null>(null);

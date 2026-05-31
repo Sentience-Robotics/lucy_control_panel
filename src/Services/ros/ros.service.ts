@@ -152,17 +152,13 @@ class RosBridgeService {
     }
 
     /**
-     * Node names currently publishing `topic` (via the `rosapi/publishers`
-     * service). Used to tell whether a camera stream is actually alive.
+     * Node names currently publishing `topic`, via the `rosapi/publishers`
+     * service. We check publishers (not topic existence) because our own
+     * viewer subscribes through rosbridge, which makes a topic appear even
+     * when nothing publishes it — a subscription is not a publisher.
      *
-     * We check publishers rather than topic existence on purpose: our own
-     * stream viewer *subscribes* through rosbridge, which makes the topic show
-     * up in `rosapi/topics` even when nothing publishes it. A subscription is
-     * not a publisher, so this signal is immune to that self-inflation.
-     *
-     * roslib service calls never time out, so a missing/silent `rosapi` node
-     * would hang forever — we bound it ourselves and reject, naming the most
-     * likely cause so the failure is diagnosable rather than silent.
+     * roslib service calls never time out, so we bound it ourselves and reject
+     * with the likely cause if `rosapi` is missing or silent.
      */
     async getPublishers(topic: string, timeoutMs = 5000): Promise<string[]> {
         return new Promise((resolve, reject) => {
