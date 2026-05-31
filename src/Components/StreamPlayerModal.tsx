@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Select, Button, Tooltip } from 'antd';
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { StreamPlayer } from "./StreamPlayer.tsx";
@@ -24,6 +24,9 @@ const WARNING_BADGE_STYLE: React.CSSProperties = {
     border: `1px solid ${UI_WARNING}`,
     borderRadius: 4
 };
+
+/** Real (non-virtual) stream topics whose publishers we probe for availability. */
+const CAMERA_TOPICS = STREAM_SOURCES.filter(s => !s.virtual).map(s => s.topic);
 
 const SELECT_POPUP_STYLE = {
     popup: {
@@ -56,10 +59,12 @@ export function StreamPlayerModal({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Topics advertised on the bridge while the modal is open (null = unknown).
-    const availableTopics = useAvailableTopics(isVisible);
+    // Camera topics that actually have a publisher while the modal is open
+    // (null = unknown → fail open).
+    const availableTopics = useAvailableTopics(CAMERA_TOPICS, isVisible);
 
-    /* A source is selectable if it's virtual, or its topic is advertised, or we simply can't tell yet (availableTopics === null → fail open). */
+    /* A source is selectable if it's virtual, has a live publisher, or we
+     * simply can't tell yet (availableTopics === null → fail open). */
     const isSourceAvailable = (source: StreamSource): boolean =>
         source.virtual === true || availableTopics === null || availableTopics.has(source.topic);
 
@@ -71,17 +76,13 @@ export function StreamPlayerModal({
         }
     };
 
-    // If the selected source becomes unavailable, fall through to the first
-    // available one. 3D View is virtual (always available), so it's the final
-    // fallback when no camera topic exists.
-    useEffect(() => {
-        if (isSourceAvailable(selectedStreamSource)) return;
-        const fallback = STREAM_SOURCES.find(isSourceAvailable);
-        if (fallback && fallback.id !== selectedStreamSource.id) {
-            setSelectedStreamSource(fallback);
-            setHasEmptyDataWarning(false);
-        }
-    }, [availableTopics, selectedStreamSource]);
+    // What we actually render: the user's pick if available, otherwise the
+    // first available source. 3D View is virtual (always available), so there
+    // is always a fallback. The pick is remembered and restored if its topic
+    // comes back.
+    const activeSource = isSourceAvailable(selectedStreamSource)
+        ? selectedStreamSource
+        : STREAM_SOURCES.find(isSourceAvailable) ?? selectedStreamSource;
 
     const handleFullscreenToggle = () => {
         const container = containerRef.current;
@@ -110,7 +111,7 @@ export function StreamPlayerModal({
         [availableTopics]
     );
 
-    const is3DView = selectedStreamSource.virtual === true;
+    const is3DView = activeSource.virtual === true;
 
     // Track fullscreen change event in case user exits with Esc
     useMemo(() => {
@@ -129,7 +130,7 @@ export function StreamPlayerModal({
                     <Tooltip title="Select the video stream or 3D model to display">
                         <Select
                             size="small"
-                            value={selectedStreamSource.id}
+                            value={activeSource.id}
                             onChange={handleStreamSourceChange}
                             style={{ width: 150 }}
                             options={selectOptions}
@@ -168,7 +169,7 @@ export function StreamPlayerModal({
                     <StreamPlayer
                         onFrameDelayChange={setFrameDelay}
                         onFpsChange={setFps}
-                        streamSource={selectedStreamSource}
+                        streamSource={activeSource}
                         onEmptyDataWarning={setHasEmptyDataWarning}
                     />
                 )}

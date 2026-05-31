@@ -152,19 +152,37 @@ class RosBridgeService {
     }
 
     /**
-     * List every topic currently advertised on the bridge (via the
-     * `rosapi/topics` service). Used to tell which camera streams are
-     * actually available. Rejects if disconnected or rosapi is absent.
+     * Node names currently publishing `topic` (via the `rosapi/publishers`
+     * service). Used to tell whether a camera stream is actually alive.
+     *
+     * We check publishers rather than topic existence on purpose: our own
+     * stream viewer *subscribes* through rosbridge, which makes the topic show
+     * up in `rosapi/topics` even when nothing publishes it. A subscription is
+     * not a publisher, so this signal is immune to that self-inflation.
+     *
+     * roslib service calls never time out, so a missing/silent `rosapi` node
+     * would hang forever — we bound it ourselves and reject, naming the most
+     * likely cause so the failure is diagnosable rather than silent.
      */
-    async getTopics(): Promise<string[]> {
+    async getPublishers(topic: string, timeoutMs = 5000): Promise<string[]> {
         return new Promise((resolve, reject) => {
             if (!this.ros || this._connectionStatus !== 'connected') {
                 reject(new Error('ROS bridge is not connected'));
                 return;
             }
-            this.ros.getTopics(
-                (result: { topics: string[] }) => resolve(result.topics),
-                (error: string) => reject(new Error(error)),
+            const service = new ROSLIB.Service({
+                ros: this.ros,
+                name: '/rosapi/publishers',
+                serviceType: 'rosapi/Publishers',
+            });
+            const timer = setTimeout(
+                () => reject(new Error('rosapi/publishers did not respond — is the rosapi node running?')),
+                timeoutMs,
+            );
+            service.callService(
+                new ROSLIB.ServiceRequest({ topic }),
+                (result: { publishers: string[] }) => { clearTimeout(timer); resolve(result.publishers); },
+                (error: string) => { clearTimeout(timer); reject(new Error(error)); },
             );
         });
     }
