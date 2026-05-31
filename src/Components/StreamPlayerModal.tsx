@@ -1,10 +1,11 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Select, Button, Tooltip } from 'antd';
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { StreamPlayer } from "./StreamPlayer.tsx";
 import { StreamMetrics } from "./StreamMetrics.tsx";
 import { MovableModal } from './MovableModal.tsx';
 import Robot3DViewer from '../Pages/Robot3DViewer.tsx';
+import { useAvailableTopics } from '../hooks/useAvailableTopics.ts';
 import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
 import type { StreamSource } from '../Constants/rosConfig';
 import {
@@ -55,6 +56,13 @@ export function StreamPlayerModal({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Topics advertised on the bridge while the modal is open (null = unknown).
+    const availableTopics = useAvailableTopics(isVisible);
+
+    /* A source is selectable if it's virtual, or its topic is advertised, or we simply can't tell yet (availableTopics === null → fail open). */
+    const isSourceAvailable = (source: StreamSource): boolean =>
+        source.virtual === true || availableTopics === null || availableTopics.has(source.topic);
+
     const handleStreamSourceChange = (value: string) => {
         const source = STREAM_SOURCES.find(s => s.id === value);
         if (source) {
@@ -62,6 +70,18 @@ export function StreamPlayerModal({
             setHasEmptyDataWarning(false);
         }
     };
+
+    // If the selected source becomes unavailable, fall through to the first
+    // available one. 3D View is virtual (always available), so it's the final
+    // fallback when no camera topic exists.
+    useEffect(() => {
+        if (isSourceAvailable(selectedStreamSource)) return;
+        const fallback = STREAM_SOURCES.find(isSourceAvailable);
+        if (fallback && fallback.id !== selectedStreamSource.id) {
+            setSelectedStreamSource(fallback);
+            setHasEmptyDataWarning(false);
+        }
+    }, [availableTopics, selectedStreamSource]);
 
     const handleFullscreenToggle = () => {
         const container = containerRef.current;
@@ -79,11 +99,15 @@ export function StreamPlayerModal({
     };
 
     const selectOptions = useMemo(() =>
-        STREAM_SOURCES.map(source => ({
-            value: source.id,
-            label: source.name
-        })),
-        []
+        STREAM_SOURCES.map(source => {
+            const available = isSourceAvailable(source);
+            return {
+                value: source.id,
+                label: available ? source.name : `${source.name} (unavailable)`,
+                disabled: !available,
+            };
+        }),
+        [availableTopics]
     );
 
     const is3DView = selectedStreamSource.virtual === true;

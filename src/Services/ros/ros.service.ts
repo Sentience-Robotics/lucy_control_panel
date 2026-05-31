@@ -151,6 +151,24 @@ class RosBridgeService {
         };
     }
 
+    /**
+     * List every topic currently advertised on the bridge (via the
+     * `rosapi/topics` service). Used to tell which camera streams are
+     * actually available. Rejects if disconnected or rosapi is absent.
+     */
+    async getTopics(): Promise<string[]> {
+        return new Promise((resolve, reject) => {
+            if (!this.ros || this._connectionStatus !== 'connected') {
+                reject(new Error('ROS bridge is not connected'));
+                return;
+            }
+            this.ros.getTopics(
+                (result: { topics: string[] }) => resolve(result.topics),
+                (error: string) => reject(new Error(error)),
+            );
+        });
+    }
+
     async connect(url: string): Promise<void> {
         return new Promise((resolve, reject) => {
             logger(`Attempting to connect to ROS Bridge at ${url}...`);
