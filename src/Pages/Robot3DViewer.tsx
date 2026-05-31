@@ -18,6 +18,10 @@ import {
 
 const { Text } = Typography;
 
+/** Width of the bottom-left settings box. Switches sit flush right, the
+ *  opacity slider stretches to fill — both react to this single value. */
+const SETTINGS_BOX_WIDTH = 150;
+
 const Robot3DViewer: React.FC = () => {
     const { robot, loading, loadingStatus, error, reload } = useRobotModel();
     const { isConnected } = useRosConnection();
@@ -145,6 +149,7 @@ const Robot3DViewer: React.FC = () => {
                 backgroundColor: UI_MODAL_MASK_BG,
                 border: `1px solid ${UI_BORDER_MUTED}`,
                 padding: '8px 12px',
+                width: SETTINGS_BOX_WIDTH,
                 fontFamily: 'monospace',
                 fontSize: 10,
                 color: UI_TEXT_PRIMARY_ON_DARK,
@@ -154,34 +159,34 @@ const Robot3DViewer: React.FC = () => {
             }}>
                 {/* Opacity — GRN mode only */}
                 {isGreenMode && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: UI_ACCENT_GREEN, minWidth: 42 }}>OP {Math.round(opacity * 100)}%</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{ color: UI_ACCENT_GREEN }}>OPACITY {Math.round(opacity * 100)}%</span>
                         <input
                             type="range" min="0.1" max="1" step="0.1" value={opacity}
                             onChange={e => setOpacity(parseFloat(e.target.value))}
-                            style={{ width: 56, cursor: 'pointer' }}
+                            style={{ width: '100%', cursor: 'pointer' }}
                         />
                     </div>
                 )}
 
                 {/* Wireframe — GRN mode only */}
                 {isGreenMode && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ color: UI_TEXT_SECONDARY_MUTED, minWidth: 32 }}>WIRE</span>
-                        <StreamSwitch labelA="OFF" labelB="ON" value={wireframe} onChange={setWireframe} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>WIRE</span>
+                        <StreamSwitch value={wireframe} onChange={setWireframe} />
                     </div>
                 )}
 
                 {/* Texture */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: UI_TEXT_SECONDARY_MUTED, minWidth: 32 }}>TEX</span>
-                    <StreamSwitch labelA="GRN" labelB="DAE" value={useOriginalTexture} onChange={setUseOriginalTexture} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>TEXTURE</span>
+                    <StreamSwitch value={useOriginalTexture} onChange={setUseOriginalTexture} />
                 </div>
 
                 {/* Grid — always last */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: UI_TEXT_SECONDARY_MUTED, minWidth: 32 }}>GRID</span>
-                    <StreamSwitch labelA="OFF" labelB="ON" value={showGrid} onChange={setShowGrid} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                    <span style={{ color: UI_TEXT_SECONDARY_MUTED }}>GRID</span>
+                    <StreamSwitch value={showGrid} onChange={setShowGrid} />
                 </div>
             </div>
         </div>

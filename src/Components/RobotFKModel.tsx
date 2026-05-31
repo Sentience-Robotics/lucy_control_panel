@@ -11,11 +11,21 @@
  *   rotated Rx(-π/2) — exactly what robot_viewer does with its world object.
  */
 
-import React, { useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { URDFRobot } from 'urdf-loader';
 import { UI_ACCENT_GREEN } from '../Constants/uiTheme';
+
+// Pristine DAE/mesh materials, captured per robot instance and kept at module
+// level so they survive remounts (the robot itself is module-cached in
+// useRobotModel). Capture happens before any override is applied, so a green
+// material can never be mistaken for the original — this is what makes the
+// GRN ↔ DAE switch reliable.
+const robotOriginalMaterials = new WeakMap<
+    URDFRobot,
+    Map<THREE.Mesh, THREE.Material | THREE.Material[]>
+>();
 
 export interface RobotFKModelProps {
     robot: URDFRobot;
@@ -34,69 +44,55 @@ export const RobotFKModel: React.FC<RobotFKModelProps> = ({
     wireframe = false,
     useOriginalTexture = true,
 }) => {
-    const originalMaterialsRef = useRef<Map<THREE.Mesh, THREE.Material | THREE.Material[]>>(new Map());
     const greenMaterialsRef = useRef<THREE.MeshStandardMaterial[]>([]);
 
-    // ------------------------------------------------------------------
-    // useLayoutEffect runs synchronously after commit, before useEffect.
-    // This guarantees originals are captured before any green is applied,
-    // even if the canvas renders a frame between layout and passive effects.
-    // Cleanup restores originals so the next mount re-captures a clean state.
-    // ------------------------------------------------------------------
-    useLayoutEffect(() => {
-        const originals = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
-        robot.traverse(child => {
-            if ((child as THREE.Mesh).isMesh) {
-                originals.set(child as THREE.Mesh, (child as THREE.Mesh).material);
-            }
-        });
-        originalMaterialsRef.current = originals;
+    useEffect(() => {
+        let originals = robotOriginalMaterials.get(robot);
+        if (!originals) {
+            originals = new Map();
+            robotOriginalMaterials.set(robot, originals);
+        }
 
         // Ignore URDF joint limits — real ROS angles may exceed them.
         for (const joint of Object.values(robot.joints)) {
             joint.ignoreLimits = true;
         }
 
-        return () => {
-            originals.forEach((mat, mesh) => { mesh.material = mat; });
-        };
-    }, [robot]);
-
-    // ------------------------------------------------------------------
-    // Apply green or original materials whenever appearance props change.
-    // Runs after useLayoutEffect so originalMaterialsRef is always populated.
-    // ------------------------------------------------------------------
-    useEffect(() => {
-        greenMaterialsRef.current.forEach(m => m.dispose());
-        greenMaterialsRef.current = [];
-
         robot.traverse(child => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                if (useOriginalTexture) {
-                    const orig = originalMaterialsRef.current.get(mesh);
-                    if (orig) {
-                        mesh.material = orig;
-                        const mats = Array.isArray(orig) ? orig : [orig];
-                        mats.forEach(m => { m.needsUpdate = true; });
-                    }
-                } else {
-                    const mat = new THREE.MeshStandardMaterial({
-                        color: UI_ACCENT_GREEN,
-                        transparent: true,
-                        opacity,
-                        wireframe,
-                        roughness: 0.3,
-                        metalness: 0.7,
-                        side: THREE.DoubleSide,
-                    });
-                    mesh.material = mat;
-                    greenMaterialsRef.current.push(mat);
-                }
+            const mesh = child as THREE.Mesh;
+            if (!mesh.isMesh) return;
+
+            // Capture the pristine material the first time we ever touch this
+            // mesh — before any green override — so originals are always DAE.
+            if (!originals!.has(mesh)) {
+                originals!.set(mesh, mesh.material);
+            }
+
+            if (useOriginalTexture) {
+                mesh.material = originals!.get(mesh)!;
+            } else {
+                const mat = new THREE.MeshStandardMaterial({
+                    color: UI_ACCENT_GREEN,
+                    transparent: true,
+                    opacity,
+                    wireframe,
+                    roughness: 0.3,
+                    metalness: 0.7,
+                    side: THREE.DoubleSide,
+                });
+                mesh.material = mat;
+                greenMaterialsRef.current.push(mat);
             }
         });
 
         return () => {
+            // Restore pristine originals, then drop the green materials we made.
+            robot.traverse(child => {
+                const mesh = child as THREE.Mesh;
+                if (!mesh.isMesh) return;
+                const orig = originals!.get(mesh);
+                if (orig) mesh.material = orig;
+            });
             greenMaterialsRef.current.forEach(m => m.dispose());
             greenMaterialsRef.current = [];
         };
