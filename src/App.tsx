@@ -1,4 +1,4 @@
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import type { CSSProperties, FC } from 'react';
@@ -19,6 +19,9 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
 } from './Constants/uiTheme.ts';
+
+const { Content } = Layout;
+const { useBreakpoint } = Grid;
 
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
 
@@ -75,6 +78,8 @@ function App() {
     const localUsername: string | undefined = import.meta.env.VITE_LOCAL_USERNAME;
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [authError, setAuthError] = useState<string>('');
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
 
     useEffect(() => {
         const savedAuth = localStorage.getItem('lucy_auth');
@@ -155,8 +160,12 @@ function App() {
         >
             <Router>
                 <ActiveHardwareRosProvider>
-                    <Navigation />
-                    <PersistentPages />
+                    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
+                        <Content style={{ paddingBottom: isMobile ? '60px' : '0' }}>
+                            <PersistentPages />
+                        </Content>
+                        <Navigation />
+                    </Layout>
                 </ActiveHardwareRosProvider>
             </Router>
         </ConfigProvider>

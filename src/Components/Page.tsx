@@ -1,6 +1,6 @@
 import React from 'react';
 import type { ReactNode } from 'react';
-import { Layout, Typography } from 'antd';
+import { Layout, Typography, Grid } from 'antd';
 import {
   UI_ACCENT_GREEN,
   UI_ACCENT_TEXT_SHADOW,
@@ -20,6 +20,7 @@ import { AppHeader } from './AppHeader.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
+const { useBreakpoint } = Grid;
 
 interface PageProps {
   children: ReactNode;
@@ -38,10 +39,13 @@ export const Page: React.FC<PageProps> = ({
   removeScrollbars = true,
   className = '',
 }) => {
+  const screens = useBreakpoint();
+  const isMobile = !screens.lg;
+
   const defaultContentStyle: React.CSSProperties = {
     backgroundColor: UI_BG_BLACK,
     minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
-    padding: '24px',
+    padding: isMobile ? '12px' : '24px',
     ...contentStyle,
   };
 
@@ -109,6 +113,7 @@ export const Page: React.FC<PageProps> = ({
         }
 
         .ant-btn-default:hover {
+          background-color: ${uiAccentRgba(0.1)} !important;
           border-color: ${UI_ACCENT_GREEN} !important;
           color: ${UI_ACCENT_GREEN} !important;
           box-shadow: 0 0 12px ${uiAccentRgba(0.3)} !important;
@@ -369,20 +374,26 @@ export const Page: React.FC<PageProps> = ({
     `;
 
   return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK, overflow: 'hidden' }} className={className}>
+    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
       {showHeader && (
         <Header
           style={{
             backgroundColor: UI_PANEL_BG,
             borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
-            padding: '0 24px',
+            padding: isMobile ? '8px 12px' : '0 24px',
             height: 'auto',
             lineHeight: 'normal',
             paddingTop: 8,
             paddingBottom: 8,
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            gap: isMobile ? 8 : 0,
+          }}>
             {title && (
               <Title
                 level={2}
@@ -391,7 +402,7 @@ export const Page: React.FC<PageProps> = ({
                   color: UI_ACCENT_GREEN,
                   fontFamily: 'monospace',
                   textShadow: UI_ACCENT_TEXT_SHADOW,
-                  fontSize: '18px',
+                  fontSize: isMobile ? '16px' : '18px',
                   whiteSpace: 'nowrap',
                 }}
               >
