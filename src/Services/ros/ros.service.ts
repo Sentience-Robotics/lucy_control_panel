@@ -151,6 +151,38 @@ class RosBridgeService {
         };
     }
 
+    /**
+     * Node names currently publishing `topic`, via the `rosapi/publishers`
+     * service. We check publishers (not topic existence) because our own
+     * viewer subscribes through rosbridge, which makes a topic appear even
+     * when nothing publishes it — a subscription is not a publisher.
+     *
+     * roslib service calls never time out, so we bound it ourselves and reject
+     * with the likely cause if `rosapi` is missing or silent.
+     */
+    async getPublishers(topic: string, timeoutMs = 5000): Promise<string[]> {
+        return new Promise((resolve, reject) => {
+            if (!this.ros || this._connectionStatus !== 'connected') {
+                reject(new Error('ROS bridge is not connected'));
+                return;
+            }
+            const service = new ROSLIB.Service({
+                ros: this.ros,
+                name: '/rosapi/publishers',
+                serviceType: 'rosapi/Publishers',
+            });
+            const timer = setTimeout(
+                () => reject(new Error('rosapi/publishers did not respond — is the rosapi node running?')),
+                timeoutMs,
+            );
+            service.callService(
+                new ROSLIB.ServiceRequest({ topic }),
+                (result: { publishers: string[] }) => { clearTimeout(timer); resolve(result.publishers); },
+                (error: string) => { clearTimeout(timer); reject(new Error(error)); },
+            );
+        });
+    }
+
     async connect(url: string): Promise<void> {
         return new Promise((resolve, reject) => {
             logger(`Attempting to connect to ROS Bridge at ${url}...`);

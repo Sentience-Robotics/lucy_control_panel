@@ -5,6 +5,7 @@ import { StreamPlayer } from "./StreamPlayer.tsx";
 import { StreamMetrics } from "./StreamMetrics.tsx";
 import { MovableModal } from './MovableModal.tsx';
 import Robot3DViewer from '../Pages/Robot3DViewer.tsx';
+import { useAvailableTopics } from '../hooks/useAvailableTopics.ts';
 import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
 import type { StreamSource } from '../Constants/rosConfig';
 import {
@@ -23,6 +24,9 @@ const WARNING_BADGE_STYLE: React.CSSProperties = {
     border: `1px solid ${UI_WARNING}`,
     borderRadius: 4
 };
+
+/** Real (non-virtual) stream topics whose publishers we probe for availability. */
+const CAMERA_TOPICS = STREAM_SOURCES.filter(s => !s.virtual).map(s => s.topic);
 
 const SELECT_POPUP_STYLE = {
     popup: {
@@ -55,6 +59,13 @@ export function StreamPlayerModal({
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
+    // Camera topics with a live publisher (null = unknown → assume available).
+    const availableTopics = useAvailableTopics(CAMERA_TOPICS, isVisible);
+
+    // Selectable if virtual, has a publisher, or availability is still unknown.
+    const isSourceAvailable = (source: StreamSource): boolean =>
+        source.virtual === true || availableTopics === null || availableTopics.has(source.topic);
+
     const handleStreamSourceChange = (value: string) => {
         const source = STREAM_SOURCES.find(s => s.id === value);
         if (source) {
@@ -62,6 +73,13 @@ export function StreamPlayerModal({
             setHasEmptyDataWarning(false);
         }
     };
+
+    // What we render: the user's pick if available, else the first available
+    // source (3D View is virtual, so there's always a fallback). The pick is
+    // kept and restored if its publisher comes back.
+    const activeSource = isSourceAvailable(selectedStreamSource)
+        ? selectedStreamSource
+        : STREAM_SOURCES.find(isSourceAvailable) ?? selectedStreamSource;
 
     const handleFullscreenToggle = () => {
         const container = containerRef.current;
@@ -79,14 +97,18 @@ export function StreamPlayerModal({
     };
 
     const selectOptions = useMemo(() =>
-        STREAM_SOURCES.map(source => ({
-            value: source.id,
-            label: source.name
-        })),
-        []
+        STREAM_SOURCES.map(source => {
+            const available = isSourceAvailable(source);
+            return {
+                value: source.id,
+                label: available ? source.name : `${source.name} (unavailable)`,
+                disabled: !available,
+            };
+        }),
+        [availableTopics]
     );
 
-    const is3DView = selectedStreamSource.virtual === true;
+    const is3DView = activeSource.virtual === true;
 
     // Track fullscreen change event in case user exits with Esc
     useMemo(() => {
@@ -105,7 +127,7 @@ export function StreamPlayerModal({
                     <Tooltip title="Select the video stream or 3D model to display">
                         <Select
                             size="small"
-                            value={selectedStreamSource.id}
+                            value={activeSource.id}
                             onChange={handleStreamSourceChange}
                             style={{ width: 150 }}
                             options={selectOptions}
@@ -122,10 +144,10 @@ export function StreamPlayerModal({
                             ⚠️ NO DATA
                         </span>
                     )}
-                    <Button 
-                        size="small" 
-                        type="text" 
-                        icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />} 
+                    <Button
+                        size="small"
+                        type="text"
+                        icon={isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
                         onClick={handleFullscreenToggle}
                         title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
                     />
@@ -139,12 +161,12 @@ export function StreamPlayerModal({
         >
             <div ref={containerRef} style={{ width: '100%', height: '100%', backgroundColor: 'black' }}>
                 {is3DView ? (
-                    <Robot3DViewer embedded />
+                    <Robot3DViewer />
                 ) : (
                     <StreamPlayer
                         onFrameDelayChange={setFrameDelay}
                         onFpsChange={setFps}
-                        streamSource={selectedStreamSource}
+                        streamSource={activeSource}
                         onEmptyDataWarning={setHasEmptyDataWarning}
                     />
                 )}
