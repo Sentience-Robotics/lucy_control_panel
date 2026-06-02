@@ -1,5 +1,7 @@
 import React from 'react';
-import { Typography } from 'antd';
+import { Button, Typography } from 'antd';
+import { ThunderboltOutlined } from '@ant-design/icons';
+import { useRosConnection } from '../hooks/useRosConnection.hook.ts';
 import {
     UI_ACCENT_GREEN,
     UI_TEXT_PRIMARY_ON_DARK,
@@ -14,6 +16,8 @@ export interface LucyLoaderProps {
     title?: string;
     /** Status line below the title (e.g. "Connecting to ROS bridge"). */
     label?: string;
+    /** Display a connect button bellow the messages */
+    connectButton?: boolean;
     /** Optional supporting message, shown smaller below the label. */
     detail?: string;
     /** Compact = no full-viewport min-height (use inside cards). */
@@ -29,10 +33,13 @@ export interface LucyLoaderProps {
 export const LucyLoader: React.FC<LucyLoaderProps> = ({
     title = 'LUCY',
     label,
+    connectButton,
     detail,
     compact = false,
     showSpinner = true,
 }) => {
+    const { connect, currentUrl, connectionStatus } = useRosConnection();
+
     return (
         <div className={`lucy-loader${compact ? ' lucy-loader-compact' : ''}`}>
             {showSpinner && <div className="lucy-loader-spinner" />}
@@ -72,6 +79,16 @@ export const LucyLoader: React.FC<LucyLoaderProps> = ({
                         {detail}
                     </Text>
                 ) : null}
+                {connectButton && (
+                    <Button
+                        icon={<ThunderboltOutlined />}
+                        onClick={() => connect(currentUrl)}
+                        loading={connectionStatus === 'connecting'}
+                        style={{ marginTop: 24 }}
+                    >
+                        Connect
+                    </Button>
+                )}
             </div>
         </div>
     );

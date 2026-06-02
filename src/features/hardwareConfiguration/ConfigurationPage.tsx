@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography, Grid } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Page } from '../../Components/Page.tsx';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
@@ -11,17 +11,35 @@ import { ActivateConfigureWorkflowModal } from './components/ActivateConfigureWo
 import { useHardwareConfiguration } from './hooks/useHardwareConfiguration.tsx';
 import { freePhysicalPinsOnBoard } from './model/documentHelpers.ts';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
+const { useBreakpoint } = Grid;
 
 const ConfigurationPage = () => {
     const hw = useHardwareConfiguration();
     const editorLocked = hw.editorLocked;
+    const screens = useBreakpoint();
+    const isMobile = !screens.lg;
+
+    if (isMobile) {
+        return (
+            <Page showHeader title>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)', padding: 24 }}>
+                    <Card style={{ maxWidth: 400, textAlign: 'center', ...UI_CARD_SURFACE_STYLE }}>
+                        <Title level={4}>Unsupported Screen Size</Title>
+                        <Text>
+                            The hardware configuration page is not available on small screens. Please use a tablet or computer for a better experience.
+                        </Text>
+                    </Card>
+                </div>
+            </Page>
+        );
+    }
 
     return (
         <Page
             showHeader
             title
-            contentStyle={{ padding: 12, position: 'relative' }}
+            contentStyle={{ padding: isMobile ? 12 : 24, position: 'relative' }}
             removeScrollbars={false}
         >
             {hw.contextHolderMessage}
@@ -40,14 +58,15 @@ const ConfigurationPage = () => {
                 <div
                     style={{
                         display: 'grid',
-                        gridTemplateColumns: 'auto auto',
+                        gridTemplateColumns: isMobile ? '1fr' : 'auto auto',
                         columnGap: 12,
                         rowGap: 6,
                         alignItems: 'center',
+                        width: isMobile ? '100%' : 'auto',
                     }}
                 >
-                    <span style={{ gridColumn: 1, gridRow: 1 }} aria-hidden />
-                    <div style={{ gridColumn: 2, gridRow: 1 }}>
+                    {!isMobile && <span style={{ gridColumn: 1, gridRow: 1 }} aria-hidden />}
+                    <div style={{ gridColumn: isMobile ? 1 : 2, gridRow: 1 }}>
                         <HardwareConfigPresetHeaderTag
                             variant="loaded"
                             label="LOADED"
@@ -57,11 +76,11 @@ const ConfigurationPage = () => {
                     </div>
                     <Tag
                         title="ROS package wired on lucy_config_pipeline (from config/get)"
-                        style={{ gridColumn: 1, gridRow: 2, margin: 0 }}
+                        style={{ gridColumn: 1, gridRow: 2, margin: 0, width: isMobile ? 'fit-content' : 'auto' }}
                     >
                         <span style={{ fontWeight: 600 }}>ROBOT PACKAGE:</span> {hw.serverRobotPackage || '—'}
                     </Tag>
-                    <div style={{ gridColumn: 2, gridRow: 2 }}>
+                    <div style={{ gridColumn: isMobile ? 1 : 2, gridRow: isMobile ? 3 : 2 }}>
                         <HardwareConfigPresetHeaderTag
                             variant="active"
                             label="ACTIVE"
@@ -69,8 +88,8 @@ const ConfigurationPage = () => {
                             title="Current active hardware configuration from config/list"
                         />
                     </div>
-                    <span style={{ gridColumn: 1, gridRow: 3 }} aria-hidden />
-                    <div style={{ gridColumn: 2, gridRow: 3 }}>
+                    {!isMobile && <span style={{ gridColumn: 1, gridRow: 3 }} aria-hidden />}
+                    <div style={{ gridColumn: isMobile ? 1 : 2, gridRow: isMobile ? 4 : 3 }}>
                         <HardwareConfigPresetHeaderTag
                             variant="flashed"
                             label="FLASHED"
@@ -83,7 +102,7 @@ const ConfigurationPage = () => {
                         />
                     </div>
                 </div>
-                <Space wrap align="center">
+                <Space wrap align="center" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-start' }}>
                     <Button
                         icon={<ReloadOutlined />}
                         disabled={!hw.loadedSnapshot || editorLocked}
@@ -115,7 +134,7 @@ const ConfigurationPage = () => {
                     />
                     {hw.isDirty ? <Tag color="orange">UNSAVED EDITS</Tag> : null}
                 </Space>
-                <Space wrap align="center">
+                <Space wrap align="center" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'center' : 'flex-end' }}>
                     <HardwareConfigPresetHeaderTag
                         variant="target"
                         label="TARGET"
@@ -138,6 +157,7 @@ const ConfigurationPage = () => {
             {!hw.yamlDoc ? (
                 <LucyLoader
                     label={hw.loading ? 'LOADING HARDWARE CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
+                    connectButton={!hw.loading}
                     detail={
                         hw.loading
                             ? 'Fetching the active hardware preset and joint catalog.'
@@ -232,7 +252,7 @@ const ConfigurationPage = () => {
                     }
                 >
                     <Card title="BOARDS (READ-ONLY)" size="small" style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}>
-                        <Table size="small" dataSource={hw.boardRows} columns={hw.boardColumns} pagination={false} />
+                        <Table size="small" dataSource={hw.boardRows} columns={hw.boardColumns} pagination={false} scroll={{ x: 'max-content' }} />
                     </Card>
 
                     <Card
@@ -240,18 +260,18 @@ const ConfigurationPage = () => {
                         size="small"
                         style={{ marginBottom: 12, ...UI_CARD_SURFACE_STYLE }}
                         extra={
-                            <Space wrap align="center" size="small">
+                            <Space wrap align="center" size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
                                 <Input.Search
                                     placeholder="Search actuators"
                                     value={hw.actuatorSearchQuery}
                                     onChange={(e) => hw.setActuatorSearchQuery(e.target.value)}
-                                    style={{ width: 200 }}
+                                    style={{ width: isMobile ? '100%' : 200 }}
                                     allowClear
                                 />
                                 <Select
                                     size="small"
                                     placeholder="BOARD"
-                                    style={{ minWidth: 200 }}
+                                    style={{ minWidth: isMobile ? 'calc(100% - 140px)' : 200 }}
                                     disabled={
                                         editorLocked ||
                                         !hw.yamlDoc ||
@@ -286,7 +306,7 @@ const ConfigurationPage = () => {
                                 </Button>
                                 {hw.yamlDoc && hw.boardsEligibleForNewActuator.length === 0 ? (
                                     <Text type="secondary" style={{ fontSize: 12 }}>
-                                        NO FREE PINS ON ANY BOARD
+                                        NO FREE PINS
                                     </Text>
                                 ) : null}
                             </Space>
@@ -294,7 +314,7 @@ const ConfigurationPage = () => {
                     >
                         <Table
                             size="small"
-                            scroll={{ x: true }}
+                            scroll={{ x: 'max-content' }}
                             pagination={false}
                             dataSource={hw.actuatorRows}
                             columns={hw.actuatorColumns}
@@ -306,11 +326,11 @@ const ConfigurationPage = () => {
                         size="small"
                         style={UI_CARD_SURFACE_STYLE}
                         extra={
-                            <Space wrap align="center" size="small">
+                            <Space wrap align="center" size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}>
                                 <Select
                                     size="small"
                                     placeholder="ACTUATOR TO ATTACH"
-                                    style={{ minWidth: 260 }}
+                                    style={{ minWidth: isMobile ? 'calc(100% - 130px)' : 260 }}
                                     showSearch
                                     optionFilterProp="label"
                                     disabled={
@@ -343,7 +363,7 @@ const ConfigurationPage = () => {
                                 </Button>
                                 {hw.yamlDoc && hw.actuatorsEligibleForNewPressureSensor.length === 0 ? (
                                     <Text type="secondary" style={{ fontSize: 12 }}>
-                                        NO ACTUATOR WITH A FREE PIN ON ITS BOARD
+                                        NO ACTUATOR
                                     </Text>
                                 ) : null}
                             </Space>
@@ -351,7 +371,7 @@ const ConfigurationPage = () => {
                     >
                         <Table
                             size="small"
-                            scroll={{ x: true }}
+                            scroll={{ x: 'max-content' }}
                             pagination={false}
                             dataSource={hw.pressureSensorRows}
                             columns={hw.pressureSensorColumns}
