@@ -36,7 +36,7 @@ export const Page: React.FC<PageProps> = ({
   title,
   showHeader = false,
   contentStyle = {},
-  removeScrollbars = true,
+  removeScrollbars = false,
   className = '',
 }) => {
   const screens = useBreakpoint();
@@ -172,7 +172,7 @@ export const Page: React.FC<PageProps> = ({
 
         .ant-input-number-handler:hover {
           color: ${UI_ACCENT_GREEN} !important;
-          background-color: ${uiAccentRgba(0.1)} !important;
+          background-color: ${uiAccentRgba(0.1)} !import;
           box-shadow: inset 0 0 10px ${uiAccentRgba(0.2)} !important;
         }
 
@@ -385,6 +385,9 @@ export const Page: React.FC<PageProps> = ({
             lineHeight: 'normal',
             paddingTop: 8,
             paddingBottom: 8,
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
           }}
         >
           <div style={{

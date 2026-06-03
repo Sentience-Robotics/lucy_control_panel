@@ -24,10 +24,12 @@ const { Content } = Layout;
 const { useBreakpoint } = Grid;
 
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
+const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
 
 const CONTROL_PATH = '/';
 const CONFIG_PATH = '/configuration';
-const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH]);
+const SENSORS_PATH = '/sensors';
+const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH, SENSORS_PATH]);
 
 /**
  * Render all main pages once and toggle visibility with `display: none`.
@@ -38,9 +40,11 @@ const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH]);
 const PersistentPages: FC = () => {
     const { pathname } = useLocation();
     const [configVisited, setConfigVisited] = useState(false);
+    const [sensorsVisited, setSensorsVisited] = useState(false);
 
     useEffect(() => {
         if (pathname === CONFIG_PATH) setConfigVisited(true);
+        if (pathname === SENSORS_PATH) setSensorsVisited(true);
     }, [pathname]);
 
     const isKnown = KNOWN_PATHS.has(pathname);
@@ -65,6 +69,20 @@ const PersistentPages: FC = () => {
                         }
                     >
                         <Configuration />
+                    </Suspense>
+                </div>
+            ) : null}
+            {sensorsVisited ? (
+                <div style={pageStyle(pathname === SENSORS_PATH)}>
+                    <Suspense
+                        fallback={
+                            <LucyLoader
+                                label="LOADING SENSORS"
+                                detail="Preparing the sensor display."
+                            />
+                        }
+                    >
+                        <SensorDisplay />
                     </Suspense>
                 </div>
             ) : null}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Space, Grid } from 'antd';
-import { ControlOutlined, SettingOutlined } from '@ant-design/icons';
+import { ControlOutlined, SettingOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
@@ -16,6 +16,7 @@ const { useBreakpoint } = Grid;
 
 const navigationItems = [
     { to: '/', label: 'CONTROL', icon: <ControlOutlined /> },
+    { to: '/sensors', label: 'SENSORS', icon: <FundProjectionScreenOutlined /> },
     { to: '/configuration', label: 'CONFIGURATION', icon: <SettingOutlined /> },
 ];
 
