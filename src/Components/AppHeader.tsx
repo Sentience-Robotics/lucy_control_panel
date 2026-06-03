@@ -202,7 +202,7 @@ export const AppHeader: React.FC = () => {
                     {
                         connectionStatus === 'connecting'
                             ? 'connecting' : connectionStatus === 'connected'
-                                ? 'disconnect' : 'connect'
+                                ? 'Disconnect' : 'Connect'
                     }
                 </Button>
             </Tooltip>
