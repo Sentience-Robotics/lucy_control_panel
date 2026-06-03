@@ -116,7 +116,7 @@ const Robot3DViewer: React.FC = () => {
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
             {loading && <LoadingBar progress={progress} />}
             <Canvas
-                camera={{ position: [0, 8, 40], fov: 50, near: 0.1, far: 500 }}
+                camera={{ position: [0, 2, 3], fov: 50, near: 0.1, far: 500 }}
                 style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
             >
                 <ambientLight intensity={0.6} />
@@ -125,14 +125,14 @@ const Robot3DViewer: React.FC = () => {
 
                 {showGrid && (
                     <Grid
-                        args={[60, 60]}
-                        cellSize={2}
-                        cellThickness={0.5}
+                        args={[30, 30]}
+                        cellSize={1}
+                        cellThickness={1}
                         cellColor={UI_ACCENT_GREEN}
-                        sectionSize={10}
+                        sectionSize={2}
                         sectionThickness={1}
                         sectionColor={UI_TEXT_PRIMARY_ON_DARK}
-                        fadeDistance={80}
+                        fadeDistance={20}
                         fadeStrength={1}
                     />
                 )}
@@ -148,13 +148,13 @@ const Robot3DViewer: React.FC = () => {
                 )}
 
                 <OrbitControls
-                    target={[0, 8, 0]}
+                    target={[0, 1, 0]}
                     enablePan
                     enableZoom
                     enableRotate
                     dampingFactor={0.1}
-                    minDistance={10}
-                    maxDistance={100}
+                    minDistance={0.2}
+                    maxDistance={10}
                 />
             </Canvas>
 
