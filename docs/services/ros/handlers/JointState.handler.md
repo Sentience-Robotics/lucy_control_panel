@@ -40,7 +40,7 @@ Publishes the current joint positions to `ros2_control`.
 - Iterates over `controllerConfigs`; for each controller, collects only the joints that belong to it (by name).
 - Publishes one `trajectory_msgs/JointTrajectory` per controller with a single waypoint.
 - Uses `time_from_start = 0.2 s` — some controllers reject points with `t = 0`.
-- Positions are in **radians**.
+- Positions are in **URDF radians**. Sliders work in actuators degrees or radians; conversion happens at the page layer (`servoDegToJointRad` / `jointRadToServoDeg`) before reaching this handler. URDF clamping is enforced downstream by `LucySystemHardware`, not in the LCP.
 - Silently skips joints not present in the `joints` array.
 
 ```typescript

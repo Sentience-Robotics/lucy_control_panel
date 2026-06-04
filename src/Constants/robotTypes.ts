@@ -38,6 +38,12 @@ export interface JointControlState {
   category: string | undefined;
   inverted?: boolean;
   restValue?: number;
+  /**
+   Tells JointControl whether the numeric fields are already actuator
+   * degrees (show verbatim as °, take input as-is) or URDF radians
+   * (convert to ° for display, convert input back)
+   */
+  valueInActuatorDegrees?: boolean;
 }
 
 export interface JointConfiguration {

@@ -6,17 +6,23 @@
  * `gz_ros2_control` plugin reads at robot spawn requires a Gazebo restart (the
  * plugin only loads URDF + ros2_control blocks once per spawn).
  *
- * Server-side ros2_control template fields ⇒ included in the diff:
+ * Server-side ros2_control template fields ⇒ included in the Gazebo-restart diff:
  *   - board (per actuator)
  *   - urdf_joint (per actuator)
- *   - virtual_pin, servo_type, offset_deg, direction, scale,
- *     servo_min_deg, servo_max_deg, servo_default_deg (per actuator)
+ *   - virtual_pin, servo_type (YAML), offset_deg, direction, scale,
+ *     servo_min_deg, servo_max_deg, servo_default_deg (per actuator, YAML keys)
  *
- * NOT included (firmware-only or runtime-only):
- *   - actuator.enabled (firmware emits, but ros2_control still exports the joint)
+ * NOT included in the Gazebo-restart decision:
  *   - sensors (firmware only)
  *   - passive_urdf_joints / ignore_urdf_joints (controllers.yaml only,
  *     applied by RELOAD without Gazebo restart)
+ *
+ * `actuator.enabled` is tracked separately as `actuatorsNewlyEnabled`: a
+ * disabled→enabled transition (or a freshly added row already enabled) means
+ * the next pipeline run will start driving real motors, which warrants a
+ * confirmation prompt before activation in non-simulation flows. It does NOT
+ * change `requiresGazeboRestart`: ros2_control still exports the joint either
+ * way, only firmware C inclusion flips.
  */
 
 import { asMapping } from './documentHelpers.ts';
@@ -57,11 +63,21 @@ export interface HardwareConfigDiff {
     actuatorsRemoved: { actuatorId: string; label: string }[];
     /** Actuators in both, but with at least one ros2_control field changed. */
     actuatorsModified: ActuatorDiffEntry[];
+    /**
+     * Actuators that flip from disabled to `enabled=true` in target (missing
+     * `enabled` counts as disabled). These rows will start driving real servos
+     * on next firmware build/flash; surface a confirmation before activation
+     * outside simulation-only mode.
+     */
+    actuatorsNewlyEnabled: { actuatorId: string; label: string }[];
     /** Boards added in target. */
     boardsAdded: string[];
     /** Boards removed in target. */
     boardsRemoved: string[];
-    /** True if any of the above lists is non-empty. */
+    /**
+     * True if any ros2_control / board structural change is present.
+     * `actuatorsNewlyEnabled` does NOT count here (firmware-only flip).
+     */
     requiresGazeboRestart: boolean;
 }
 
@@ -92,12 +108,18 @@ function actuatorLabel(a: Actuator, fallbackId: string): string {
 }
 
 function valuesDiffer(before: unknown, after: unknown): boolean {
-    // Treat missing/undefined and empty-string-only differences as equal where servo configs
+    // Treat missing/undefined and empty-string-only differences as equal where actuator configs
     // typically default; but for the comparison we err on "different" if either is set.
     if (before === after) return false;
     const bs = before === undefined || before === null ? '' : String(before);
     const as_ = after === undefined || after === null ? '' : String(after);
     return bs !== as_;
+}
+
+/** Only an explicit `enabled: true` counts as enabled; missing or false does not. */
+function isEnabled(a: Actuator | undefined): boolean {
+    if (!a) return false;
+    return a.enabled === true;
 }
 
 /**
@@ -120,10 +142,14 @@ export function computeHardwareConfigDiff(
     const actuatorsAdded: { actuatorId: string; label: string }[] = [];
     const actuatorsRemoved: { actuatorId: string; label: string }[] = [];
     const actuatorsModified: ActuatorDiffEntry[] = [];
+    const actuatorsNewlyEnabled: { actuatorId: string; label: string }[] = [];
 
     for (const [id, ta] of target) {
         if (!active.has(id)) {
             actuatorsAdded.push({ actuatorId: id, label: actuatorLabel(ta, id) });
+            if (isEnabled(ta)) {
+                actuatorsNewlyEnabled.push({ actuatorId: id, label: actuatorLabel(ta, id) });
+            }
         }
     }
     for (const [id, aa] of active) {
@@ -143,6 +169,9 @@ export function computeHardwareConfigDiff(
         if (changes.length > 0) {
             actuatorsModified.push({ actuatorId: id, label: actuatorLabel(ta, id), changes });
         }
+        if (!isEnabled(aa) && isEnabled(ta)) {
+            actuatorsNewlyEnabled.push({ actuatorId: id, label: actuatorLabel(ta, id) });
+        }
     }
 
     const boardsAdded: string[] = [];
@@ -161,6 +190,7 @@ export function computeHardwareConfigDiff(
         actuatorsAdded,
         actuatorsRemoved,
         actuatorsModified,
+        actuatorsNewlyEnabled,
         boardsAdded,
         boardsRemoved,
         requiresGazeboRestart,
