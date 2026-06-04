@@ -1,4 +1,18 @@
-import type { ControllerJointConfig, JointLimitDeg } from '../Constants/rosConfig';
+import type { ControllerJointConfig, JointLimitDeg, JointMapping } from '../Constants/rosConfig';
+import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping';
+
+function readMapping(row: Record<string, unknown>): JointMapping {
+    const offsetDeg = Number(row.offset_deg);
+    const direction = Number(row.direction);
+    const scale = Number(row.scale);
+    return {
+        offsetDeg: Number.isFinite(offsetDeg) ? offsetDeg : DEFAULT_ACTUATOR_MAPPING.offsetDeg,
+        direction: Number.isFinite(direction) && direction !== 0
+            ? direction
+            : DEFAULT_ACTUATOR_MAPPING.direction,
+        scale: Number.isFinite(scale) && scale !== 0 ? scale : DEFAULT_ACTUATOR_MAPPING.scale,
+    };
+}
 
 function boardIdToCategory(boardId: string): string {
     const tail = boardId.replace(/^rp2040_/, '');
@@ -56,6 +70,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
                     minDeg,
                     maxDeg,
                     defaultDeg: Number.isFinite(defaultDeg) ? defaultDeg : (minDeg + maxDeg) / 2,
+                    mapping: readMapping(r),
                 };
             }
         }

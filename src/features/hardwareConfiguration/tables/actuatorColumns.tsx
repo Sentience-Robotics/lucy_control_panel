@@ -11,8 +11,9 @@ import type { ActuatorTableRecord } from '../types.ts';
 import {
     actOpts,
     boardSlots,
+    freePhysicalPinsOnBoard,
     jointSelectOptions,
-    normalizeServoType,
+    normalizeActuatorType,
     physicalPinOptions,
     sortedBoardIds,
     usedPhysicalPinsOnBoardExcluding,
@@ -178,6 +179,17 @@ export function buildActuatorColumns({
                 const ao = actOpts(id, 'board');
                 const curBoard = String(row.board ?? '');
                 const boardIds = yamlDoc ? sortedBoardIds(yamlDoc) : [];
+                // Free-pin counts mirror the "globally unused" definition the
+                // (now-removed) toolbar selector showed; the row's own board
+                // therefore reads (n-1 free) since this row already occupies
+                // one of its pins.
+                const boardOptions = boardIds.map((b) => {
+                    const free = yamlDoc ? freePhysicalPinsOnBoard(yamlDoc, b).length : 0;
+                    return {
+                        value: b,
+                        label: `${b} (${free} free)`,
+                    };
+                });
                 return (
                     <div title={cellTooltipText(serverFieldErrors, ao)}>
                         <Select
@@ -187,7 +199,7 @@ export function buildActuatorColumns({
                                 ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders),
                             }}
                             value={curBoard || undefined}
-                            options={boardIds.map((b) => ({ value: b, label: b }))}
+                            options={boardOptions}
                             onChange={(boardVal) => {
                                 if (!yamlDoc) return;
                                 const next = structuredClone(yamlDoc);
@@ -284,13 +296,13 @@ export function buildActuatorColumns({
             },
         },
         {
-            title: 'SERVO_TYPE',
+            title: 'ACTUATOR_TYPE',
             key: 'servo_type',
             width: 120,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const v = normalizeServoType(row.servo_type);
+                const v = normalizeActuatorType(row.servo_type);
                 const ao = actOpts(id, 'servo_type');
                 return (
                     <div title={cellTooltipText(serverFieldErrors, ao)}>

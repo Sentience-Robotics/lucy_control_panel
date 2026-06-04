@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import { Alert, Button, Card, Checkbox, Divider, Modal, Progress, Space, Switch, Tag, Typography } from 'antd';
 import type { HardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
+import type { GeneratedFileNames } from '../../../Utils/generatedFiles.ts';
 import { HardwareConfigPresetHeaderTag } from '../../../Components/HardwareConfigPresetTag.tsx';
 import {
     UI_ACCENT_GREEN,
@@ -85,6 +86,12 @@ export interface ActivateConfigureWorkflowModalProps {
      */
     gazeboRunning: boolean | null;
     canRun: boolean;
+    /**
+     * Generated-artifact filenames resolved from the active hardware doc
+     * (`generated_files` in the YAML). Keeps the regenerate copy in sync with
+     * what the pipeline actually writes instead of hardcoding names.
+     */
+    generatedFileNames: GeneratedFileNames;
 }
 
 export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowModalProps) {
@@ -114,6 +121,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         workflowLastRunDiff,
         gazeboRunning,
         canRun,
+        generatedFileNames,
     } = props;
 
     const showGazeboRestartPrompt =
@@ -169,7 +177,19 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         onChange={onActivateModalSimulationOnlyChange}
                         disabled={workflowRunning || pipelineBoardOptions.length === 0}
                     />
-                    <Text style={{ marginLeft: 8 }}>SIMULATION ONLY (NO HARDWARE BUILD / FLASH)</Text>
+                    <Text style={{ marginLeft: 8 }}>
+                        SIMULATION ONLY (ROS2_CONTROL + RELOAD, NO FIRMWARE BUILD / FLASH)
+                    </Text>
+                    {activateModalSimulationOnly ? (
+                        <Text
+                            type="secondary"
+                            style={{ display: 'block', marginTop: 6, marginLeft: 28, fontSize: 12 }}
+                        >
+                            Regenerates {generatedFileNames.ros2ControlXacro} and{' '}
+                            {generatedFileNames.controllersYaml}, then reloads the
+                            control stack — no firmware build or flash.
+                        </Text>
+                    ) : null}
                 </div>
 
                 {!activateModalSimulationOnly ? (
@@ -214,6 +234,10 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     />
                     <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
                 </div>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                    ros2_control and controllers are regenerated before firmware build (same as simulation,
+                    plus BUILD / FLASH when selected).
+                </Text>
                 </>
                 ) : null}
 
@@ -245,15 +269,15 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         style={{
                             display: 'grid',
                             gridTemplateColumns: activateModalSimulationOnly
-                                ? 'repeat(3, 1fr)'
-                                : 'repeat(5, 1fr)',
+                                ? 'repeat(2, 1fr)'
+                                : 'repeat(3, 1fr)',
                             gap: 8,
                             marginTop: 12,
                         }}
                     >
                         {(activateModalSimulationOnly
-                            ? (['validate', 'activate', 'reload'] as const)
-                            : (['validate', 'activate', 'build', 'flash', 'reload'] as const)
+                            ? (['validate', 'activate', 'generate', 'reload'] as const)
+                            : (['validate', 'activate', 'generate', 'build', 'flash', 'reload'] as const)
                         )
                             .map((id) => workflowSteps.find((s) => s.id === id))
                             .filter((s): s is NonNullable<typeof s> => s != null)

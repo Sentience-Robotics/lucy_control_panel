@@ -1,12 +1,54 @@
-import { message } from 'antd';
+import { Modal, message } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useActiveHardwareRos } from '../../../contexts/ActiveHardwareRosContext.tsx';
 import { useGazeboRunning } from '../../../hooks/useGazeboRunning.hook.ts';
 import { useRosConnection } from '../../../hooks/useRosConnection.hook.ts';
+import { HardwareConfigHandler } from '../../../Services/ros/handlers/HardwareConfig.handler.ts';
+import { parseHardwareConfigYaml } from '../../../Utils/hardwareConfigYaml.ts';
+import { resolveGeneratedFiles } from '../../../Utils/generatedFiles.ts';
+import { computeHardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
 import { boardsToFlashGoal } from '../utils/boardsToFlashGoal.ts';
 import { useActivateConfigureWorkflow } from './useActivateConfigureWorkflow.tsx';
 import { useHardwareConfigEditor } from './useHardwareConfigEditor.tsx';
 import { useHardwareConfigLists } from './useHardwareConfigLists.ts';
+
+/**
+ * Show a blocking confirm dialog listing actuators that will switch from
+ * disabled to enabled by the activation. Resolves to `true` if the user
+ * accepts driving real hardware, `false` otherwise.
+ */
+function confirmNewlyEnabled(
+    newlyEnabled: { actuatorId: string; label: string }[],
+): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+        Modal.confirm({
+            title: 'ENABLE ACTUATORS ON REAL HARDWARE?',
+            icon: <ExclamationCircleOutlined />,
+            content: (
+                <div>
+                    <p style={{ marginTop: 0 }}>
+                        Activating this configuration will start driving the following
+                        actuator{newlyEnabled.length === 1 ? '' : 's'} on the real robot.
+                        Make sure the hardware is powered, clear of obstacles, and that
+                        joint limits / calibration are correct.
+                    </p>
+                    <ul style={{ maxHeight: 220, overflow: 'auto', paddingLeft: 18 }}>
+                        {newlyEnabled.map((a) => (
+                            <li key={a.actuatorId}>{a.label}</li>
+                        ))}
+                    </ul>
+                </div>
+            ),
+            okText: 'ENABLE & RUN',
+            okType: 'danger',
+            cancelText: 'CANCEL',
+            centered: true,
+            onOk: () => resolve(true),
+            onCancel: () => resolve(false),
+        });
+    });
+}
 
 export function useHardwareConfiguration() {
     const { isConnected } = useRosConnection();
@@ -177,12 +219,56 @@ export function useHardwareConfiguration() {
         [],
     );
 
+    /**
+     * Returns the list of actuators that will transition disabled→enabled (or
+     * arrive newly already-enabled) when `targetConfigName` is activated, by
+     * diffing it against the currently-active doc the supervisor reported.
+     * Returns `null` when the diff cannot be computed (no active snapshot,
+     * fetch failure, or unparseable YAML) so the caller can choose to
+     * proceed without prompting.
+     */
+    const detectNewlyEnabledActuators = useCallback(
+        async (
+            targetConfigName: string,
+        ): Promise<{ actuatorId: string; label: string }[] | null> => {
+            const active = activeHardwareDocRef.current;
+            if (!active) return null;
+            try {
+                const res = await HardwareConfigHandler.getConfig(targetConfigName);
+                if (!res.success) return null;
+                const target = parseHardwareConfigYaml(res.config_yaml || '');
+                const diff = computeHardwareConfigDiff(active, target);
+                return diff.actuatorsNewlyEnabled;
+            } catch {
+                return null;
+            }
+        },
+        [],
+    );
+
     const runWorkflowFromModal = useCallback(async () => {
         const name = editor.loadConfigName.trim();
         if (!name) return;
         const simulationOnly = activateModalSimulationOnly || pipelineBoardIds.length === 0;
         const flashBoards = simulationOnly ? [] : boardsToFlashGoal(activateModalBoards, pipelineBoardIds);
         const noBoardsSelected = !simulationOnly && pipelineBoardIds.length > 0 && activateModalBoards.length === 0;
+
+        // Hardware-mode safety: if this run will newly enable actuators
+        // (disabled→enabled transition, or net-new row already enabled) and
+        // the flow is not simulation-only, surface a confirmation before any
+        // pipeline call so the user explicitly opts in to driving real motors.
+        if (!simulationOnly) {
+            const newlyEnabled = await detectNewlyEnabledActuators(name);
+            if (newlyEnabled === null) {
+                // Could not compute diff (target fetch failed, parse error, no
+                // active doc); fall through and let validate/activate surface
+                // any real problem rather than blocking on a soft check.
+            } else if (newlyEnabled.length > 0) {
+                const confirmed = await confirmNewlyEnabled(newlyEnabled);
+                if (!confirmed) return;
+            }
+        }
+
         await runActivateWorkflow({
             targetConfigName: name,
             boardsToFlash: flashBoards,
@@ -196,11 +282,19 @@ export function useHardwareConfiguration() {
         activateModalActivateOnly,
         activateModalBuildOnly,
         activateModalSimulationOnly,
+        detectNewlyEnabledActuators,
         editor.loadConfigName,
         editor.refreshConfigListForModal,
         pipelineBoardIds,
         runActivateWorkflow,
     ]);
+
+    // Names the pipeline will write for this preset (active doc is the source of
+    // truth); used only to keep the activate-workflow copy accurate.
+    const generatedFileNames = useMemo(
+        () => resolveGeneratedFiles(activeHardwareDoc),
+        [activeHardwareDoc],
+    );
 
     const modalCanRun =
         Boolean(editor.selectedTargetConfigName.trim()) &&
@@ -239,6 +333,7 @@ export function useHardwareConfiguration() {
         workflowLastRunDiff,
         gazeboRunning,
         modalCanRun,
+        generatedFileNames,
         pipelineBoardOptions,
         editorLocked,
         serverFlashedConfigName,

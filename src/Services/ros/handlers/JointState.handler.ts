@@ -1,6 +1,11 @@
 import ROSLIB from 'roslib';
 import { ROS_CONFIG, type ControllerJointConfig } from '../../../Constants/rosConfig.ts';
 import type { JointControlState } from '../../../Constants/robotTypes.ts';
+import {
+  jointConfigMetaFromControllers,
+  type JointConfigMeta,
+} from '../../../Utils/jointConfigLookup.ts';
+import { actuatorDegToJointRad } from '../../../Utils/actuatorJointMapping.ts';
 import { RosBridgeService } from '../ros.service.ts';
 
 /** ROS time (sec + nsec) for trajectory header; from /clock when use_sim_time, else wall clock. */
@@ -17,9 +22,11 @@ export class JointStateHandler {
   private clockTopic: ROSLIB.Topic | null = null;
   private lastClock: { sec: number; nanosec: number } | null = null;
   private controllerConfigs: ControllerJointConfig[];
+  private jointMetaByName = new Map<string, JointConfigMeta>();
 
   private constructor(controllerConfigs: ControllerJointConfig[]) {
     this.controllerConfigs = controllerConfigs;
+    this.jointMetaByName = jointConfigMetaFromControllers(controllerConfigs);
     this.unsubscribeFromStatus = RosBridgeService.getInstance().onStatusChange((status) => {
       if (status === 'connected') {
         this.initializeTopics();
@@ -70,6 +77,7 @@ export class JointStateHandler {
   /** Update controller config (e.g. after receiving from ROS). */
   setControllerConfigs(controllerConfigs: ControllerJointConfig[]) {
     this.controllerConfigs = controllerConfigs;
+    this.jointMetaByName = jointConfigMetaFromControllers(controllerConfigs);
     this.initializeTopics();
   }
 
@@ -115,8 +123,9 @@ export class JointStateHandler {
 
   /**
    * Subscribe to /joint_states (sensor_msgs/msg/JointState) to get actual motor positions.
-   * Calls `callback` on every message regardless of who is controlling.
-   * Returns a cleanup function.
+   * Values are URDF radians (single source of truth for FK / 3D viewer / RViz).
+   * Slider consumers convert to actuator deg at the call site via
+   * `jointRadToActuatorDeg`. Returns a cleanup function.
    */
   subscribeToJointStates(
     callback: (positions: { name: string; value: number }[]) => void
@@ -140,7 +149,7 @@ export class JointStateHandler {
 
   /**
    * Subscribe to incoming joint trajectory messages (published by another client).
-   * Calls `callback` each time a message arrives on any controller topic.
+   * Values are URDF radians (raw payload). Slider consumers convert at call site.
    * Returns a cleanup function that unsubscribes all listeners.
    */
   subscribeToPositions(
@@ -199,7 +208,11 @@ export class JointStateHandler {
         const j = jointByName.get(name);
         if (j == null) continue;
         names.push(name);
-        positions.push(j.currentValue);
+        const meta = this.jointMetaByName.get(name);
+        const jointRad = meta
+          ? actuatorDegToJointRad(j.currentValue, meta.mapping)
+          : j.currentValue;
+        positions.push(jointRad);
       }
       if (names.length === 0) continue;
       const topic = this.topicByTopicName.get(cfg.topic);
