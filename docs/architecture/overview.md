@@ -99,17 +99,48 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     actor User
-    participant Slider as JointControl (slider)
+    participant Slider as JointControl (slider, servo deg)
     participant Panel as RobotControlPanel
     participant JSH as JointStateHandler
     participant WS as RosBridgeService (WebSocket)
-    participant ROS as ros2_control
+    participant ROS as ros2_control / LucySystemHardware
 
-    User->>Slider: moves slider
-    Slider->>Panel: onJointChange(name, value)
+    User->>Slider: moves slider (servo deg)
+    Slider->>Panel: onJointChange(name, servo_deg)
+    Panel->>Panel: servoDegToJointRad(name, servo_deg)
     Panel->>JSH: publishJointStates(joints)
     JSH->>JSH: group joints by controller
     JSH->>WS: topic.publish(JointTrajectory)
     WS->>ROS: trajectory_msgs/JointTrajectory\n[names, positions (rad), t=0.2 s]
-    ROS-->>Hardware: drive servos
+    ROS->>ROS: clamp to URDF <command_interface min/max>
+    ROS-->>Hardware: drive actuators (clamped)
+    ROS-->>JSH: /joint_states (URDF rad, clamped)
+    JSH-->>Slider: jointRadToServoDeg → actualValue
 ```
+
+### Units along the path
+
+| Stage | Unit | Source |
+|-------|------|--------|
+| Slider native | servo degrees | `servo_min_deg` / `servo_max_deg` from the active YAML |
+| Wire to `ros2_control` | URDF radians | `servoDegToJointRad(servo_deg, offset_deg, direction, scale)` |
+| `LucySystemHardware::write()` | URDF radians, clamped | `<command_interface><param name="min/max"/></command_interface>` |
+| `/joint_states` | URDF radians | `joint_state_broadcaster` |
+| 3D viewer + slider readback | servo degrees | `jointRadToServoDeg(joint_rad, offset_deg, direction, scale)` |
+
+The slider exposes the full hardware envelope on purpose — `ros2_control` is the single point that enforces the URDF wall, so the LCP can show the user "your servo can mechanically reach this, but the controller will refuse past *X* deg".
+
+## Activate / Configure workflow
+
+`useActivateConfigureWorkflow.tsx` drives the modal in `ActivateConfigureWorkflowModal.tsx`. The pipeline mirrors the `lucy_config_pipeline` action phases:
+
+| Step | UI | Backend phase | Skipped when |
+|------|----|---------------|--------------|
+| VALIDATE | always shown | `validate` | never |
+| ACTIVATE | always shown | (frontend save + activation) | never |
+| **GENERATE** | always shown | `generate` (regenerates `ros2_control.xacro` + `controllers.yaml`) | never |
+| BUILD | shown when not *SIMULATION ONLY* | `build` | `simulation_only` |
+| FLASH | shown when not *SIMULATION ONLY* | `flash` | `simulation_only`, `build_only` |
+| RELOAD | always shown | `reload` (`/lucy_control/restart`) | never |
+
+The dedicated **GENERATE** step makes it explicit that *SIMULATION ONLY* still rewrites ros2_control configuration; only firmware build/flash are skipped.

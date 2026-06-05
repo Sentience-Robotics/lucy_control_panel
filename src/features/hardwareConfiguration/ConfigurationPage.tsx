@@ -9,7 +9,6 @@ import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Cons
 import './configuration.switch.css';
 import { ActivateConfigureWorkflowModal } from './components/ActivateConfigureWorkflowModal.tsx';
 import { useHardwareConfiguration } from './hooks/useHardwareConfiguration.tsx';
-import { freePhysicalPinsOnBoard } from './model/documentHelpers.ts';
 
 const { Text } = Typography;
 
@@ -221,6 +220,7 @@ const ConfigurationPage = () => {
                 workflowLastRunDiff={hw.workflowLastRunDiff}
                 gazeboRunning={hw.gazeboRunning}
                 canRun={hw.modalCanRun && hw.isConnected}
+                generatedFileNames={hw.generatedFileNames}
             />
 
             {hw.yamlDoc ? (
@@ -248,35 +248,23 @@ const ConfigurationPage = () => {
                                     style={{ width: 200 }}
                                     allowClear
                                 />
-                                <Select
+                                <Button
+                                    type="default"
                                     size="small"
-                                    placeholder="BOARD"
-                                    style={{ minWidth: 200 }}
+                                    className="hardware-config-add-btn"
                                     disabled={
                                         editorLocked ||
                                         !hw.yamlDoc ||
                                         hw.boardsEligibleForNewActuator.length === 0
                                     }
-                                    value={hw.addActuatorBoard}
-                                    options={hw.boardsEligibleForNewActuator.map((b) => ({
-                                        value: b,
-                                        label: `${b} (${
-                                            hw.yamlDoc ? freePhysicalPinsOnBoard(hw.yamlDoc, b).length : 0
-                                        } free)`,
-                                    }))}
-                                    onChange={(v) => hw.setAddActuatorBoard(v)}
-                                />
-                                <Button
-                                    type="default"
-                                    size="small"
-                                    className="hardware-config-add-btn"
-                                    disabled={editorLocked || !hw.yamlDoc || !hw.addActuatorBoard}
                                     onClick={hw.handleAddActuator}
                                     style={{ minWidth: 132 }}
                                     title={
-                                        !hw.yamlDoc || !hw.addActuatorBoard
-                                            ? 'Choose a board with a free pin, then add an actuator.'
-                                            : undefined
+                                        !hw.yamlDoc
+                                            ? 'Load a hardware configuration first.'
+                                            : hw.boardsEligibleForNewActuator.length === 0
+                                                ? 'No board has a free physical pin.'
+                                                : 'Add a row on the first board with a free pin — change the board on the new row if needed.'
                                     }
                                 >
                                     <Space size={6}>

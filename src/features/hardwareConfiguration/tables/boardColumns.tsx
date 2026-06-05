@@ -63,12 +63,12 @@ export function buildBoardColumns(
             render: (n: number, r: BoardRow) => (
                 <Text
                     style={{ fontFamily: 'monospace' }}
-                    title="Physical pins 1..internal_servo_slots claimed by actuators or sensors on this board"
+                    title="Physical pins 1..internal_actuator_slots claimed by actuators or sensors on this board"
                 >
                     {n}
-                    {r.internalServoSlots > 0 ? (
+                    {r.internalActuatorSlots > 0 ? (
                         <Text type="secondary" style={{ marginLeft: 4 }}>
-                            / {r.internalServoSlots}
+                            / {r.internalActuatorSlots}
                         </Text>
                     ) : null}
                 </Text>

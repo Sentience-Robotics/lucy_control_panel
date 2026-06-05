@@ -18,36 +18,59 @@ function initialSteps(
     buildOnly: boolean,
     activateOnly: boolean,
 ): WorkflowStepSlice[] {
+    const skippedBuildFlash = simulationOnly
+        ? [
+              {
+                  id: 'build' as const,
+                  title: 'BUILD',
+                  status: 'skipped' as const,
+                  fraction: 0,
+                  detail: 'Skipped (simulation only)',
+              },
+              {
+                  id: 'flash' as const,
+                  title: 'FLASH',
+                  status: 'skipped' as const,
+                  fraction: 0,
+                  detail: 'Skipped (simulation only)',
+              },
+          ]
+        : [];
+
     if (simulationOnly) {
         return [
             { id: 'validate', title: 'VALIDATE', status: 'pending', fraction: 0, detail: '' },
             { id: 'activate', title: 'ACTIVATE', status: 'pending', fraction: 0, detail: '' },
+            {
+                id: 'generate',
+                title: 'GENERATE',
+                status: 'pending',
+                fraction: 0,
+                detail: 'ros2_control + controllers',
+            },
             { id: 'reload', title: 'RELOAD', status: 'pending', fraction: 0, detail: '' },
-            {
-                id: 'build',
-                title: 'BUILD',
-                status: 'skipped',
-                fraction: 0,
-                detail: 'Skipped (simulation only)',
-            },
-            {
-                id: 'flash',
-                title: 'FLASH',
-                status: 'skipped',
-                fraction: 0,
-                detail: 'Skipped (simulation only)',
-            },
+            ...skippedBuildFlash,
         ];
     }
+
     return [
         { id: 'validate', title: 'VALIDATE', status: 'pending', fraction: 0, detail: '' },
         { id: 'activate', title: 'ACTIVATE', status: 'pending', fraction: 0, detail: '' },
+        {
+            id: 'generate',
+            title: 'GENERATE',
+            status: activateOnly ? 'skipped' : 'pending',
+            fraction: 0,
+            detail: activateOnly
+                ? 'Skipped (activate only)'
+                : 'ros2_control + controllers (before firmware build)',
+        },
         {
             id: 'build',
             title: 'BUILD',
             status: activateOnly ? 'skipped' : 'pending',
             fraction: 0,
-            detail: activateOnly ? 'Skipped (activate only)' : '',
+            detail: activateOnly ? 'Skipped (activate only)' : 'Firmware only',
         },
         {
             id: 'flash',
@@ -60,7 +83,13 @@ function initialSteps(
                   ? 'Skipped (activate only)'
                   : '',
         },
-        { id: 'reload', title: 'RELOAD', status: 'pending', fraction: 0, detail: '' },
+        {
+            id: 'reload',
+            title: 'RELOAD',
+            status: activateOnly ? 'skipped' : 'pending',
+            fraction: 0,
+            detail: activateOnly ? 'Skipped (activate only)' : '',
+        },
     ];
 }
 
@@ -79,14 +108,6 @@ export function computeWorkflowOverallPercent(steps: WorkflowStepSlice[]): numbe
     return Math.round(sum * 100);
 }
 
-function fractionForBuildAggregate(f: ConfigurePipelineFeedbackNormalized): number {
-    const p = f.phase?.toLowerCase() ?? '';
-    if (p === 'validate') return Math.max(0, Math.min(1, f.progress * 0.2));
-    if (p === 'generate') return Math.max(0, Math.min(1, 0.2 + f.progress * 0.35));
-    if (p === 'build') return Math.max(0, Math.min(1, 0.55 + f.progress * 0.45));
-    return Math.max(0, Math.min(1, f.progress));
-}
-
 function fractionForValidateDryRun(f: ConfigurePipelineFeedbackNormalized): number {
     const p = f.phase?.toLowerCase() ?? '';
     if (p === 'validate') return Math.max(0, Math.min(1, f.progress * 0.55));
@@ -94,12 +115,16 @@ function fractionForValidateDryRun(f: ConfigurePipelineFeedbackNormalized): numb
     return Math.max(0, Math.min(1, f.progress));
 }
 
-function fractionForWetSim(f: ConfigurePipelineFeedbackNormalized): number {
+function fractionForGeneratePhase(f: ConfigurePipelineFeedbackNormalized): number {
     const p = f.phase?.toLowerCase() ?? '';
-    if (p === 'validate') return Math.max(0, Math.min(1, f.progress * 0.25));
-    if (p === 'generate') return Math.max(0, Math.min(1, 0.25 + f.progress * 0.35));
-    if (p === 'reload') return Math.max(0, Math.min(1, 0.6 + f.progress * 0.4));
-    return Math.max(0, Math.min(1, f.progress));
+    if (p === 'generate') return Math.max(0, Math.min(1, f.progress));
+    return 0;
+}
+
+function fractionForBuildPhase(f: ConfigurePipelineFeedbackNormalized): number {
+    const p = f.phase?.toLowerCase() ?? '';
+    if (p === 'build') return Math.max(0, Math.min(1, f.progress));
+    return 0;
 }
 
 export interface UseActivateConfigureWorkflowParams {
@@ -284,6 +309,11 @@ export function useActivateConfigureWorkflow({
                 await refetchActiveHardware();
 
                 if (activateOnly && !simulationOnly) {
+                    patchStep('generate', {
+                        status: 'skipped',
+                        fraction: 0,
+                        detail: 'Skipped (activate only)',
+                    });
                     patchStep('build', {
                         status: 'skipped',
                         fraction: 0,
@@ -299,16 +329,17 @@ export function useActivateConfigureWorkflow({
                         fraction: 0,
                         detail: 'Skipped (activate only)',
                     });
-                    setDetailLine('Activated — build, flash, and reload skipped.');
+                    setDetailLine('Activated — generate, build, flash, and reload skipped.');
                     await refetchActiveHardware();
-                    messageApi.success('Configuration activated (build, flash, and reload skipped).');
+                    messageApi.success('Configuration activated (generate, build, flash, and reload skipped).');
                     computeAndStoreDiff();
                     setLastRunSucceeded(true);
                     return;
                 }
 
+                patchStep('generate', { status: 'running', fraction: 0, detail: '' });
                 if (!simulationOnly) {
-                    patchStep('build', { status: 'running', fraction: 0, detail: '' });
+                    patchStep('build', { status: 'pending', fraction: 0, detail: '' });
                     if (!buildOnly) {
                         patchStep('flash', { status: 'pending', fraction: 0, detail: '' });
                     }
@@ -316,10 +347,12 @@ export function useActivateConfigureWorkflow({
                 patchStep('reload', { status: 'pending', fraction: 0, detail: '' });
                 setDetailLine(
                     simulationOnly
-                        ? 'SIMULATION — generate sim ros2_control and reload…'
-                        : 'BUILD — pipeline on active mapping…',
+                        ? 'GENERATE — ros2_control + controllers, then reload…'
+                        : 'GENERATE — ros2_control + controllers, then firmware build / flash…',
                 );
 
+                let sawGenerate = false;
+                let sawBuild = false;
                 let sawFlash = false;
                 let sawReload = false;
                 const wet = startConfigurePipeline(
@@ -339,6 +372,7 @@ export function useActivateConfigureWorkflow({
 
                             if (phase === 'reload') {
                                 sawReload = true;
+                                patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
                                 if (!simulationOnly) {
                                     patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
                                     if (buildOnly) {
@@ -358,22 +392,26 @@ export function useActivateConfigureWorkflow({
                                 });
                             } else if (phase === 'flash') {
                                 sawFlash = true;
+                                patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
                                 patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
                                 patchStep('flash', {
                                     status: 'running',
                                     fraction: Math.max(0, Math.min(1, f.progress)),
                                     detail: f.detail || phase,
                                 });
-                            } else if (simulationOnly) {
-                                patchStep('reload', {
-                                    status: 'running',
-                                    fraction: fractionForWetSim(f),
-                                    detail: f.detail || phase,
-                                });
-                            } else {
+                            } else if (phase === 'build') {
+                                sawBuild = true;
+                                patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
                                 patchStep('build', {
                                     status: 'running',
-                                    fraction: fractionForBuildAggregate(f),
+                                    fraction: fractionForBuildPhase(f),
+                                    detail: f.detail || phase,
+                                });
+                            } else if (phase === 'generate') {
+                                sawGenerate = true;
+                                patchStep('generate', {
+                                    status: 'running',
+                                    fraction: fractionForGeneratePhase(f),
                                     detail: f.detail || phase,
                                 });
                             }
@@ -388,12 +426,24 @@ export function useActivateConfigureWorkflow({
 
                 if (!wetRes.success) {
                     const msg = wetRes.message || 'Configure pipeline failed';
-                    if (simulationOnly && sawReload) failStep('reload', msg);
-                    else if (buildOnly || !sawFlash) failStep('build', msg);
-                    else failStep('flash', msg);
+                    if (simulationOnly) {
+                        if (sawReload) failStep('reload', msg);
+                        else failStep('generate', msg);
+                    } else if (sawReload) {
+                        failStep('reload', msg);
+                    } else if (sawFlash) {
+                        failStep('flash', msg);
+                    } else if (sawBuild) {
+                        failStep('build', msg);
+                    } else if (sawGenerate) {
+                        failStep('generate', msg);
+                    } else {
+                        failStep('generate', msg);
+                    }
                     return;
                 }
 
+                patchStep('generate', { status: 'done', fraction: 1, detail: 'OK' });
                 if (!simulationOnly) {
                     patchStep('build', { status: 'done', fraction: 1, detail: 'OK' });
                     if (buildOnly) {

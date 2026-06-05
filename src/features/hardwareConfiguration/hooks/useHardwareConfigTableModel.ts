@@ -12,7 +12,6 @@ import type { ActuatorTableRecord, BoardRow, PressureSensorTableRecord } from '.
  * Table row projections and “add actuator / sensor” dropdown options derived from the current YAML doc.
  */
 export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | null) {
-    const [addActuatorBoard, setAddActuatorBoard] = useState<string | undefined>();
     const [addPressureSensorActuatorId, setAddPressureSensorActuatorId] = useState<string | undefined>();
     const [actuatorSearchQuery, setActuatorSearchQuery] = useState('');
 
@@ -37,12 +36,6 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
     }, [yamlDoc]);
 
     useEffect(() => {
-        setAddActuatorBoard((prev) =>
-            prev && boardsEligibleForNewActuator.includes(prev) ? prev : boardsEligibleForNewActuator[0],
-        );
-    }, [boardsEligibleForNewActuator]);
-
-    useEffect(() => {
         setAddPressureSensorActuatorId((prev) =>
             prev && actuatorsEligibleForNewPressureSensor.some((o) => o.value === prev)
                 ? prev
@@ -65,7 +58,7 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
                 serial_id: b && typeof b.serial_id === 'string' ? b.serial_id : '',
                 board_class: b && typeof b.board_class === 'string' ? b.board_class : '',
                 firmware_target: b && typeof b.firmware_target === 'string' ? b.firmware_target : '',
-                internalServoSlots: slots,
+                internalActuatorSlots: slots,
                 attachedPins,
             };
         });
@@ -121,8 +114,6 @@ export function useHardwareConfigTableModel(yamlDoc: Record<string, unknown> | n
         pressureSensorRows,
         hardwareRobotName,
         assignableUrdfJoints,
-        addActuatorBoard,
-        setAddActuatorBoard,
         addPressureSensorActuatorId,
         setAddPressureSensorActuatorId,
         actuatorSearchQuery,
