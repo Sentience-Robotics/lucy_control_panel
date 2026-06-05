@@ -7,12 +7,16 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, Modal, message } from 'antd';
+import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, Modal, message, Dropdown, Grid } from 'antd';
+import type { MenuProps } from 'antd';
 import {
     ReloadOutlined,
     ThunderboltOutlined,
     StopOutlined,
     InfoCircleOutlined,
+    MenuOutlined,
+    VideoCameraOutlined,
+    EyeOutlined,
 } from '@ant-design/icons';
 import {
     DndContext,
@@ -75,11 +79,14 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
     UI_WARNING,
+    UI_PANEL_BG,
+    UI_BORDER_MUTED,
 } from '../Constants/uiTheme.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
 const { Text, Title } = Typography;
+const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
 const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
@@ -110,6 +117,9 @@ export const RobotControlPanel: React.FC = () => {
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
     const retakeCountRef = useRef(0);
+
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
 
     // Floating stream window state
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
@@ -505,6 +515,83 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
+    const items: MenuProps['items'] = [
+        {
+            key: 'reset',
+            label: 'RESET ALL',
+            icon: <ReloadOutlined />,
+            onClick: handleResetAll,
+            style: { color: UI_TEXT_PRIMARY_ON_DARK }
+        },
+        {
+            key: 'pose',
+            label: <PoseManager joints={joints} onLoadPose={handleLoadPose} />,
+            style: { color: UI_TEXT_PRIMARY_ON_DARK }
+        },
+        {
+            key: 'animation',
+            label: <AnimationManager onPlayAnimation={handlePlayAnimation} />,
+            style: { color: UI_TEXT_PRIMARY_ON_DARK }
+        },
+        ...(isAnimating ? [{
+            key: 'stop-animation',
+            label: 'STOP ANIMATION',
+            icon: <StopOutlined />,
+            danger: true,
+            onClick: handleStopAnimation,
+        }] : []),
+        {
+            key: 'stream',
+            label: isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM',
+            icon: <VideoCameraOutlined />,
+            onClick: () => setIsStreamVisible(v => !v),
+            style: { color: isStreamVisible ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
+        },
+        {
+            key: 'webcam',
+            label: isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER',
+            icon: <EyeOutlined />,
+            onClick: () => setIsWebcamActive(v => !v),
+            style: { color: isWebcamActive ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
+        },
+    ];
+
+    const dropdownOverlayStyle = {
+        backgroundColor: UI_PANEL_BG,
+        border: `1px solid ${UI_BORDER_MUTED}`,
+        borderRadius: 4,
+    };
+
+    const switches = () => {
+        return(
+            <>
+                <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 4 }}>
+                    <ToggleSwitch
+                        isOn={isSending}
+                        onToggle={handleControlRobotToggle}
+                        title="Control Robot"
+                        rightIcon={<ThunderboltOutlined />}
+                        width={180}
+                        height={32}
+                    />
+                    <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
+                        <InfoCircleOutlined style={{ color: '#888888', fontSize: 12, cursor: 'help', marginTop: 2 }} />
+                    </Tooltip>
+                </div>
+
+                <ToggleSwitch
+                    isOn={showDegrees}
+                    onToggle={() => setShowDegrees(v => !v)}
+                    title="Angle units"
+                    textOn="DEGREES"
+                    textOff="RADIANS"
+                    width={180}
+                    height={32}
+                />
+            </>
+        )
+    }
+
     return (
         <Page
             showHeader
@@ -515,6 +602,7 @@ export const RobotControlPanel: React.FC = () => {
             {!isConnected ? (
                 <LucyLoader
                     label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
+                    connectButton={!isConnecting}
                     detail={
                         isConnecting
                             ? 'Joint controls appear after the connection is established and the active hardware configuration is loaded.'
@@ -525,88 +613,90 @@ export const RobotControlPanel: React.FC = () => {
             ) : (
                 <>
                     <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
-                        <Col flex="auto">
-                            <Space wrap>
-                                <Button
-                                    icon={<ReloadOutlined />}
-                                    onClick={handleResetAll}
-                                    style={{
-                                        backgroundColor: UI_COLOR_TRANSPARENT,
-                                        borderColor: UI_BORDER_SOFT,
-                                        color: UI_TEXT_PRIMARY_ON_DARK,
-                                    }}
-                                >
-                                    RESET ALL
-                                </Button>
-
-                                <PoseManager
-                                    joints={joints}
-                                    onLoadPose={handleLoadPose}
-                                />
-                                <AnimationManager onPlayAnimation={handlePlayAnimation} />
-                                {isAnimating && (
+                        <Col xs={24} lg="auto" >
+                            {isMobile ? (
+                                <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
+                                    <div style={dropdownOverlayStyle}>{menu}</div>
+                                )}>
                                     <Button
-                                        danger
-                                        icon={<StopOutlined />}
-                                        onClick={handleStopAnimation}
+                                        icon={<MenuOutlined />}
+                                        style={{
+                                            backgroundColor: UI_COLOR_TRANSPARENT,
+                                            borderColor: UI_BORDER_SOFT,
+                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                        }}
                                     >
-                                        STOP ANIMATION
+                                        Control Options
                                     </Button>
-                                )}
-                                <Button
-                                    onClick={() => setIsStreamVisible(v => !v)}
-                                    style={{
-                                        backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                        color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                        borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                        boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                    }}
-                                >
-                                    {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                                </Button>
-                                <Button
-                                    onClick={() => setIsWebcamActive(v => !v)}
-                                    style={{
-                                        backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                        color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                        borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                        boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                    }}
-                                >
-                                    {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
-                                </Button>
-                            </Space>
+                                </Dropdown>
+                            ) : (
+                                <Space wrap>
+                                    <Button
+                                        icon={<ReloadOutlined />}
+                                        onClick={handleResetAll}
+                                        style={{
+                                            backgroundColor: UI_COLOR_TRANSPARENT,
+                                            borderColor: UI_BORDER_SOFT,
+                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                        }}
+                                    >
+                                        RESET ALL
+                                    </Button>
+
+                                    <PoseManager
+                                        joints={joints}
+                                        onLoadPose={handleLoadPose}
+                                    />
+                                    <AnimationManager onPlayAnimation={handlePlayAnimation} />
+                                    {isAnimating && (
+                                        <Button
+                                            danger
+                                            icon={<StopOutlined />}
+                                            onClick={handleStopAnimation}
+                                        >
+                                            STOP ANIMATION
+                                        </Button>
+                                    )}
+                                    <Button
+                                        onClick={() => setIsStreamVisible(v => !v)}
+                                        style={{
+                                            backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                            color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                            borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                            boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                        }}
+                                    >
+                                        {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
+                                    </Button>
+                                    <Button
+                                        onClick={() => setIsWebcamActive(v => !v)}
+                                        style={{
+                                            backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                            color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                            borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                            boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                        }}
+                                    >
+                                        {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
+                                    </Button>
+                                </Space>
+                            )}
+                            { isMobile ? null : (
+                                <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
+                                    <Col>
+                                        {switches()}
+                                    </Col>
+                                </Row>
+                            )}
                         </Col>
 
-                        <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
-                            <Col>
-                                <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 4 }}>
-                                    <ToggleSwitch
-                                        isOn={isSending}
-                                        onToggle={handleControlRobotToggle}
-                                        title="Control Robot"
-                                        rightIcon={<ThunderboltOutlined />}
-                                        width={180}
-                                        height={32}
-                                    />
-                                    <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
-                                        <InfoCircleOutlined style={{ color: '#888888', fontSize: 12, cursor: 'help', marginTop: 2 }} />
-                                    </Tooltip>
-                                </div>
+                        { isMobile ? (
+                            <Col xs={24} lg="auto" style={{ display: 'flex', justifyContent: 'center' }}>
+                                <Space wrap style={{ justifyContent: 'center', width: '100%' }}>
+                                    {switches()}
+                                </Space>
                             </Col>
-
-                            <Col>
-                                <ToggleSwitch
-                                    isOn={showDegrees}
-                                    onToggle={() => setShowDegrees(v => !v)}
-                                    title="Angle units"
-                                    textOn="DEGREES"
-                                    textOff="RADIANS"
-                                    width={180}
-                                    height={32}
-                                />
-                            </Col>
-                        </Row>
+                        ) : null }
                     </Row>
 
                     <DndContext

@@ -1,4 +1,4 @@
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider, theme, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
 import type { CSSProperties, FC } from 'react';
@@ -20,11 +20,16 @@ import {
     UI_TEXT_SUBTLE,
 } from './Constants/uiTheme.ts';
 
+const { Content } = Layout;
+const { useBreakpoint } = Grid;
+
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
+const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
 
 const CONTROL_PATH = '/';
 const CONFIG_PATH = '/configuration';
-const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH]);
+const SENSORS_PATH = '/sensors';
+const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH, SENSORS_PATH]);
 
 /**
  * Render all main pages once and toggle visibility with `display: none`.
@@ -35,9 +40,11 @@ const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH]);
 const PersistentPages: FC = () => {
     const { pathname } = useLocation();
     const [configVisited, setConfigVisited] = useState(false);
+    const [sensorsVisited, setSensorsVisited] = useState(false);
 
     useEffect(() => {
         if (pathname === CONFIG_PATH) setConfigVisited(true);
+        if (pathname === SENSORS_PATH) setSensorsVisited(true);
     }, [pathname]);
 
     const isKnown = KNOWN_PATHS.has(pathname);
@@ -65,6 +72,20 @@ const PersistentPages: FC = () => {
                     </Suspense>
                 </div>
             ) : null}
+            {sensorsVisited ? (
+                <div style={pageStyle(pathname === SENSORS_PATH)}>
+                    <Suspense
+                        fallback={
+                            <LucyLoader
+                                label="LOADING SENSORS"
+                                detail="Preparing the sensor display."
+                            />
+                        }
+                    >
+                        <SensorDisplay />
+                    </Suspense>
+                </div>
+            ) : null}
             {!isKnown ? <NotFound /> : null}
         </>
     );
@@ -75,6 +96,8 @@ function App() {
     const localUsername: string | undefined = import.meta.env.VITE_LOCAL_USERNAME;
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [authError, setAuthError] = useState<string>('');
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
 
     useEffect(() => {
         const savedAuth = localStorage.getItem('lucy_auth');
@@ -155,8 +178,12 @@ function App() {
         >
             <Router>
                 <ActiveHardwareRosProvider>
-                    <Navigation />
-                    <PersistentPages />
+                    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
+                        <Content style={{ paddingBottom: isMobile ? '60px' : '0' }}>
+                            <PersistentPages />
+                        </Content>
+                        <Navigation />
+                    </Layout>
                 </ActiveHardwareRosProvider>
             </Router>
         </ConfigProvider>

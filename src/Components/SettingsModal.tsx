@@ -10,7 +10,6 @@ import {
     UI_MODAL_MASK_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
-    UI_ERROR,
 } from '../Constants/uiTheme';
 import { ToggleSwitch } from './ToggleSwitch';
 
@@ -24,7 +23,7 @@ interface SettingsModalProps {
 export const AUTO_CONNECT_KEY = 'autoConnectEnabled';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
-    const { connect, disconnect, currentUrl, connectionStatus, isConnected } = useRosConnection();
+    const { connect, currentUrl, connectionStatus } = useRosConnection();
     const { activeHardwareConfigName, controllerConfigsFromActive } = useActiveHardwareRos();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
@@ -48,11 +47,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         } catch (error) {
             // Error is already logged in the hook
         }
-    };
-
-    const handleDisconnect = () => {
-        disconnect();
-        onClose();
     };
 
     const jointsLoaded = controllerConfigsFromActive
@@ -80,19 +74,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                 >
                     Cancel
                 </Button>,
-                isConnected && (
-                    <Button
-                        key="disconnect"
-                        onClick={handleDisconnect}
-                        style={{
-                            backgroundColor: UI_ERROR,
-                            borderColor: UI_ERROR,
-                            color: UI_TEXT_ON_ACCENT,
-                        }}
-                    >
-                        Disconnect
-                    </Button>
-                ),
                 <Button
                     key="submit"
                     type="primary"
