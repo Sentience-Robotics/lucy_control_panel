@@ -37,10 +37,10 @@ export const DEFAULT_NEW_PRESSURE_SENSOR_VALUES = {
  * no servo limits in the controller config. Mirrors the 0–180° default servo
  * travel used elsewhere in the editor.
  */
-export const DEFAULT_JOINT_SLIDER_BOUNDS_DEG = {
+export const DEFAULT_JOINT_SLIDER_BOUNDS_DEG: { min: number; max: number } = {
     min: 0,
     max: 180,
-} as const;
+};
 
 /**
  * Fallback slider position (actuator degrees) when a joint exposes no default

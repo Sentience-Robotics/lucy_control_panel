@@ -26,6 +26,8 @@ export interface ControllerJointConfig {
   defaultCategory: string;
   /** Per-joint actuator limits extracted from the hardware YAML. Keyed by URDF joint name. */
   jointLimits?: Record<string, JointLimitDeg>;
+  /** Per-joint slider label (actuator id). Keyed by URDF joint name. */
+  jointDisplayNames?: Record<string, string>;
 }
 
 export const ROS_CONFIG = {

@@ -143,7 +143,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       <Space direction="vertical" style={{ width: '100%' }} size="small">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-            {joint.name.replace(/_link_joint$/, '').replace(/i01\./, '')}
+            {joint.displayName ?? joint.name}
           </Text>
           <Tag color={getJointTypeColor(joint.type)}>
             {joint.type}

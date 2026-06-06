@@ -159,6 +159,7 @@ export const RobotControlPanel: React.FC = () => {
                 }
                 joints.push({
                     name,
+                    displayName: c.jointDisplayNames?.[name] ?? name,
                     currentValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_DEG,
                     targetValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_DEG,
                     minValue,

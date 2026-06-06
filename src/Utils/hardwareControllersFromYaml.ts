@@ -55,12 +55,18 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
 
         const joints: string[] = [];
         const jointLimits: Record<string, JointLimitDeg> = {};
+        const jointDisplayNames: Record<string, string> = {};
 
         for (const row of rows) {
             const r = row as Record<string, unknown>;
             const joint = String(r.urdf_joint ?? '').trim();
             if (!joint) continue;
             joints.push(joint);
+
+            const actuatorId = String(r.id ?? '').trim();
+            if (actuatorId) {
+                jointDisplayNames[joint] = actuatorId;
+            }
 
             const minDeg = Number(r.servo_min_deg);
             const maxDeg = Number(r.servo_max_deg);
@@ -82,6 +88,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
             joints,
             defaultCategory: boardIdToCategory(boardId),
             ...(Object.keys(jointLimits).length > 0 && { jointLimits }),
+            ...(Object.keys(jointDisplayNames).length > 0 && { jointDisplayNames }),
         });
     }
 

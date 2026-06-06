@@ -27,7 +27,10 @@ export interface Joint {
 }
 
 export interface JointControlState {
+  /** URDF joint name — the key used for ROS publish/subscribe and state lookup. */
   name: string;
+  /** Label shown on the slider (actuator id; falls back to the joint name). */
+  displayName?: string;
   currentValue: number;
   targetValue: number;
   /** Actual position reported by /joint_states — undefined until first feedback arrives. */
