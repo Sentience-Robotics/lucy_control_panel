@@ -8,6 +8,7 @@ import {
 } from '@ant-design/icons';
 import { Alert, Button, Card, Checkbox, Divider, Modal, Progress, Space, Switch, Tag, Typography } from 'antd';
 import type { HardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
+import type { GeneratedFileNames } from '../../../Utils/generatedFiles.ts';
 import { HardwareConfigPresetHeaderTag } from '../../../Components/HardwareConfigPresetTag.tsx';
 import {
     UI_ACCENT_GREEN,
@@ -85,6 +86,12 @@ export interface ActivateConfigureWorkflowModalProps {
      */
     gazeboRunning: boolean | null;
     canRun: boolean;
+    /**
+     * Generated-artifact filenames resolved from the active hardware doc
+     * (`generated_files` in the YAML). Keeps the regenerate copy in sync with
+     * what the pipeline actually writes instead of hardcoding names.
+     */
+    generatedFileNames: GeneratedFileNames;
 }
 
 export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowModalProps) {
@@ -114,21 +121,15 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         workflowLastRunDiff,
         gazeboRunning,
         canRun,
+        generatedFileNames,
     } = props;
 
+    // A pipeline run always rebuilds the model the running Gazebo loaded, so if
+    // Gazebo is up after a successful run it must be restarted regardless of diff.
     const showGazeboRestartPrompt =
         !workflowRunning &&
         workflowLastRunSucceeded &&
-        gazeboRunning === true &&
-        workflowLastRunDiff !== null &&
-        workflowLastRunDiff.requiresGazeboRestart;
-
-    const showNoRestartNeeded =
-        !workflowRunning &&
-        workflowLastRunSucceeded &&
-        gazeboRunning === true &&
-        workflowLastRunDiff !== null &&
-        !workflowLastRunDiff.requiresGazeboRestart;
+        gazeboRunning === true;
 
     return (
         <Modal
@@ -169,7 +170,19 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         onChange={onActivateModalSimulationOnlyChange}
                         disabled={workflowRunning || pipelineBoardOptions.length === 0}
                     />
-                    <Text style={{ marginLeft: 8 }}>SIMULATION ONLY (NO HARDWARE BUILD / FLASH)</Text>
+                    <Text style={{ marginLeft: 8 }}>
+                        SIMULATION ONLY (ROS2_CONTROL + RELOAD, NO FIRMWARE BUILD / FLASH)
+                    </Text>
+                    {activateModalSimulationOnly ? (
+                        <Text
+                            type="secondary"
+                            style={{ display: 'block', marginTop: 6, marginLeft: 28, fontSize: 12 }}
+                        >
+                            Regenerates {generatedFileNames.ros2ControlXacro} and{' '}
+                            {generatedFileNames.controllersYaml}, then reloads the
+                            control stack — no firmware build or flash.
+                        </Text>
+                    ) : null}
                 </div>
 
                 {!activateModalSimulationOnly ? (
@@ -214,6 +227,10 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     />
                     <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
                 </div>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                    ros2_control and controllers are regenerated before firmware build (same as simulation,
+                    plus BUILD / FLASH when selected).
+                </Text>
                 </>
                 ) : null}
 
@@ -245,15 +262,15 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         style={{
                             display: 'grid',
                             gridTemplateColumns: activateModalSimulationOnly
-                                ? 'repeat(3, 1fr)'
-                                : 'repeat(5, 1fr)',
+                                ? 'repeat(2, 1fr)'
+                                : 'repeat(3, 1fr)',
                             gap: 8,
                             marginTop: 12,
                         }}
                     >
                         {(activateModalSimulationOnly
-                            ? (['validate', 'activate', 'reload'] as const)
-                            : (['validate', 'activate', 'build', 'flash', 'reload'] as const)
+                            ? (['validate', 'activate', 'generate', 'reload'] as const)
+                            : (['validate', 'activate', 'generate', 'build', 'flash', 'reload'] as const)
                         )
                             .map((id) => workflowSteps.find((s) => s.id === id))
                             .filter((s): s is NonNullable<typeof s> => s != null)
@@ -298,24 +315,15 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     ) : null}
                 </div>
 
-                {showGazeboRestartPrompt && workflowLastRunDiff ? (
+                {showGazeboRestartPrompt ? (
                     <Alert
                         type="warning"
                         showIcon
                         icon={<WarningOutlined />}
-                        message="GAZEBO RESTART REQUIRED"
+                        message="SIMULATOR RESTART REQUIRED"
                         description={
                             <GazeboRestartDiffBody diff={workflowLastRunDiff} />
                         }
-                    />
-                ) : null}
-
-                {showNoRestartNeeded ? (
-                    <Alert
-                        type="success"
-                        showIcon
-                        message="GAZEBO RESTART NOT REQUIRED"
-                        description="Generated ros2_control xacro is unchanged — RELOAD applied the new controllers."
                     />
                 ) : null}
 
@@ -370,87 +378,76 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
     );
 }
 
-function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff }) {
+function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff | null }) {
     const noun = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`;
     return (
         <Space direction="vertical" size={6} style={{ width: '100%' }}>
             <div style={{ fontSize: 12 }}>
-                <Text strong>Recommended:</Text>{' '}
-                <Text>
-                    press <Text code>Ctrl+C</Text> in the Lucy terminal, close it, then open a new
-                    terminal and run:
-                </Text>
-                <div style={{ marginTop: 4 }}>
-                    <Text code copyable style={{ fontSize: 11 }}>
-                        ./launch_lucy.sh
-                    </Text>
-                </div>
+                <Text strong>In Lucy TUI:</Text>
+                <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                    <li>Untick "with Simulator"</li>
+                    <li>Press enter to stop the simulator</li>
+                    <li>Tick back "with Simulator"</li>
+                    <li>Press enter to restart the stack with the simulator</li>
+                </ol>
             </div>
-            <div style={{ fontSize: 12 }}>
-                <Text strong>Advanced (same terminal):</Text>{' '}
-                <Text>
-                    press <Text code>Ctrl+C</Text>, then run:
-                </Text>
-                <div style={{ marginTop: 4 }}>
-                    <Text code copyable style={{ fontSize: 11 }}>
-                        Choose gazebo from the TUI core list or
-                        ros2 launch lucy_bringup lucy.launch.py gazebo:=true rviz:=true
-                    </Text>
-                </div>
-            </div>
-            <Divider style={{ margin: '6px 0' }} />
-            <Space size={6} wrap>
-                {diff.boardsAdded.length > 0 ? (
-                    <Tag color="green">+{noun(diff.boardsAdded.length, 'board')}</Tag>
-                ) : null}
-                {diff.boardsRemoved.length > 0 ? (
-                    <Tag color="red">-{noun(diff.boardsRemoved.length, 'board')}</Tag>
-                ) : null}
-                {diff.actuatorsAdded.length > 0 ? (
-                    <Tag color="green">+{noun(diff.actuatorsAdded.length, 'actuator')}</Tag>
-                ) : null}
-                {diff.actuatorsRemoved.length > 0 ? (
-                    <Tag color="red">-{noun(diff.actuatorsRemoved.length, 'actuator')}</Tag>
-                ) : null}
-                {diff.actuatorsModified.length > 0 ? (
-                    <Tag color="orange">
-                        ~{noun(diff.actuatorsModified.length, 'actuator')} modified
-                    </Tag>
-                ) : null}
-            </Space>
-            <div style={{ maxHeight: 180, overflow: 'auto', fontSize: 11, lineHeight: 1.4 }}>
-                {diff.boardsAdded.map((b) => (
-                    <div key={`b+${b}`}>
-                        <Text type="success">+ board {b}</Text>
+            {diff ? (
+                <>
+                    <Divider style={{ margin: '6px 0' }} />
+                    <Space size={6} wrap>
+                        {diff.boardsAdded.length > 0 ? (
+                            <Tag color="green">+{noun(diff.boardsAdded.length, 'board')}</Tag>
+                        ) : null}
+                        {diff.boardsRemoved.length > 0 ? (
+                            <Tag color="red">-{noun(diff.boardsRemoved.length, 'board')}</Tag>
+                        ) : null}
+                        {diff.actuatorsAdded.length > 0 ? (
+                            <Tag color="green">+{noun(diff.actuatorsAdded.length, 'actuator')}</Tag>
+                        ) : null}
+                        {diff.actuatorsRemoved.length > 0 ? (
+                            <Tag color="red">-{noun(diff.actuatorsRemoved.length, 'actuator')}</Tag>
+                        ) : null}
+                        {diff.actuatorsModified.length > 0 ? (
+                            <Tag color="orange">
+                                ~{noun(diff.actuatorsModified.length, 'actuator')} modified
+                            </Tag>
+                        ) : null}
+                    </Space>
+                    <div style={{ maxHeight: 180, overflow: 'auto', fontSize: 11, lineHeight: 1.4 }}>
+                        {diff.boardsAdded.map((b) => (
+                            <div key={`b+${b}`}>
+                                <Text type="success">+ board {b}</Text>
+                            </div>
+                        ))}
+                        {diff.boardsRemoved.map((b) => (
+                            <div key={`b-${b}`}>
+                                <Text type="danger">− board {b}</Text>
+                            </div>
+                        ))}
+                        {diff.actuatorsAdded.map((a) => (
+                            <div key={`a+${a.actuatorId}`}>
+                                <Text type="success">+ actuator {a.label}</Text>
+                            </div>
+                        ))}
+                        {diff.actuatorsRemoved.map((a) => (
+                            <div key={`a-${a.actuatorId}`}>
+                                <Text type="danger">− actuator {a.label}</Text>
+                            </div>
+                        ))}
+                        {diff.actuatorsModified.map((a) => (
+                            <div key={`a~${a.actuatorId}`}>
+                                <Text type="warning">~ actuator {a.label}</Text>
+                                <span style={{ color: '#999' }}>
+                                    {' '}
+                                    {a.changes
+                                        .map((c) => `${c.field}: ${String(c.before ?? '∅')} → ${String(c.after ?? '∅')}`)
+                                        .join(', ')}
+                                </span>
+                            </div>
+                        ))}
                     </div>
-                ))}
-                {diff.boardsRemoved.map((b) => (
-                    <div key={`b-${b}`}>
-                        <Text type="danger">− board {b}</Text>
-                    </div>
-                ))}
-                {diff.actuatorsAdded.map((a) => (
-                    <div key={`a+${a.actuatorId}`}>
-                        <Text type="success">+ actuator {a.label}</Text>
-                    </div>
-                ))}
-                {diff.actuatorsRemoved.map((a) => (
-                    <div key={`a-${a.actuatorId}`}>
-                        <Text type="danger">− actuator {a.label}</Text>
-                    </div>
-                ))}
-                {diff.actuatorsModified.map((a) => (
-                    <div key={`a~${a.actuatorId}`}>
-                        <Text type="warning">~ actuator {a.label}</Text>
-                        <span style={{ color: '#999' }}>
-                            {' '}
-                            {a.changes
-                                .map((c) => `${c.field}: ${String(c.before ?? '∅')} → ${String(c.after ?? '∅')}`)
-                                .join(', ')}
-                        </span>
-                    </div>
-                ))}
-            </div>
+                </>
+            ) : null}
         </Space>
     );
 }

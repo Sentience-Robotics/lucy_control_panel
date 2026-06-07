@@ -1,4 +1,9 @@
 import type { CellErrorOpts } from '../../../Utils/hardwareConfigServerErrors.ts';
+import {
+    DEFAULT_ACTUATOR_TYPE_FALLBACK,
+    DEFAULT_NEW_ACTUATOR_VALUES,
+    DEFAULT_NEW_PRESSURE_SENSOR_VALUES,
+} from '../../../Constants/hardwareConfigDefaults.ts';
 import { listIgnoreUrdfJoints, listPassiveUrdfJoints } from './passiveUrdf.ts';
 
 export function asMapping(v: unknown): Record<string, unknown> | null {
@@ -30,9 +35,9 @@ export function boardRowOpts(boardId: string): CellErrorOpts {
     return { rowPrefix: `boards.${boardId}` };
 }
 
-export function normalizeServoType(raw: unknown): string {
+export function normalizeActuatorType(raw: unknown): string {
     const s = String(raw ?? '').trim().replace(/^["']|["']$/g, '');
-    return s || '270';
+    return s || DEFAULT_ACTUATOR_TYPE_FALLBACK;
 }
 
 export function sortedBoardIds(doc: Record<string, unknown>): string[] {
@@ -117,7 +122,7 @@ export function usedPhysicalPinsOnBoard(doc: Record<string, unknown>, boardId: s
     return usedPhysicalPinsOnBoardExcluding(doc, boardId, {});
 }
 
-/** Available physical connector indices `1..slots` (`internal_servo_slots`), excluding pins taken by other rows. */
+/** Available physical connector indices `1..slots` (`internal_servo_slots` YAML key), excluding pins taken by other rows. */
 export function physicalPinOptions(slots: number, usedElsewhere: Set<number>, currentPin: number): number[] {
     const opts: number[] = [];
     const cur = Number.isFinite(currentPin) ? currentPin : 1;
@@ -127,7 +132,7 @@ export function physicalPinOptions(slots: number, usedElsewhere: Set<number>, cu
     return opts;
 }
 
-/** Servo indices `1..internal_servo_slots` not claimed by an actuator or sensor on this board. */
+/** Physical pin indices `1..internal_servo_slots` not claimed by an actuator or sensor on this board. */
 export function freePhysicalPinsOnBoard(doc: Record<string, unknown>, boardId: string): number[] {
     const slots = boardSlots(doc, boardId);
     if (slots <= 0) return [];
@@ -223,14 +228,7 @@ export function defaultNewActuatorRow(doc: Record<string, unknown>, boardId: str
         board: boardId,
         virtual_pin: vp,
         physical_pin: pins[0],
-        servo_type: '270',
-        offset_deg: 0,
-        direction: 1,
-        scale: 1,
-        servo_min_deg: 0,
-        servo_max_deg: 270,
-        servo_default_deg: 135,
-        enabled: false,
+        ...DEFAULT_NEW_ACTUATOR_VALUES,
     };
 }
 
@@ -249,14 +247,14 @@ export function defaultNewPressureSensorRow(
     const id = uniquePressureSensorId(doc, boardId, vp);
     return {
         id,
-        type: 'pressure',
+        type: DEFAULT_NEW_PRESSURE_SENSOR_VALUES.type,
         associated_actuator: associatedActuatorId,
         board: boardId,
         virtual_pin: vp,
         physical_pin: pins[0],
-        min_value: null,
-        max_value: null,
-        enabled: true,
+        min_value: DEFAULT_NEW_PRESSURE_SENSOR_VALUES.min_value,
+        max_value: DEFAULT_NEW_PRESSURE_SENSOR_VALUES.max_value,
+        enabled: DEFAULT_NEW_PRESSURE_SENSOR_VALUES.enabled,
     };
 }
 

@@ -12,7 +12,13 @@ export interface HardwareConfigMutationsParams {
     yamlDoc: Record<string, unknown> | null;
     patchDoc: (next: Record<string, unknown>) => void;
     messageApi: MessageInstance;
-    addActuatorBoard: string | undefined;
+    /**
+     * Board ids ordered as in the YAML that still have at least one free
+     * physical pin. The new-actuator row is created on the first entry; the
+     * user picks a different board (or pin) from the row's BOARD column
+     * once the row is in the table.
+     */
+    boardsEligibleForNewActuator: string[];
     addPressureSensorActuatorId: string | undefined;
 }
 
@@ -20,12 +26,17 @@ export function useHardwareConfigMutations({
     yamlDoc,
     patchDoc,
     messageApi,
-    addActuatorBoard,
+    boardsEligibleForNewActuator,
     addPressureSensorActuatorId,
 }: HardwareConfigMutationsParams) {
     const handleAddActuator = useCallback(() => {
-        if (!yamlDoc || !addActuatorBoard) return;
-        const row = defaultNewActuatorRow(yamlDoc, addActuatorBoard);
+        if (!yamlDoc) return;
+        const targetBoard = boardsEligibleForNewActuator[0];
+        if (!targetBoard) {
+            messageApi.warning('No board has a free physical pin.');
+            return;
+        }
+        const row = defaultNewActuatorRow(yamlDoc, targetBoard);
         if (!row) {
             messageApi.warning('No free physical pin on that board.');
             return;
@@ -34,8 +45,8 @@ export function useHardwareConfigMutations({
         if (!Array.isArray(next.actuators)) next.actuators = [];
         (next.actuators as Record<string, unknown>[]).push(row);
         patchDoc(next);
-        messageApi.success(`Added actuator "${String(row.id)}"`);
-    }, [yamlDoc, addActuatorBoard, patchDoc, messageApi]);
+        messageApi.success(`Added actuator "${String(row.id)}" on ${targetBoard}`);
+    }, [yamlDoc, boardsEligibleForNewActuator, patchDoc, messageApi]);
 
     const handleAddPressureSensor = useCallback(() => {
         if (!yamlDoc || !addPressureSensorActuatorId) return;

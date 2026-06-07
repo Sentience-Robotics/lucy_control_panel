@@ -1,4 +1,18 @@
-import type { ControllerJointConfig, JointLimitDeg } from '../Constants/rosConfig';
+import type { ControllerJointConfig, JointLimitDeg, JointMapping } from '../Constants/rosConfig';
+import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping';
+
+function readMapping(row: Record<string, unknown>): JointMapping {
+    const offsetDeg = Number(row.offset_deg);
+    const direction = Number(row.direction);
+    const scale = Number(row.scale);
+    return {
+        offsetDeg: Number.isFinite(offsetDeg) ? offsetDeg : DEFAULT_ACTUATOR_MAPPING.offsetDeg,
+        direction: Number.isFinite(direction) && direction !== 0
+            ? direction
+            : DEFAULT_ACTUATOR_MAPPING.direction,
+        scale: Number.isFinite(scale) && scale !== 0 ? scale : DEFAULT_ACTUATOR_MAPPING.scale,
+    };
+}
 
 function boardIdToCategory(boardId: string): string {
     const tail = boardId.replace(/^rp2040_/, '');
@@ -41,12 +55,18 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
 
         const joints: string[] = [];
         const jointLimits: Record<string, JointLimitDeg> = {};
+        const jointDisplayNames: Record<string, string> = {};
 
         for (const row of rows) {
             const r = row as Record<string, unknown>;
             const joint = String(r.urdf_joint ?? '').trim();
             if (!joint) continue;
             joints.push(joint);
+
+            const actuatorId = String(r.id ?? '').trim();
+            if (actuatorId) {
+                jointDisplayNames[joint] = actuatorId;
+            }
 
             const minDeg = Number(r.servo_min_deg);
             const maxDeg = Number(r.servo_max_deg);
@@ -56,6 +76,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
                     minDeg,
                     maxDeg,
                     defaultDeg: Number.isFinite(defaultDeg) ? defaultDeg : (minDeg + maxDeg) / 2,
+                    mapping: readMapping(r),
                 };
             }
         }
@@ -67,6 +88,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
             joints,
             defaultCategory: boardIdToCategory(boardId),
             ...(Object.keys(jointLimits).length > 0 && { jointLimits }),
+            ...(Object.keys(jointDisplayNames).length > 0 && { jointDisplayNames }),
         });
     }
 

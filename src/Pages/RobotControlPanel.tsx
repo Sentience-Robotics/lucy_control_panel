@@ -47,7 +47,15 @@ import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
-import { degreeToRadian } from '../Utils/math.utils';
+import {
+    DEFAULT_ACTUATOR_MAPPING,
+    jointRadToActuatorDeg,
+    type ActuatorMapping,
+} from '../Utils/actuatorJointMapping';
+import {
+    DEFAULT_JOINT_SLIDER_BOUNDS_DEG,
+    DEFAULT_JOINT_SLIDER_VALUE_DEG,
+} from '../Constants/hardwareConfigDefaults';
 
 /* Components */
 import { Page } from '../Components/Page';
@@ -93,6 +101,8 @@ export const RobotControlPanel: React.FC = () => {
         refetchActiveHardware,
     } = useActiveHardwareRos();
 
+    const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
+
     const [joints, setJoints] = useState<JointControlState[]>([]);
     const jointsRef = useRef<JointControlState[]>(joints);
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
@@ -131,23 +141,33 @@ export const RobotControlPanel: React.FC = () => {
         })
     );
 
-    /** Build initial joint list from controller config (ros2_control joint names). */
-    const buildJointsFromControllerConfig = useCallback((configs: ControllerJointConfig[]): JointControlState[] => {
-        const defaultMin = 0;
-        const defaultMax = Math.PI;
+    /** Build initial joint list from controller config (slider values in actuator degrees). */
+    const buildJointsFromControllerConfig = useCallback((
+        configs: ControllerJointConfig[],
+    ): JointControlState[] => {
         const joints: JointControlState[] = [];
         for (const c of configs) {
             for (const name of c.joints) {
                 const lim = c.jointLimits?.[name];
+                let minValue = DEFAULT_JOINT_SLIDER_BOUNDS_DEG.min;
+                let maxValue = DEFAULT_JOINT_SLIDER_BOUNDS_DEG.max;
+                let restValue: number | undefined;
+                if (lim) {
+                    minValue = lim.minDeg;
+                    maxValue = lim.maxDeg;
+                    restValue = lim.defaultDeg;
+                }
                 joints.push({
                     name,
-                    currentValue: 0,
-                    targetValue: 0,
-                    minValue: lim ? degreeToRadian(lim.minDeg) : defaultMin,
-                    maxValue: lim ? degreeToRadian(lim.maxDeg) : defaultMax,
+                    displayName: c.jointDisplayNames?.[name] ?? name,
+                    currentValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_DEG,
+                    targetValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_DEG,
+                    minValue,
+                    maxValue,
                     type: 'revolute',
                     category: c.defaultCategory,
-                    ...(lim && { restValue: degreeToRadian(lim.defaultDeg) }),
+                    valueInActuatorDegrees: true,
+                    ...(restValue !== undefined && { restValue }),
                 });
             }
         }
@@ -188,6 +208,14 @@ export const RobotControlPanel: React.FC = () => {
 
         setError(null);
         JointStateHandler.getInstance(ctrls);
+        const mapByJoint = new Map<string, ActuatorMapping>();
+        for (const c of ctrls) {
+            for (const name of c.joints) {
+                const lim = c.jointLimits?.[name];
+                mapByJoint.set(name, lim?.mapping ?? DEFAULT_ACTUATOR_MAPPING);
+            }
+        }
+        actuatorMappingByJointRef.current = mapByJoint;
         setJoints((prev) => {
             const byName = new Map(prev.map((j) => [j.name, j]));
             const next = buildJointsFromControllerConfig(ctrls);
@@ -233,26 +261,34 @@ export const RobotControlPanel: React.FC = () => {
     }, [isConnected]);
 
     // Mirror joint positions published by the controlling client.
-    // joints.length is in deps so we re-subscribe once hardware configs are loaded.
+    // Trajectory payloads are URDF rad — convert to actuator deg for the slider.
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
         const unsubscribe = JointStateHandler.getInstance().subscribeToPositions((updates) => {
             setJoints((prev) =>
                 prev.map((j) => {
                     const u = updates.find((x) => x.name === j.name);
-                    return u ? { ...j, currentValue: u.value, targetValue: u.value } : j;
+                    if (!u) return j;
+                    const mapping = actuatorMappingByJointRef.current.get(j.name) ?? DEFAULT_ACTUATOR_MAPPING;
+                    const actuatorDeg = jointRadToActuatorDeg(u.value, mapping);
+                    return { ...j, currentValue: actuatorDeg, targetValue: actuatorDeg };
                 })
             );
         });
         return unsubscribe;
     }, [isSending, isConnected, joints.length]);
 
-    // Subscribe to /joint_states — write into a ref at full ROS rate (no re-renders).
+    // Subscribe to /joint_states (URDF rad) — convert to actuator deg per joint
+    // before storing in the ref so the slider's actualValue is in slider-native units.
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
             for (const { name, value } of positions) {
-                actualPositionsRef.current.set(name, value);
+                const mapping = actuatorMappingByJointRef.current.get(name);
+                actualPositionsRef.current.set(
+                    name,
+                    mapping ? jointRadToActuatorDeg(value, mapping) : value,
+                );
             }
         });
         return () => { unsubscribe(); actualPositionsRef.current.clear(); };

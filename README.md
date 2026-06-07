@@ -15,11 +15,12 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 
 ## 🚀 Features
 
-- **🎮 Real-time Joint Control** - Individual control of all robot joints with precision sliders and input fields
+- **🎮 Real-time Joint Control** - Individual control of all robot joints with precision sliders and input fields. Sliders display the **hardware-defined** servo range (`servo_min_deg` / `servo_max_deg` from the active YAML) so you can probe the full mechanical envelope; URDF `<limit>` enforcement is performed downstream by `ros2_control` (`LucySystemHardware`).
 - **👥 Multi-client exclusive control** - Multiple browsers can connect simultaneously; only one publishes at a time — see [Connection & Control user flow](docs/guides/connection-and-control.md)
-- **📡 Live motor feedback** - Shows the actual joint position in real time
+- **📡 Live motor feedback** - 3D viewer and slider readback consume `/joint_states` (URDF radians) and convert to servo degrees with the per-joint mapping (`offset_deg`, `direction`, `scale`).
 - **🎯 URDF Parser** - Automatic parsing of InMoov URDF files to extract joint configurations and constraints
 - **💾 Pose Management** - Save, load, and manage multiple robot poses with custom names
+- **⚙️ Activate / Configure workflow** - Five-step pipeline (VALIDATE → GENERATE → BUILD → FLASH → RELOAD) with a dedicated **GENERATE** step that regenerates `ros2_control` xacro + `controllers.yaml` even in *SIMULATION ONLY* mode (no firmware build).
 - **🔄 Drag & Drop Categories** - Reorganize joint categories (Head, Arms, Torso, etc.) via intuitive drag-and-drop
 - **📐 Unit Conversion** - Toggle between degrees and radians for joint angle display
 - **🤖 3D Robot Visualization** - Real-time 3D rendering of robot meshes with STL support

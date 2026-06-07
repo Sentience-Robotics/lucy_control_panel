@@ -27,7 +27,7 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
         yamlDoc: yaml.yamlDoc,
         patchDoc: yaml.patchDoc,
         messageApi: params.messageApi,
-        addActuatorBoard: table.addActuatorBoard,
+        boardsEligibleForNewActuator: table.boardsEligibleForNewActuator,
         addPressureSensorActuatorId: table.addPressureSensorActuatorId,
     });
 
@@ -84,8 +84,6 @@ export function useHardwareConfigEditor(params: HardwareConfigEditorParams) {
         boardRows: table.boardRows,
         boardsEligibleForNewActuator: table.boardsEligibleForNewActuator,
         actuatorsEligibleForNewPressureSensor: table.actuatorsEligibleForNewPressureSensor,
-        addActuatorBoard: table.addActuatorBoard,
-        setAddActuatorBoard: table.setAddActuatorBoard,
         addPressureSensorActuatorId: table.addPressureSensorActuatorId,
         setAddPressureSensorActuatorId: table.setAddPressureSensorActuatorId,
         actuatorSearchQuery: table.actuatorSearchQuery,

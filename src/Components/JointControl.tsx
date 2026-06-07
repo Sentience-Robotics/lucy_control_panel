@@ -12,7 +12,6 @@ import {
     UI_LIST_ROW_BG,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
-    UI_WARNING,
 } from '../Constants/uiTheme.ts';
 
 const { Text } = Typography;
@@ -53,53 +52,73 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     }
   }, [joint.name, joint.minValue, joint.maxValue, onValueChange]);
 
+  const actuatorNative = Boolean(joint.valueInActuatorDegrees && showDegrees);
+
   const displayValues = useMemo(() => {
-    const getDisplayValue = (radians: number): number => {
-      return showDegrees ? Math.round(radianToDegree(radians) * 100) / 100 : Math.round(radians * 1000) / 1000;
+    const getDisplayValue = (value: number): number => {
+      if (actuatorNative) {
+        return Math.round(value * 100) / 100;
+      }
+      return showDegrees
+        ? Math.round(radianToDegree(value) * 100) / 100
+        : Math.round(value * 1000) / 1000;
     };
 
     const getDisplayRange = (): [number, number] => {
+      if (actuatorNative) {
+        return [
+          Math.round(joint.minValue * 100) / 100,
+          Math.round(joint.maxValue * 100) / 100,
+        ];
+      }
       if (showDegrees) {
         return [
           Math.round(radianToDegree(joint.minValue) * 100) / 100,
-          Math.round(radianToDegree(joint.maxValue) * 100) / 100
+          Math.round(radianToDegree(joint.maxValue) * 100) / 100,
         ];
       }
       return [
         Math.round(joint.minValue * 1000) / 1000,
-        Math.round(joint.maxValue * 1000) / 1000
+        Math.round(joint.maxValue * 1000) / 1000,
       ];
     };
 
-        const [minDisplay, maxDisplay] = getDisplayRange();
+    const [minDisplay, maxDisplay] = getDisplayRange();
     const currentDisplay = getDisplayValue(localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, showDegrees]);
+  }, [joint.minValue, joint.maxValue, localValue, showDegrees, actuatorNative]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
+    if (actuatorNative) {
+      return displayValue;
+    }
     return showDegrees ? degreeToRadian(displayValue) : displayValue;
-  }, [showDegrees]);
+  }, [showDegrees, actuatorNative]);
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
 
   const actualBarPercent = useMemo(() => {
     if (joint.actualValue === undefined) return undefined;
-    const actualDisplay = showDegrees
-      ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
-      : Math.round(joint.actualValue * 1000) / 1000;
+    const actualDisplay = actuatorNative
+      ? Math.round(joint.actualValue * 100) / 100
+      : showDegrees
+        ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
+        : Math.round(joint.actualValue * 1000) / 1000;
     const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
     return Math.max(0, Math.min(100, pct));
-  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees]);
+  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorNative]);
 
   const restBarPercent = useMemo(() => {
     if (joint.restValue === undefined) return undefined;
-    const restDisplay = showDegrees
-      ? Math.round(radianToDegree(joint.restValue) * 100) / 100
-      : Math.round(joint.restValue * 1000) / 1000;
+    const restDisplay = actuatorNative
+      ? Math.round(joint.restValue * 100) / 100
+      : showDegrees
+        ? Math.round(radianToDegree(joint.restValue) * 100) / 100
+        : Math.round(joint.restValue * 1000) / 1000;
     const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
     return Math.max(0, Math.min(100, pct));
-  }, [joint.restValue, minDisplay, maxDisplay, showDegrees]);
+  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorNative]);
 
   const getJointTypeColor = (type: string): string => {
     switch (type) {
@@ -124,7 +143,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       <Space direction="vertical" style={{ width: '100%' }} size="small">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text strong style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontSize: '12px' }}>
-            {joint.name.replace(/_link_joint$/, '').replace(/i01\./, '')}
+            {joint.displayName ?? joint.name}
           </Text>
           <Tag color={getJointTypeColor(joint.type)}>
             {joint.type}
@@ -149,8 +168,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             />
             {restBarPercent !== undefined && (
               <div
-                title={`Default: ${showDegrees
-                  ? `${Math.round(radianToDegree(joint.restValue!) * 10) / 10}°`
+                title={`Default: ${actuatorNative || showDegrees
+                  ? `${Math.round((actuatorNative ? joint.restValue! : radianToDegree(joint.restValue!)) * 10) / 10}°`
                   : `${Math.round(joint.restValue! * 1000) / 1000}rad`}`}
                 style={{
                   position: 'absolute',
@@ -168,8 +187,8 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             )}
             {actualBarPercent !== undefined && (
               <div
-                title={`Actual: ${showDegrees
-                  ? `${Math.round(radianToDegree(joint.actualValue!) * 10) / 10}°`
+                title={`Actual: ${actuatorNative || showDegrees
+                  ? `${Math.round((actuatorNative ? joint.actualValue! : radianToDegree(joint.actualValue!)) * 10) / 10}°`
                   : `${Math.round(joint.actualValue! * 1000) / 1000}rad`}`}
                 style={{
                   position: 'absolute',
