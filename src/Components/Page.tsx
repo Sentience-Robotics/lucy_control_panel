@@ -1,52 +1,55 @@
 import React from 'react';
 import type { ReactNode } from 'react';
-import { Layout, Typography } from 'antd';
+import { Layout, Typography, Grid } from 'antd';
 import {
-    UI_ACCENT_GREEN,
-    UI_ACCENT_TEXT_SHADOW,
-    UI_BG_BLACK,
-    UI_BORDER_MUTED,
-    UI_BORDER_SOFT,
-    UI_ERROR_RED,
-    UI_INPUT_SURFACE,
-    UI_PANEL_BG,
-    UI_PAGE_HEADER_BORDER_BOTTOM,
-    UI_TEXT_ON_ACCENT,
-    UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SECONDARY_MUTED,
-    uiAccentRgba,
+  UI_ACCENT_GREEN,
+  UI_ACCENT_TEXT_SHADOW,
+  UI_BG_BLACK,
+  UI_BORDER_MUTED,
+  UI_BORDER_SOFT,
+  UI_ERROR,
+  UI_INPUT_SURFACE,
+  UI_PANEL_BG,
+  UI_PAGE_HEADER_BORDER_BOTTOM,
+  UI_TEXT_ON_ACCENT,
+  UI_TEXT_PRIMARY_ON_DARK,
+  UI_TEXT_SECONDARY_MUTED,
+  uiAccentRgba,
 } from '../Constants/uiTheme.ts';
+import { AppHeader } from './AppHeader.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
+const { useBreakpoint } = Grid;
 
 interface PageProps {
-    children: ReactNode;
-    title?: string;
-    headerContent?: ReactNode;
-    showHeader?: boolean;
-    contentStyle?: React.CSSProperties;
-    removeScrollbars?: boolean;
-    className?: string;
+  children: ReactNode;
+  title?: boolean;
+  showHeader?: boolean;
+  contentStyle?: React.CSSProperties;
+  removeScrollbars?: boolean;
+  className?: string;
 }
 
 export const Page: React.FC<PageProps> = ({
-    children,
-    title,
-    headerContent,
-    showHeader = false,
-    contentStyle = {},
-    removeScrollbars = true,
-    className = '',
+  children,
+  title,
+  showHeader = false,
+  contentStyle = {},
+  removeScrollbars = false,
+  className = '',
 }) => {
-    const defaultContentStyle: React.CSSProperties = {
-        backgroundColor: UI_BG_BLACK,
-        minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
-        padding: '24px',
-        ...contentStyle,
-    };
+  const screens = useBreakpoint();
+  const isMobile = !screens.lg;
 
-    const tuiGlobalCss = `
+  const defaultContentStyle: React.CSSProperties = {
+    backgroundColor: UI_BG_BLACK,
+    minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
+    padding: isMobile ? '12px' : '24px',
+    ...contentStyle,
+  };
+
+  const tuiGlobalCss = `
         /*
           Prevent horizontal jump when Ant Design modals lock body scroll (scrollbar disappears).
           Keeps space for the vertical scrollbar so flex rows / right-aligned content stay put.
@@ -110,6 +113,7 @@ export const Page: React.FC<PageProps> = ({
         }
 
         .ant-btn-default:hover {
+          background-color: ${uiAccentRgba(0.1)} !important;
           border-color: ${UI_ACCENT_GREEN} !important;
           color: ${UI_ACCENT_GREEN} !important;
           box-shadow: 0 0 12px ${uiAccentRgba(0.3)} !important;
@@ -168,7 +172,7 @@ export const Page: React.FC<PageProps> = ({
 
         .ant-input-number-handler:hover {
           color: ${UI_ACCENT_GREEN} !important;
-          background-color: ${uiAccentRgba(0.1)} !important;
+          background-color: ${uiAccentRgba(0.1)} !import;
           box-shadow: inset 0 0 10px ${uiAccentRgba(0.2)} !important;
         }
 
@@ -241,7 +245,7 @@ export const Page: React.FC<PageProps> = ({
         }
 
         .tui-text-danger {
-          color: ${UI_ERROR_RED};
+          color: ${UI_ERROR};
           font-family: 'monospace';
         }
 
@@ -369,43 +373,53 @@ export const Page: React.FC<PageProps> = ({
         }
     `;
 
-    return (
-        <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK, overflow: 'hidden' }} className={className}>
-            {showHeader && (
-                <Header
-                    style={{
-                        backgroundColor: UI_PANEL_BG,
-                        borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
-                        padding: '0 24px',
-                        height: 'auto',
-                        lineHeight: 'normal',
-                        paddingTop: 16,
-                        paddingBottom: 16,
-                    }}
-                >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        {title && (
-                            <Title
-                                level={2}
-                                style={{
-                                    margin: 0,
-                                    color: UI_ACCENT_GREEN,
-                                    fontFamily: 'monospace',
-                                    textShadow: UI_ACCENT_TEXT_SHADOW,
-                                    fontSize: '18px',
-                                }}
-                            >
-                                ▲ {title}
-                            </Title>
-                        )}
-                        {headerContent && <div style={{ width: '100%' }}>{headerContent}</div>}
-                    </div>
-                </Header>
+  return (
+    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
+      {showHeader && (
+        <Header
+          style={{
+            backgroundColor: UI_PANEL_BG,
+            borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
+            padding: isMobile ? '8px 12px' : '0 24px',
+            height: 'auto',
+            lineHeight: 'normal',
+            paddingTop: 8,
+            paddingBottom: 8,
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
+          }}
+        >
+          <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'flex-start' : 'center',
+            gap: isMobile ? 8 : 0,
+          }}>
+            {title && (
+              <Title
+                level={2}
+                style={{
+                  margin: 0,
+                  color: UI_ACCENT_GREEN,
+                  fontFamily: 'monospace',
+                  textShadow: UI_ACCENT_TEXT_SHADOW,
+                  fontSize: isMobile ? '16px' : '18px',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                ▲ LUCY CONTROL PANEL
+              </Title>
             )}
+            <div style={{ width: '100%' }}><AppHeader /></div>
+          </div>
+        </Header>
+      )}
 
-            <Content style={defaultContentStyle}>{children}</Content>
+      <Content style={defaultContentStyle}>{children}</Content>
 
-            <style>{tuiGlobalCss}</style>
-        </Layout>
-    );
+      <style>{tuiGlobalCss}</style>
+    </Layout>
+  );
 };

@@ -11,19 +11,24 @@ import type { ActuatorTableRecord } from '../types.ts';
 import {
     actOpts,
     boardSlots,
+    freePhysicalPinsOnBoard,
     jointSelectOptions,
-    normalizeServoType,
+    normalizeActuatorType,
     physicalPinOptions,
     sortedBoardIds,
     usedPhysicalPinsOnBoardExcluding,
     usedUrdfJointsOnOtherRows,
 } from '../model/documentHelpers.ts';
+import {
+    appendPassiveUrdfJointIfUnassigned,
+    removePassiveUrdfJoint,
+} from '../model/passiveUrdf.ts';
 
 export type ActuatorColumnsArgs = {
     yamlDoc: Record<string, unknown> | null;
     serverFieldErrors: Map<string, string[]>;
     outlineBorders: OutlineBorderSet;
-    yamlJointCatalog: string[];
+    assignableUrdfJoints: string[];
     patchDoc: (next: Record<string, unknown>) => void;
     actuatorIdOnFocusRef: RefObject<Record<number, string>>;
     deleteActuatorAt: (index: number) => void;
@@ -33,7 +38,7 @@ export function buildActuatorColumns({
     yamlDoc,
     serverFieldErrors,
     outlineBorders,
-    yamlJointCatalog,
+    assignableUrdfJoints,
     patchDoc,
     actuatorIdOnFocusRef,
     deleteActuatorAt,
@@ -122,10 +127,14 @@ export function buildActuatorColumns({
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const ao = actOpts(id, 'urdf_joint');
-                const cur = String(row.urdf_joint ?? '');
+                const cur = String(row.urdf_joint ?? '').trim();
                 const list = (yamlDoc?.actuators ?? []) as Record<string, unknown>[];
                 const used = usedUrdfJointsOnOtherRows(list, index);
-                const options = jointSelectOptions(yamlJointCatalog, used, cur);
+                const options = jointSelectOptions(assignableUrdfJoints, used, cur);
+                const hasFreePassive = options.some((o) => o.value !== cur);
+                const placeholder = hasFreePassive
+                    ? 'SELECT PASSIVE URDF JOINT'
+                    : 'NO FREE PASSIVE URDF JOINT';
                 return (
                     <div title={cellTooltipText(serverFieldErrors, ao)}>
                         <Select
@@ -137,16 +146,22 @@ export function buildActuatorColumns({
                                 minWidth: 180,
                                 ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders),
                             }}
-                            placeholder={
-                                yamlJointCatalog.length ? 'SELECT JOINT' : 'ADD CANDIDATE_URDF_JOINTS TO YAML'
-                            }
+                            placeholder={placeholder}
                             value={cur || undefined}
                             options={options}
                             onChange={(j) => {
                                 if (!yamlDoc) return;
+                                const nextJoint = typeof j === 'string' ? j.trim() : '';
                                 const next = structuredClone(yamlDoc);
                                 const actuators = next.actuators as Record<string, unknown>[];
-                                actuators[index] = { ...actuators[index], urdf_joint: j };
+                                actuators[index] = { ...actuators[index], urdf_joint: nextJoint };
+                                // Keep passive_urdf_joints consistent with the assignment delta:
+                                //   - chosen joint leaves the passive pool (it's now mapped),
+                                //   - previous joint (if any) re-enters the pool when no row claims it.
+                                if (nextJoint) removePassiveUrdfJoint(next, nextJoint);
+                                if (cur && cur !== nextJoint) {
+                                    appendPassiveUrdfJointIfUnassigned(next, cur);
+                                }
                                 patchDoc(next);
                             }}
                         />
@@ -164,6 +179,17 @@ export function buildActuatorColumns({
                 const ao = actOpts(id, 'board');
                 const curBoard = String(row.board ?? '');
                 const boardIds = yamlDoc ? sortedBoardIds(yamlDoc) : [];
+                // Free-pin counts mirror the "globally unused" definition the
+                // (now-removed) toolbar selector showed; the row's own board
+                // therefore reads (n-1 free) since this row already occupies
+                // one of its pins.
+                const boardOptions = boardIds.map((b) => {
+                    const free = yamlDoc ? freePhysicalPinsOnBoard(yamlDoc, b).length : 0;
+                    return {
+                        value: b,
+                        label: `${b} (${free} free)`,
+                    };
+                });
                 return (
                     <div title={cellTooltipText(serverFieldErrors, ao)}>
                         <Select
@@ -173,7 +199,7 @@ export function buildActuatorColumns({
                                 ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders),
                             }}
                             value={curBoard || undefined}
-                            options={boardIds.map((b) => ({ value: b, label: b }))}
+                            options={boardOptions}
                             onChange={(boardVal) => {
                                 if (!yamlDoc) return;
                                 const next = structuredClone(yamlDoc);
@@ -270,13 +296,13 @@ export function buildActuatorColumns({
             },
         },
         {
-            title: 'SERVO_TYPE',
+            title: 'ACTUATOR_TYPE',
             key: 'servo_type',
             width: 120,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const v = normalizeServoType(row.servo_type);
+                const v = normalizeActuatorType(row.servo_type);
                 const ao = actOpts(id, 'servo_type');
                 return (
                     <div title={cellTooltipText(serverFieldErrors, ao)}>

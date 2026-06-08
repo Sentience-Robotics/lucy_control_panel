@@ -5,11 +5,9 @@ interface UseRosConnectionReturn {
     connectionStatus: ConnectionStatus;
     isConnected: boolean;
     isConnecting: boolean;
-    isReconnecting: boolean;
     isDisconnected: boolean;
     currentUrl: string;
     connect: (url: string) => Promise<void>;
-    reconnect: (url: string) => Promise<void>;
     disconnect: () => void;
 }
 
@@ -34,15 +32,6 @@ export function useRosConnection(): UseRosConnectionReturn {
         }
     }, [rosService]);
 
-    const reconnect = useCallback(async (url: string) => {
-        try {
-            await rosService.reconnect(url);
-        } catch (error) {
-            console.error('Failed to reconnect:', error);
-            throw error;
-        }
-    }, [rosService]);
-
     const disconnect = useCallback(() => {
         rosService.disconnect();
     }, [rosService]);
@@ -51,11 +40,9 @@ export function useRosConnection(): UseRosConnectionReturn {
         connectionStatus,
         isConnected: connectionStatus === 'connected',
         isConnecting: connectionStatus === 'connecting',
-        isReconnecting: connectionStatus === 'reconnecting',
         isDisconnected: connectionStatus === 'disconnected',
         currentUrl: rosService.currentUrl,
         connect,
-        reconnect,
         disconnect
     };
 }

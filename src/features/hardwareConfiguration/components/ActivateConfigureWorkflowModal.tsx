@@ -4,21 +4,24 @@ import {
     LoadingOutlined,
     MinusCircleOutlined,
     ThunderboltOutlined,
+    WarningOutlined,
 } from '@ant-design/icons';
-import { Button, Card, Checkbox, Divider, Modal, Progress, Space, Switch, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Modal, Progress, Space, Switch, Tag, Typography } from 'antd';
+import type { HardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
+import type { GeneratedFileNames } from '../../../Utils/generatedFiles.ts';
 import { HardwareConfigPresetHeaderTag } from '../../../Components/HardwareConfigPresetTag.tsx';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_CARD_SURFACE_STYLE,
-    UI_ERROR_RED,
+    UI_ERROR,
     UI_MODAL_MASK_BG,
     UI_PRIMARY_GREEN_BUTTON_STYLE,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
     UI_TEXT_SUBTLE,
-    UI_WARNING_AMBER,
+    UI_WARNING,
 } from '../../../Constants/uiTheme.ts';
 import type { WorkflowStepRuntimeStatus, WorkflowStepSlice } from '../activateWorkflowStepTypes.ts';
 import '../configuration.switch.css';
@@ -31,7 +34,7 @@ const modalStyles = {
 
 function stepIcon(status: WorkflowStepRuntimeStatus) {
     if (status === 'done') return <CheckCircleOutlined style={{ color: UI_ACCENT_GREEN }} />;
-    if (status === 'error') return <CloseCircleOutlined style={{ color: UI_ERROR_RED }} />;
+    if (status === 'error') return <CloseCircleOutlined style={{ color: UI_ERROR }} />;
     if (status === 'skipped') return <MinusCircleOutlined style={{ color: UI_TEXT_SECONDARY_MUTED }} />;
     if (status === 'running') return <LoadingOutlined style={{ color: UI_ACCENT_GREEN }} />;
     return (
@@ -61,6 +64,8 @@ export interface ActivateConfigureWorkflowModalProps {
     onActivateModalBuildOnlyChange: (v: boolean) => void;
     activateModalActivateOnly: boolean;
     onActivateModalActivateOnlyChange: (v: boolean) => void;
+    activateModalSimulationOnly: boolean;
+    onActivateModalSimulationOnlyChange: (v: boolean) => void;
     /** Primary action */
     onRun: () => void | Promise<void>;
     onAbort: () => void;
@@ -68,7 +73,25 @@ export interface ActivateConfigureWorkflowModalProps {
     workflowSteps: WorkflowStepSlice[];
     workflowOverallPercent: number;
     workflowDetailLine: string;
+    /** True once the most recent run finished successfully (and no new run started). */
+    workflowLastRunSucceeded: boolean;
+    /**
+     * Structural diff between the active doc captured before the run and the
+     * target preset. `null` when not enough info to compute (e.g. server fetch failed).
+     */
+    workflowLastRunDiff: HardwareConfigDiff | null;
+    /**
+     * `true` if Gazebo is part of the active launch graph (latched signal
+     * from `lucy_control_supervisor`). `false` if known not to be. `null` if unknown.
+     */
+    gazeboRunning: boolean | null;
     canRun: boolean;
+    /**
+     * Generated-artifact filenames resolved from the active hardware doc
+     * (`generated_files` in the YAML). Keeps the regenerate copy in sync with
+     * what the pipeline actually writes instead of hardcoding names.
+     */
+    generatedFileNames: GeneratedFileNames;
 }
 
 export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowModalProps) {
@@ -86,14 +109,27 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         onActivateModalBuildOnlyChange,
         activateModalActivateOnly,
         onActivateModalActivateOnlyChange,
+        activateModalSimulationOnly,
+        onActivateModalSimulationOnlyChange,
         onRun,
         onAbort,
         workflowRunning,
         workflowSteps,
         workflowOverallPercent,
         workflowDetailLine,
+        workflowLastRunSucceeded,
+        workflowLastRunDiff,
+        gazeboRunning,
         canRun,
+        generatedFileNames,
     } = props;
+
+    // A pipeline run always rebuilds the model the running Gazebo loaded, so if
+    // Gazebo is up after a successful run it must be restarted regardless of diff.
+    const showGazeboRestartPrompt =
+        !workflowRunning &&
+        workflowLastRunSucceeded &&
+        gazeboRunning === true;
 
     return (
         <Modal
@@ -103,7 +139,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                 </Title>
             }
             open={open}
-            onCancel={workflowRunning ? () => {} : onClose}
+            onCancel={workflowRunning ? () => { } : onClose}
             footer={null}
             keyboard={!workflowRunning}
             width={720}
@@ -127,6 +163,30 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     </Text>
                 ) : null}
 
+                <div>
+                    <Switch
+                        className="hardware-config-ant-switch"
+                        checked={activateModalSimulationOnly}
+                        onChange={onActivateModalSimulationOnlyChange}
+                        disabled={workflowRunning || pipelineBoardOptions.length === 0}
+                    />
+                    <Text style={{ marginLeft: 8 }}>
+                        SIMULATION ONLY (ROS2_CONTROL + RELOAD, NO FIRMWARE BUILD / FLASH)
+                    </Text>
+                    {activateModalSimulationOnly ? (
+                        <Text
+                            type="secondary"
+                            style={{ display: 'block', marginTop: 6, marginLeft: 28, fontSize: 12 }}
+                        >
+                            Regenerates {generatedFileNames.ros2ControlXacro} and{' '}
+                            {generatedFileNames.controllersYaml}, then reloads the
+                            control stack — no firmware build or flash.
+                        </Text>
+                    ) : null}
+                </div>
+
+                {!activateModalSimulationOnly ? (
+                <>
                 <div>
                     <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 12, marginBottom: 8, display: 'block' }}>
                         BOARDS
@@ -156,7 +216,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         onChange={onActivateModalActivateOnlyChange}
                         disabled={workflowRunning}
                     />
-                    <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH)</Text>
+                    <Text style={{ marginLeft: 8 }}>ACTIVATE ONLY (NO BUILD / FLASH / RELOAD)</Text>
                 </div>
                 <div>
                     <Switch
@@ -167,6 +227,12 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     />
                     <Text style={{ marginLeft: 8 }}>BUILD ONLY (NO FLASH)</Text>
                 </div>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                    ros2_control and controllers are regenerated before firmware build (same as simulation,
+                    plus BUILD / FLASH when selected).
+                </Text>
+                </>
+                ) : null}
 
                 <Card size="small" style={{ ...UI_CARD_SURFACE_STYLE }}>
                     <HardwareConfigPresetHeaderTag
@@ -195,12 +261,20 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     <div
                         style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
+                            gridTemplateColumns: activateModalSimulationOnly
+                                ? 'repeat(2, 1fr)'
+                                : 'repeat(3, 1fr)',
                             gap: 8,
                             marginTop: 12,
                         }}
                     >
-                        {workflowSteps.map((s) => (
+                        {(activateModalSimulationOnly
+                            ? (['validate', 'activate', 'generate', 'reload'] as const)
+                            : (['validate', 'activate', 'generate', 'build', 'flash', 'reload'] as const)
+                        )
+                            .map((id) => workflowSteps.find((s) => s.id === id))
+                            .filter((s): s is NonNullable<typeof s> => s != null)
+                            .map((s) => (
                             <Card
                                 key={s.id}
                                 size="small"
@@ -222,7 +296,7 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                                             percent={Math.round(s.fraction * 100)}
                                             size="small"
                                             showInfo={false}
-                                            strokeColor={UI_WARNING_AMBER}
+                                            strokeColor={UI_WARNING}
                                         />
                                     ) : null}
                                     {s.detail ? (
@@ -241,6 +315,18 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                     ) : null}
                 </div>
 
+                {showGazeboRestartPrompt ? (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        icon={<WarningOutlined />}
+                        message="SIMULATOR RESTART REQUIRED"
+                        description={
+                            <GazeboRestartDiffBody diff={workflowLastRunDiff} />
+                        }
+                    />
+                ) : null}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
                     {workflowRunning ? (
                         <Button danger onClick={onAbort}>
@@ -250,23 +336,118 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         <span />
                     )}
                     <Space>
-                        <Button onClick={onClose} disabled={workflowRunning}>
-                            CANCEL
-                        </Button>
-                        {!workflowRunning ? (
-                            <Button
-                                type="primary"
-                                icon={<ThunderboltOutlined />}
-                                onClick={() => void onRun()}
-                                disabled={!canRun}
-                                style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                            >
-                                RUN
-                            </Button>
-                        ) : null}
+                        {!workflowRunning && workflowLastRunSucceeded ? (
+                            <>
+                                <Button
+                                    icon={<ThunderboltOutlined />}
+                                    onClick={() => void onRun()}
+                                    disabled={!canRun}
+                                >
+                                    RUN AGAIN
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    onClick={onClose}
+                                    style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                                >
+                                    DONE
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button onClick={onClose} disabled={workflowRunning}>
+                                    CANCEL
+                                </Button>
+                                {!workflowRunning ? (
+                                    <Button
+                                        type="primary"
+                                        icon={<ThunderboltOutlined />}
+                                        onClick={() => void onRun()}
+                                        disabled={!canRun}
+                                        style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                                    >
+                                        RUN
+                                    </Button>
+                                ) : null}
+                            </>
+                        )}
                     </Space>
                 </div>
             </Space>
         </Modal>
+    );
+}
+
+function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff | null }) {
+    const noun = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`;
+    return (
+        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+            <div style={{ fontSize: 12 }}>
+                <Text strong>In Lucy TUI:</Text>
+                <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                    <li>Untick "with Simulator"</li>
+                    <li>Press enter to stop the simulator</li>
+                    <li>Tick back "with Simulator"</li>
+                    <li>Press enter to restart the stack with the simulator</li>
+                </ol>
+            </div>
+            {diff ? (
+                <>
+                    <Divider style={{ margin: '6px 0' }} />
+                    <Space size={6} wrap>
+                        {diff.boardsAdded.length > 0 ? (
+                            <Tag color="green">+{noun(diff.boardsAdded.length, 'board')}</Tag>
+                        ) : null}
+                        {diff.boardsRemoved.length > 0 ? (
+                            <Tag color="red">-{noun(diff.boardsRemoved.length, 'board')}</Tag>
+                        ) : null}
+                        {diff.actuatorsAdded.length > 0 ? (
+                            <Tag color="green">+{noun(diff.actuatorsAdded.length, 'actuator')}</Tag>
+                        ) : null}
+                        {diff.actuatorsRemoved.length > 0 ? (
+                            <Tag color="red">-{noun(diff.actuatorsRemoved.length, 'actuator')}</Tag>
+                        ) : null}
+                        {diff.actuatorsModified.length > 0 ? (
+                            <Tag color="orange">
+                                ~{noun(diff.actuatorsModified.length, 'actuator')} modified
+                            </Tag>
+                        ) : null}
+                    </Space>
+                    <div style={{ maxHeight: 180, overflow: 'auto', fontSize: 11, lineHeight: 1.4 }}>
+                        {diff.boardsAdded.map((b) => (
+                            <div key={`b+${b}`}>
+                                <Text type="success">+ board {b}</Text>
+                            </div>
+                        ))}
+                        {diff.boardsRemoved.map((b) => (
+                            <div key={`b-${b}`}>
+                                <Text type="danger">− board {b}</Text>
+                            </div>
+                        ))}
+                        {diff.actuatorsAdded.map((a) => (
+                            <div key={`a+${a.actuatorId}`}>
+                                <Text type="success">+ actuator {a.label}</Text>
+                            </div>
+                        ))}
+                        {diff.actuatorsRemoved.map((a) => (
+                            <div key={`a-${a.actuatorId}`}>
+                                <Text type="danger">− actuator {a.label}</Text>
+                            </div>
+                        ))}
+                        {diff.actuatorsModified.map((a) => (
+                            <div key={`a~${a.actuatorId}`}>
+                                <Text type="warning">~ actuator {a.label}</Text>
+                                <span style={{ color: '#999' }}>
+                                    {' '}
+                                    {a.changes
+                                        .map((c) => `${c.field}: ${String(c.before ?? '∅')} → ${String(c.after ?? '∅')}`)
+                                        .join(', ')}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            ) : null}
+        </Space>
     );
 }

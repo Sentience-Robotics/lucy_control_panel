@@ -1,14 +1,15 @@
-import { ConfigProvider, theme, Spin } from 'antd';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ConfigProvider, theme, Layout, Grid } from 'antd';
+import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
+import type { CSSProperties, FC } from 'react';
 /* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
-import { Stream } from "./Pages/Stream.tsx";
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
+import { LucyLoader } from './Components/LucyLoader';
 import {
     UI_ACCENT_GREEN,
     UI_BG_BLACK,
@@ -19,14 +20,84 @@ import {
     UI_TEXT_SUBTLE,
 } from './Constants/uiTheme.ts';
 
-const Robot3DViewer = lazy(() => import('./Pages/Robot3DViewer').then(module => ({ default: module.default })));
+const { Content } = Layout;
+const { useBreakpoint } = Grid;
+
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
+const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
+
+const CONTROL_PATH = '/';
+const CONFIG_PATH = '/configuration';
+const SENSORS_PATH = '/sensors';
+const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH, SENSORS_PATH]);
+
+/**
+ * Render all main pages once and toggle visibility with `display: none`.
+ * Keeps page-local state (sliders, edits, expanded panels) alive when the
+ * user switches between CONTROL / CONFIGURATION. Lazy pages are only mounted
+ * after their first visit so the initial chunk stays small.
+ */
+const PersistentPages: FC = () => {
+    const { pathname } = useLocation();
+    const [configVisited, setConfigVisited] = useState(false);
+    const [sensorsVisited, setSensorsVisited] = useState(false);
+
+    useEffect(() => {
+        if (pathname === CONFIG_PATH) setConfigVisited(true);
+        if (pathname === SENSORS_PATH) setSensorsVisited(true);
+    }, [pathname]);
+
+    const isKnown = KNOWN_PATHS.has(pathname);
+
+    const pageStyle = (active: boolean): CSSProperties => ({
+        display: active ? 'block' : 'none',
+    });
+
+    return (
+        <>
+            <div style={pageStyle(pathname === CONTROL_PATH)}>
+                <RobotControlPanel />
+            </div>
+            {configVisited ? (
+                <div style={pageStyle(pathname === CONFIG_PATH)}>
+                    <Suspense
+                        fallback={
+                            <LucyLoader
+                                label="LOADING CONFIGURATION"
+                                detail="Preparing the hardware configuration page."
+                            />
+                        }
+                    >
+                        <Configuration />
+                    </Suspense>
+                </div>
+            ) : null}
+            {sensorsVisited ? (
+                <div style={pageStyle(pathname === SENSORS_PATH)}>
+                    <Suspense
+                        fallback={
+                            <LucyLoader
+                                label="LOADING SENSORS"
+                                detail="Preparing the sensor display."
+                            />
+                        }
+                    >
+                        <SensorDisplay />
+                    </Suspense>
+                </div>
+            ) : null}
+            {!isKnown ? <NotFound /> : null}
+        </>
+    );
+};
 
 function App() {
     const localPassword: string | undefined = import.meta.env.VITE_LOCAL_PASSWORD;
     const localUsername: string | undefined = import.meta.env.VITE_LOCAL_USERNAME;
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [authError, setAuthError] = useState<string>('');
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
 
     useEffect(() => {
         const savedAuth = localStorage.getItem('lucy_auth');
@@ -107,22 +178,12 @@ function App() {
         >
             <Router>
                 <ActiveHardwareRosProvider>
-                <Navigation />
-                <Routes>
-                    <Route path="/" element={<RobotControlPanel />} />
-                    <Route path="/3d-viewer" element={
-                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
-                            <Robot3DViewer />
-                        </Suspense>
-                    } />
-                    <Route path="/configuration" element={
-                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }} />}>
-                            <Configuration />
-                        </Suspense>
-                    } />
-                    <Route path="/stream" element={<Stream />} />
-                    <Route path="*" element={<NotFound />} />
-                </Routes>
+                    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
+                        <Content style={{ paddingBottom: isMobile ? '60px' : '0' }}>
+                            <PersistentPages />
+                        </Content>
+                        <Navigation />
+                    </Layout>
                 </ActiveHardwareRosProvider>
             </Router>
         </ConfigProvider>

@@ -53,6 +53,7 @@ export interface ConfigurePipelineGoalInput {
     boards_to_flash: string[];
     dry_run: boolean;
     build_only: boolean;
+    simulation_only?: boolean;
 }
 
 export interface ConfigurePipelineFeedbackNormalized {

@@ -216,9 +216,10 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                 style={{ top: 100 }}
                 styles={modalStyles}
                 className="dark-modal"
+                destroyOnClose
             >
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
-                    {!isDirty ? (
+                    {!isDirty && !saving ? (
                         <Text type="warning">NOTHING TO SAVE — MAKE EDITS FIRST.</Text>
                     ) : null}
 

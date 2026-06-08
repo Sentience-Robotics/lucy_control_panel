@@ -20,6 +20,7 @@ interface JointCategoryProps {
     onJointValueChange: (name: string, value: number) => void;
     onResetCategory: (category: string) => void;
     showDegrees: boolean;
+    disabled?: boolean;
 }
 
 export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
@@ -27,7 +28,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     joints,
     onJointValueChange,
     onResetCategory,
-    showDegrees
+    showDegrees,
+    disabled = false,
 }) => {
     const categoryColor = useMemo(() => {
         return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
@@ -99,6 +101,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             <Button
                 size="small"
                 icon={<ReloadOutlined />}
+                disabled={disabled}
                 onClick={(e) => {
                 e.stopPropagation();
                 handleResetCategory();
@@ -130,6 +133,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                         joint={joint}
                         onValueChange={onJointValueChange}
                         showDegrees={showDegrees}
+                        disabled={disabled}
                     />
                     ))}
                 </Space>

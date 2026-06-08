@@ -1,10 +1,11 @@
-import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark} from "@mediapipe/hands";
-import React, { useEffect, useRef, useState } from "react";
+import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
+import React, { useEffect, useRef } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
 import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
-import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
+
+const UPDATE_HZ_S = 5;
 
 interface MediapipeHandTrackerProps {
     width?: number;
@@ -88,7 +89,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         if (results.multiHandLandmarks) {
             for (const landmarks of results.multiHandLandmarks) {
                 drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                    color: UI_CANVAS_LIME,
+                    color: "#00FF00",
                     lineWidth: 4,
                 });
                 drawLandmarks(ctx, landmarks, { color: "#FF0000", lineWidth: 2 });
@@ -96,24 +97,30 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         }
         // calls the processHands() function once a second
         const now = Date.now();
-        if (now - lastProcessTimeRef.current >= 1000) {
+        if (now - lastProcessTimeRef.current >= 1000 / UPDATE_HZ_S) {
             lastProcessTimeRef.current = now;
-            processHands(results.multiHandLandmarks);
+            processHands(results.multiHandLandmarks, results.multiHandedness);
         }
 
         ctx.restore();
     };
 
-    function processHands(hands: NormalizedLandmark[][]) {
+    function processHands(hands: NormalizedLandmark[][], handedness: Handedness[]) {
         hands.forEach((hand, handIndex) => {
             for (let i = 0; i < 5; i++) {
+
+                const label: string =
+                handedness[handIndex].label === "Left"
+                    ? "leftHand"
+                    : "rightHand";
+
                 processFinger({
                     tip: hand[Fingers[i].idx.TIP],
                     dip: hand[Fingers[i].idx.DIP],
                     pip: hand[Fingers[i].idx.PIP],
                     mcp: hand[Fingers[i].idx.MCP],
                     wrist: hand[0],
-                    jointName: Fingers[i].name.replace("side", handIndex === 0 ? "leftHand" : "rightHand")
+                    jointName: Fingers[i].name.replace("side", label)
                 });
             }
         });
