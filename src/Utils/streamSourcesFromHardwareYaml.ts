@@ -3,6 +3,7 @@ import type { StreamSource } from '../Constants/rosConfig';
 const CAMERA_META_KEYS = new Set([
     'name',
     'topic',
+    'compressed_topic',
     'message_type',
     'external',
     'link',
@@ -22,7 +23,7 @@ function cameraEntryId(entry: Record<string, unknown>): string {
             return key;
         }
     }
-    const topic = typeof entry.topic === 'string' ? entry.topic : '';
+    const topic = typeof entry.compressed_topic === 'string' ? entry.compressed_topic : '';
     return topic.replace(/^\//, '').replace(/[^\w]+/g, '-') || 'camera';
 }
 
@@ -36,7 +37,7 @@ export function streamSourcesFromHardwareYaml(doc: Record<string, unknown>): Str
         if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
         const entry = row as Record<string, unknown>;
         const name = typeof entry.name === 'string' ? entry.name.trim() : '';
-        const topic = typeof entry.topic === 'string' ? entry.topic.trim() : '';
+        const topic = typeof entry.compressed_topic === 'string' ? entry.compressed_topic.trim() : '';
         if (!name || !topic) continue;
 
         const messageType =
