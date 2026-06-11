@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Select, Button, Tooltip } from 'antd';
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { StreamPlayer } from "./StreamPlayer.tsx";
@@ -6,7 +6,8 @@ import { StreamMetrics } from "./StreamMetrics.tsx";
 import { MovableModal } from './MovableModal.tsx';
 import Robot3DViewer from '../Pages/Robot3DViewer.tsx';
 import { useAvailableTopics } from '../hooks/useAvailableTopics.ts';
-import { STREAM_SOURCES, DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
+import { useStreamSources } from '../hooks/useStreamSources.ts';
+import { DEFAULT_STREAM_SOURCE } from '../Constants/rosConfig';
 import type { StreamSource } from '../Constants/rosConfig';
 import {
     UI_WARNING,
@@ -24,9 +25,6 @@ const WARNING_BADGE_STYLE: React.CSSProperties = {
     border: `1px solid ${UI_WARNING}`,
     borderRadius: 4
 };
-
-/** Real (non-virtual) stream topics whose publishers we probe for availability. */
-const CAMERA_TOPICS = STREAM_SOURCES.filter(s => !s.virtual).map(s => s.topic);
 
 const SELECT_POPUP_STYLE = {
     popup: {
@@ -58,16 +56,31 @@ export function StreamPlayerModal({
     const [hasEmptyDataWarning, setHasEmptyDataWarning] = useState<boolean>(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const streamSources = useStreamSources();
+    const cameraTopics = useMemo(
+        () => streamSources.filter((s) => !s.virtual).map((s) => s.topic),
+        [streamSources],
+    );
+
+    // Drop selection when active config changes and the prior camera is no longer listed.
+    useEffect(() => {
+        if (streamSources.some((s) => s.id === selectedStreamSource.id)) return;
+        const firstCamera = streamSources.find((s) => !s.virtual) ?? streamSources[0];
+        if (firstCamera) {
+            setSelectedStreamSource(firstCamera);
+            setHasEmptyDataWarning(false);
+        }
+    }, [streamSources, selectedStreamSource.id]);
 
     // Camera topics with a live publisher (null = unknown → assume available).
-    const availableTopics = useAvailableTopics(CAMERA_TOPICS, isVisible);
+    const availableTopics = useAvailableTopics(cameraTopics, isVisible);
 
     // Selectable if virtual, has a publisher, or availability is still unknown.
     const isSourceAvailable = (source: StreamSource): boolean =>
         source.virtual === true || availableTopics === null || availableTopics.has(source.topic);
 
     const handleStreamSourceChange = (value: string) => {
-        const source = STREAM_SOURCES.find(s => s.id === value);
+        const source = streamSources.find(s => s.id === value);
         if (source) {
             setSelectedStreamSource(source);
             setHasEmptyDataWarning(false);
@@ -79,7 +92,7 @@ export function StreamPlayerModal({
     // kept and restored if its publisher comes back.
     const activeSource = isSourceAvailable(selectedStreamSource)
         ? selectedStreamSource
-        : STREAM_SOURCES.find(isSourceAvailable) ?? selectedStreamSource;
+        : streamSources.find(isSourceAvailable) ?? selectedStreamSource;
 
     const handleFullscreenToggle = () => {
         const container = containerRef.current;
@@ -97,7 +110,7 @@ export function StreamPlayerModal({
     };
 
     const selectOptions = useMemo(() =>
-        STREAM_SOURCES.map(source => {
+        streamSources.map(source => {
             const available = isSourceAvailable(source);
             return {
                 value: source.id,
@@ -105,7 +118,7 @@ export function StreamPlayerModal({
                 disabled: !available,
             };
         }),
-        [availableTopics]
+        [streamSources, availableTopics]
     );
 
     const is3DView = activeSource.virtual === true;
