@@ -36,7 +36,7 @@ export function streamSourcesFromHardwareYaml(doc: Record<string, unknown>): Str
         if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
         const entry = row as Record<string, unknown>;
         const name = typeof entry.name === 'string' ? entry.name.trim() : '';
-        const topic = typeof entry.topic === 'string' ? entry.topic.trim() : '';
+        const topic = typeof entry.topic === 'string' ? entry.topic.trim() + '/compressed' : '';
         if (!name || !topic) continue;
 
         const messageType =
