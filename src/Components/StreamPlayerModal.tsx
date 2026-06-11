@@ -35,6 +35,17 @@ const SELECT_POPUP_STYLE = {
     }
 };
 
+function isStreamSourceAvailable(
+    source: StreamSource,
+    availableTopics: Set<string> | null,
+): boolean {
+    return (
+        source.virtual === true ||
+        availableTopics === null ||
+        availableTopics.has(source.topic)
+    );
+}
+
 interface StreamPlayerModalProps {
     isVisible: boolean;
     onClose: () => void;
@@ -75,10 +86,6 @@ export function StreamPlayerModal({
     // Camera topics with a live publisher (null = unknown → assume available).
     const availableTopics = useAvailableTopics(cameraTopics, isVisible);
 
-    // Selectable if virtual, has a publisher, or availability is still unknown.
-    const isSourceAvailable = (source: StreamSource): boolean =>
-        source.virtual === true || availableTopics === null || availableTopics.has(source.topic);
-
     const handleStreamSourceChange = (value: string) => {
         const source = streamSources.find(s => s.id === value);
         if (source) {
@@ -90,9 +97,10 @@ export function StreamPlayerModal({
     // What we render: the user's pick if available, else the first available
     // source (3D View is virtual, so there's always a fallback). The pick is
     // kept and restored if its publisher comes back.
-    const activeSource = isSourceAvailable(selectedStreamSource)
+    const activeSource = isStreamSourceAvailable(selectedStreamSource, availableTopics)
         ? selectedStreamSource
-        : streamSources.find(isSourceAvailable) ?? selectedStreamSource;
+        : streamSources.find((s) => isStreamSourceAvailable(s, availableTopics)) ??
+          selectedStreamSource;
 
     const handleFullscreenToggle = () => {
         const container = containerRef.current;
@@ -109,16 +117,17 @@ export function StreamPlayerModal({
         }
     };
 
-    const selectOptions = useMemo(() =>
-        streamSources.map(source => {
-            const available = isSourceAvailable(source);
-            return {
-                value: source.id,
-                label: available ? source.name : `${source.name} (unavailable)`,
-                disabled: !available,
-            };
-        }),
-        [streamSources, availableTopics]
+    const selectOptions = useMemo(
+        () =>
+            streamSources.map((source) => {
+                const available = isStreamSourceAvailable(source, availableTopics);
+                return {
+                    value: source.id,
+                    label: available ? source.name : `${source.name} (unavailable)`,
+                    disabled: !available,
+                };
+            }),
+        [streamSources, availableTopics],
     );
 
     const is3DView = activeSource.virtual === true;
