@@ -385,10 +385,9 @@ function GazeboRestartDiffBody({ diff }: { diff: HardwareConfigDiff | null }) {
             <div style={{ fontSize: 12 }}>
                 <Text strong>In Lucy TUI:</Text>
                 <ol style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-                    <li>Untick "with Simulator"</li>
-                    <li>Press enter to stop the simulator</li>
-                    <li>Tick back "with Simulator"</li>
-                    <li>Press enter to restart the stack with the simulator</li>
+                    <li>Press "x" to exit</li>
+                    <li>Press "y" to confirm</li>
+                    <li>Restart the stack with the simulator</li>
                 </ol>
             </div>
             {diff ? (
