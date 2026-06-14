@@ -52,38 +52,13 @@ export interface StreamSource {
     virtual?: boolean;
 }
 
-export const STREAM_SOURCES: StreamSource[] = [
-    {
-        id: 'ext-camera',
-        name: 'External USB Webcam',
-        topic: '/ext_camera/jpg',
-        messageType: 'sensor_msgs/msg/CompressedImage'
-    },
-    {
-        id: 'gazebo',
-        name: 'Gazebo Webcam',
-        topic: '/camera/gazebo/compressed',
-        messageType: 'sensor_msgs/msg/CompressedImage'
-    },
-    {
-        id: 'realsense-rgb',
-        name: 'Realsense RGB',
-        topic: '/realsense/realsense2_camera/color/image_raw/compressed',
-        messageType: 'sensor_msgs/msg/CompressedImage'
-    },
-    {
-        id: 'realsense-aligned-depth',
-        name: 'Realsense Aligned Depth',
-        topic: '/realsense/realsense2_camera/aligned_depth_to_color/image_raw/compressed',
-        messageType: 'sensor_msgs/msg/CompressedImage'
-    },
-    {
-        id: '3d-view',
-        name: '3D View',
-        topic: '',
-        messageType: '',
-        virtual: true,
-    },
-];
+export const STREAM_SOURCE_3D_VIEW: StreamSource = {
+    id: '3d-view',
+    name: '3D View',
+    topic: '',
+    messageType: '',
+    virtual: true,
+};
 
-export const DEFAULT_STREAM_SOURCE = STREAM_SOURCES[0];
+/** Initial placeholder until a camera from the active config is selected. */
+export const DEFAULT_STREAM_SOURCE = STREAM_SOURCE_3D_VIEW;
