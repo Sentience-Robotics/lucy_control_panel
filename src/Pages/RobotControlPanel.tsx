@@ -251,11 +251,19 @@ export const RobotControlPanel: React.FC = () => {
 
     useEffect(() => {
         if (!isConnected) return;
-        const unsubscribe = ControlModeHandler.getInstance().onControlTakenByOther(() => {
+        const handler = ControlModeHandler.getInstance();
+        // The toggle must track the authoritative controller, not local intent.
+        // If we aren't the active controller (someone else took it, or the registry released/expired it), force the toggle OFF so the UI can never show "Control Robot ON" while we don't actually have control.
+        const unsubscribe = handler.onControllerChanged((controllerId) => {
+            if (controllerId === handler.clientId) return;
             if (isSendingRef.current) {
-                setShowControlTakenModal(true);
+                // A non-empty id means another client grabbed it — surface the modal.
+                // An empty id is a plain release/expiry: just flip OFF.
+                if (controllerId !== '') {
+                    setShowControlTakenModal(true);
+                }
+                setIsSending(false);
             }
-            setIsSending(false);
         });
         return unsubscribe;
     }, [isConnected]);
