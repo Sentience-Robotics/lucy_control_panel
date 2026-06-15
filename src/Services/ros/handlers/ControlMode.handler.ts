@@ -1,39 +1,36 @@
 import ROSLIB from 'roslib';
 import { RosBridgeService } from '../ros.service.ts';
 
-const CONTROL_MODE_TOPIC = '/control_panel_active_client';
+const HEARTBEAT_TOPIC = '/lucy/client_heartbeat';
+const ACTIVE_CLIENT_TOPIC = '/lucy/active_client';
+const CONTROL_SERVICE = '/lucy/control';
+const HEARTBEAT_PERIOD_MS = 1000;
 
 // Unique ID for this browser session — stays stable for the page lifetime.
 const CLIENT_ID = `cp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-type ControlTakenCallback = () => void;
 type ControllerChangedCallback = (activeClientId: string) => void;
 
 /**
- * Coordinates "who has control" across multiple clients connected to the same rosbridge.
- *
- * Protocol:
- *  - Taking control   → publish this client's CLIENT_ID on CONTROL_MODE_TOPIC
- *  - Releasing control → publish empty string
- *  - Any client that receives a non-empty ID different from its own knows someone
- *    else is controlling and should turn off publishing.
+ * Presence + "who has control" across every client (web, CLI, etc.) via the
+ * lucy_client_registry node. See lucy_cli/developer.md for the protocol.
  */
 export class ControlModeHandler {
   private static _instance: ControlModeHandler | null = null;
 
-  private topic: ROSLIB.Topic | null = null;
+  private activeTopic: ROSLIB.Topic | null = null;
+  private heartbeatTopic: ROSLIB.Topic | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private unsubscribeStatus: (() => void) | null = null;
-  private takenCallbacks: Set<ControlTakenCallback> = new Set();
   private controllerChangedCallbacks: Set<ControllerChangedCallback> = new Set();
   private _activeClientId: string = '';
 
   private constructor() {
     this.unsubscribeStatus = RosBridgeService.getInstance().onStatusChange((status) => {
       if (status === 'connected') {
-        this.initTopic();
+        this.init();
       } else if (status === 'disconnected') {
-        this.topic?.unsubscribe();
-        this.topic = null;
+        this.teardown();
         if (this._activeClientId !== '') {
           this._activeClientId = '';
           this.controllerChangedCallbacks.forEach((cb) => cb(''));
@@ -42,7 +39,7 @@ export class ControlModeHandler {
     });
 
     if (RosBridgeService.getInstance().isConnected) {
-      this.initTopic();
+      this.init();
     }
   }
 
@@ -57,39 +54,54 @@ export class ControlModeHandler {
     return CLIENT_ID;
   }
 
-  private initTopic() {
+  private init() {
     const ros = RosBridgeService.getInstance().rosConnection;
     if (!ros) return;
 
-    this.topic?.unsubscribe();
-    this.topic = new ROSLIB.Topic({
+    this.teardown();
+
+    this.activeTopic = new ROSLIB.Topic({
       ros,
-      name: CONTROL_MODE_TOPIC,
+      name: ACTIVE_CLIENT_TOPIC,
       messageType: 'std_msgs/msg/String',
     });
-
-    this.topic.subscribe((msg: ROSLIB.Message) => {
+    this.activeTopic.subscribe((msg: ROSLIB.Message) => {
       const data = (msg as unknown as { data: string }).data ?? '';
-      // Non-empty ID from a different client means they took control.
-      if (data && data !== CLIENT_ID) {
-        this.takenCallbacks.forEach((cb) => cb());
-      }
       // Track the active controller and notify listeners on every change.
       if (data !== this._activeClientId) {
         this._activeClientId = data;
         this.controllerChangedCallbacks.forEach((cb) => cb(data));
       }
     });
+
+    this.heartbeatTopic = new ROSLIB.Topic({
+      ros,
+      name: HEARTBEAT_TOPIC,
+      messageType: 'std_msgs/msg/String',
+    });
+    const beat = () => this.heartbeatTopic?.publish(new ROSLIB.Message({ data: CLIENT_ID }));
+    beat(); // register immediately rather than after the first interval
+    this.heartbeatTimer = setInterval(beat, HEARTBEAT_PERIOD_MS);
   }
 
-  /** Claim exclusive control. Notifies all other connected clients to step down. */
+  private teardown() {
+    if (this.heartbeatTimer !== null) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    this.heartbeatTopic = null;
+    this.activeTopic?.unsubscribe();
+    this.activeTopic = null;
+  }
+
+  /** Claim exclusive control. The registry notifies all clients to step down. */
   takeControl() {
-    this.publish(CLIENT_ID);
+    this.callControl(true);
   }
 
   /** Yield control. No forced side-effects on other clients. */
   releaseControl() {
-    this.publish('');
+    this.callControl(false);
   }
 
   /** Whether any client is currently controlling the robot. */
@@ -112,20 +124,25 @@ export class ControlModeHandler {
     return () => this.controllerChangedCallbacks.delete(cb);
   }
 
-  /** Register a callback fired when another client claims control. Returns a cleanup fn. */
-  onControlTakenByOther(cb: ControlTakenCallback): () => void {
-    this.takenCallbacks.add(cb);
-    return () => this.takenCallbacks.delete(cb);
-  }
-
-  private publish(payload: string) {
-    if (!this.topic) return;
-    this.topic.publish(new ROSLIB.Message({ data: payload }));
+  private callControl(acquire: boolean) {
+    const ros = RosBridgeService.getInstance().rosConnection;
+    if (!ros) return;
+    const service = new ROSLIB.Service({
+      ros,
+      name: CONTROL_SERVICE,
+      serviceType: 'lucy_msgs/srv/ClientControl',
+    });
+    // The resulting controller arrives on ACTIVE_CLIENT_TOPIC.
+    service.callService(
+      new ROSLIB.ServiceRequest({ client_id: CLIENT_ID, acquire }),
+      () => {},
+      () => {},
+    );
   }
 
   static cleanup() {
     if (ControlModeHandler._instance) {
-      ControlModeHandler._instance.topic?.unsubscribe();
+      ControlModeHandler._instance.teardown();
       ControlModeHandler._instance.unsubscribeStatus?.();
       ControlModeHandler._instance = null;
     }
