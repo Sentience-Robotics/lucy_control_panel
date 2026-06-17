@@ -243,29 +243,29 @@ export const Page: React.FC<PageProps> = ({
 
         .tui-title {
           color: ${UI_ACCENT_GREEN};
-          font-family: 'monospace';
+          font-family: monospace;
           text-shadow: ${UI_ACCENT_TEXT_SHADOW};
           font-weight: bold;
         }
 
         .tui-text {
           color: ${UI_TEXT_PRIMARY_ON_DARK};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-text-muted {
           color: ${UI_TEXT_SECONDARY_MUTED};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-text-danger {
           color: ${UI_ERROR};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-text-success {
           color: ${UI_ACCENT_GREEN};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-container {
@@ -284,7 +284,7 @@ export const Page: React.FC<PageProps> = ({
           display: inline-flex;
           border: 1px solid ${UI_BORDER_SOFT};
           background-color: ${UI_INPUT_SURFACE};
-          font-family: 'monospace';
+          font-family: monospace;
           font-size: 12px;
           transition: all 0.3s ease;
           position: relative;
@@ -301,7 +301,7 @@ export const Page: React.FC<PageProps> = ({
           border: none;
           background-color: transparent;
           color: ${UI_TEXT_SECONDARY_MUTED};
-          font-family: 'monospace';
+          font-family: monospace;
           font-size: 12px;
           font-weight: bold;
           cursor: pointer;

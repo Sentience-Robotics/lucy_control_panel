@@ -618,7 +618,7 @@ export const RobotControlPanel: React.FC = () => {
                     showSpinner={isConnecting}
                 />
             ) : (
-                <>
+                <div style={{ position: 'relative', isolation: 'isolate' }}>
                     <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
                         <Col xs={24} lg="auto" >
                             {isMobile ? (
@@ -773,7 +773,7 @@ export const RobotControlPanel: React.FC = () => {
                             ) : null}
                         </DragOverlay>
                     </DndContext>
-                </>
+                </div>
             )}
 
             <MovableModal
