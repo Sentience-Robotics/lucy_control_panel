@@ -600,6 +600,12 @@ export const RobotControlPanel: React.FC = () => {
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
+            <StreamPlayerModal
+                isVisible={isStreamVisible}
+                onClose={() => setIsStreamVisible(false)}
+                initialPosition={{ x: 100, y: 100 }}
+            />
+
             {!isConnected ? (
                 <LucyLoader
                     label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
@@ -769,12 +775,6 @@ export const RobotControlPanel: React.FC = () => {
                     </DndContext>
                 </>
             )}
-
-            <StreamPlayerModal
-                isVisible={isStreamVisible}
-                onClose={() => setIsStreamVisible(false)}
-                initialPosition={{ x: 100, y: 100 }}
-            />
 
             <MovableModal
                 modalName="WEBCAM"

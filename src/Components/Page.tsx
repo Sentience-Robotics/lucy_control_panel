@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Layout, Typography, Grid } from 'antd';
 import {
@@ -17,6 +17,7 @@ import {
   uiAccentRgba,
 } from '../Constants/uiTheme.ts';
 import { AppHeader } from './AppHeader.tsx';
+import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -41,6 +42,19 @@ export const Page: React.FC<PageProps> = ({
 }) => {
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
+
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) { return; }
+    const update = () => setHeaderHeight(el.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showHeader]);
 
   const defaultContentStyle: React.CSSProperties = {
     backgroundColor: UI_BG_BLACK,
@@ -377,6 +391,7 @@ export const Page: React.FC<PageProps> = ({
     <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
       {showHeader && (
         <Header
+          ref={headerRef}
           style={{
             backgroundColor: UI_PANEL_BG,
             borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
@@ -387,7 +402,7 @@ export const Page: React.FC<PageProps> = ({
             paddingBottom: 8,
             position: 'sticky',
             top: 0,
-            zIndex: 1,
+            zIndex: 2,
           }}
         >
           <div style={{
@@ -417,7 +432,11 @@ export const Page: React.FC<PageProps> = ({
         </Header>
       )}
 
-      <Content style={defaultContentStyle}>{children}</Content>
+      <Content style={defaultContentStyle}>
+        <HeaderHeightContext.Provider value={headerHeight}>
+          {children}
+        </HeaderHeightContext.Provider>
+      </Content>
 
       <style>{tuiGlobalCss}</style>
     </Layout>
