@@ -24,12 +24,17 @@ export const AUTO_CONNECT_KEY = 'autoConnectEnabled';
 
 export const isAutoConnectEnabled = () => localStorage.getItem(AUTO_CONNECT_KEY) !== 'false';
 
+export const SHOW_DEGREES_KEY = 'showDegreesEnabled';
+
+export const isShowDegreesEnabled = () => localStorage.getItem(SHOW_DEGREES_KEY) !== 'false';
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     const { connect, currentUrl, connectionStatus } = useRosConnection();
     const { activeHardwareConfigName, controllerConfigsFromActive } = useActiveHardwareRos();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
     const [autoConnect, setAutoConnect] = useState(isAutoConnectEnabled);
+    const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
 
     useEffect(() => {
         setRosUrl(currentUrl);
@@ -39,6 +44,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         localStorage.setItem(AUTO_CONNECT_KEY, String(autoConnect));
         window.dispatchEvent(new Event('autoConnectChanged'));
     }, [autoConnect]);
+
+    useEffect(() => {
+        localStorage.setItem(SHOW_DEGREES_KEY, String(showDegrees));
+        window.dispatchEvent(new Event('showDegreesChanged'));
+    }, [showDegrees]);
 
     const handleSave = async () => {
         try {
@@ -107,6 +117,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                         onToggle={setAutoConnect}
                         title="Auto-connect"
                         width={120}
+                    />
+                </Form.Item>
+                <Form.Item
+                    tooltip={{ title: 'Choose whether joint angles are displayed and entered in degrees or radians.', icon: <InfoCircleOutlined /> }}
+                >
+                    <ToggleSwitch
+                        isOn={showDegrees}
+                        onToggle={setShowDegrees}
+                        title="Angle units"
+                        textOn="DEGREES"
+                        textOff="RADIANS"
+                        width={180}
                     />
                 </Form.Item>
                 <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Connection Info</Text>}>

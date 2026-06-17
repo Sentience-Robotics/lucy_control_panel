@@ -67,6 +67,7 @@ import { AnimationManager } from '../Components/AnimationManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
+import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
     UI_ACCENT_BOX_SHADOW_STRONG,
@@ -108,7 +109,7 @@ export const RobotControlPanel: React.FC = () => {
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showDegrees, setShowDegrees] = useState(true);
+    const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
@@ -131,6 +132,14 @@ export const RobotControlPanel: React.FC = () => {
     });
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+
+    // Angle units (degrees/radians) are configured in the Settings modal and
+    // persisted to localStorage; sync local state when they change.
+    useEffect(() => {
+        const handleShowDegreesChange = () => setShowDegrees(isShowDegreesEnabled());
+        window.addEventListener('showDegreesChanged', handleShowDegreesChange);
+        return () => window.removeEventListener('showDegreesChanged', handleShowDegreesChange);
+    }, []);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -550,13 +559,6 @@ export const RobotControlPanel: React.FC = () => {
             onClick: handleStopAnimation,
         }] : []),
         {
-            key: 'stream',
-            label: isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM',
-            icon: <VideoCameraOutlined />,
-            onClick: () => setIsStreamVisible(v => !v),
-            style: { color: isStreamVisible ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
-        },
-        {
             key: 'webcam',
             label: isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER',
             icon: <EyeOutlined />,
@@ -587,16 +589,6 @@ export const RobotControlPanel: React.FC = () => {
                         <InfoCircleOutlined style={{ color: '#888888', fontSize: 12, cursor: 'help', marginTop: 2 }} />
                     </Tooltip>
                 </div>
-
-                <ToggleSwitch
-                    isOn={showDegrees}
-                    onToggle={() => setShowDegrees(v => !v)}
-                    title="Angle units"
-                    textOn="DEGREES"
-                    textOff="RADIANS"
-                    width={180}
-                    height={32}
-                />
             </>
         )
     }
@@ -624,20 +616,34 @@ export const RobotControlPanel: React.FC = () => {
                     <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
                         <Col xs={24} lg="auto" >
                             {isMobile ? (
-                                <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
-                                    <div style={dropdownOverlayStyle}>{menu}</div>
-                                )}>
+                                <Space wrap>
+                                    <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
+                                        <div style={dropdownOverlayStyle}>{menu}</div>
+                                    )}>
+                                        <Button
+                                            icon={<MenuOutlined />}
+                                            style={{
+                                                backgroundColor: UI_COLOR_TRANSPARENT,
+                                                borderColor: UI_BORDER_SOFT,
+                                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                            }}
+                                        >
+                                            Control Options
+                                        </Button>
+                                    </Dropdown>
                                     <Button
-                                        icon={<MenuOutlined />}
+                                        icon={<VideoCameraOutlined />}
+                                        onClick={() => setIsStreamVisible(v => !v)}
                                         style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                            backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                            color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                            borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                            boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
                                         }}
                                     >
-                                        Control Options
+                                        {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
                                     </Button>
-                                </Dropdown>
+                                </Space>
                             ) : (
                                 <Space wrap>
                                     <Button
