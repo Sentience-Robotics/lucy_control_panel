@@ -221,7 +221,7 @@ export class JointStateHandler {
       const message = new ROSLIB.Message({
         header: { stamp, frame_id: '' },
         joint_names: names,
-        points: [{ positions, time_from_start: { sec: 0, nanosec: 200000000 } }],
+        points: [{ positions, time_from_start: { sec: 0, nanosec: 0.8e9 } }],
       });
       topic.publish(message);
     }
