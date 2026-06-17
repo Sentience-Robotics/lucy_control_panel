@@ -55,7 +55,7 @@ export const AppHeader: React.FC = () => {
 
         const checkAutoConnect = () => {
             if (isAutoConnectEnabled() && connectionStatusRef.current === 'disconnected') {
-                connect(currentUrlRef.current).catch(() => {});
+                connect(currentUrlRef.current).catch(() => { });
             }
         };
 
@@ -170,17 +170,15 @@ export const AppHeader: React.FC = () => {
                             boxShadow: `0 0 8px ${controllerColor}`,
                         }}
                     />
-                    {!isMobile && (
-                        <Text
-                            style={{
-                                color: controllerColor,
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                            }}
-                        >
-                            {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
-                        </Text>
-                    )}
+                    <Text
+                        style={{
+                            color: controllerColor,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                        }}
+                    >
+                        {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
+                    </Text>
                 </div>
             </Tooltip>
             {documentationUrl && (
