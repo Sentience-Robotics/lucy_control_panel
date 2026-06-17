@@ -22,14 +22,14 @@ interface SettingsModalProps {
 
 export const AUTO_CONNECT_KEY = 'autoConnectEnabled';
 
+export const isAutoConnectEnabled = () => localStorage.getItem(AUTO_CONNECT_KEY) !== 'false';
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     const { connect, currentUrl, connectionStatus } = useRosConnection();
     const { activeHardwareConfigName, controllerConfigsFromActive } = useActiveHardwareRos();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
-    const [autoConnect, setAutoConnect] = useState(() => {
-        return localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
-    });
+    const [autoConnect, setAutoConnect] = useState(isAutoConnectEnabled);
 
     useEffect(() => {
         setRosUrl(currentUrl);

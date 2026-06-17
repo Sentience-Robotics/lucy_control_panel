@@ -12,7 +12,7 @@ import {
     UI_ERROR,
     UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme';
-import { SettingsModal, AUTO_CONNECT_KEY } from './SettingsModal';
+import { SettingsModal, isAutoConnectEnabled } from './SettingsModal';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -54,8 +54,7 @@ export const AppHeader: React.FC = () => {
         let timer: ReturnType<typeof setInterval> | null = null;
 
         const checkAutoConnect = () => {
-            const isAutoConnectEnabled = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
-            if (isAutoConnectEnabled && connectionStatusRef.current === 'disconnected') {
+            if (isAutoConnectEnabled() && connectionStatusRef.current === 'disconnected') {
                 connect(currentUrlRef.current).catch(() => {});
             }
         };
@@ -64,7 +63,7 @@ export const AppHeader: React.FC = () => {
         timer = setInterval(checkAutoConnect, 5000);
 
         const handleAutoConnectChange = () => {
-            if (localStorage.getItem(AUTO_CONNECT_KEY) === 'true') {
+            if (isAutoConnectEnabled()) {
                 checkAutoConnect();
             }
         };
