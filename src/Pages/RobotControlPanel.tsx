@@ -82,6 +82,10 @@ import {
     UI_WARNING,
     UI_PANEL_BG,
     UI_BORDER_MUTED,
+    UI_BORDER_DIM,
+    UI_GRADIENT_MODAL_HEADER,
+    UI_MODAL_SURFACE,
+    UI_SHADOW_ELEVATED,
 } from '../Constants/uiTheme.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -720,6 +724,45 @@ export const RobotControlPanel: React.FC = () => {
                         ) : null }
                     </Row>
 
+                    {/* Mobile webcam sits inline under Control Robot and scrolls with the joint boxes. */}
+                    {isMobile && isWebcamActive && (
+                        <div
+                            style={{
+                                position: 'relative',
+                                width: '100%',
+                                height: '33.333vh',
+                                marginBottom: 12,
+                                backgroundColor: UI_MODAL_SURFACE,
+                                border: `1px solid ${UI_BORDER_MUTED}`,
+                                borderRadius: 8,
+                                boxShadow: UI_SHADOW_ELEVATED,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    height: 36,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '0 8px',
+                                    background: UI_GRADIENT_MODAL_HEADER,
+                                    borderBottom: `1px solid ${UI_BORDER_DIM}`,
+                                }}
+                            >
+                                <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
+                                    WEBCAM
+                                </span>
+                                <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
+                                    X
+                                </Button>
+                            </div>
+                            <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
+                                <MediapipeHandTracker moveRobotIndex={handleTeleopJoint} />
+                            </Suspense>
+                        </div>
+                    )}
+
                     <DndContext
                         sensors={sensors}
                         collisionDetection={rectIntersection}
@@ -776,19 +819,22 @@ export const RobotControlPanel: React.FC = () => {
                 </div>
             )}
 
-            <MovableModal
-                modalName="WEBCAM"
-                isVisible={isWebcamActive}
-                onClose={() => setIsWebcamActive(false)}
-                initialPosition={{ x: 400, y: 150 }}
-            >
-                {isWebcamActive && (
-                    <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
-                        <MediapipeHandTracker
-                            moveRobotIndex={handleTeleopJoint} />
-                    </Suspense>
-                )}
-            </MovableModal>
+            {/* Desktop keeps the floating, draggable webcam window. */}
+            {!isMobile && (
+                <MovableModal
+                    modalName="WEBCAM"
+                    isVisible={isWebcamActive}
+                    onClose={() => setIsWebcamActive(false)}
+                    initialPosition={{ x: 400, y: 150 }}
+                >
+                    {isWebcamActive && (
+                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
+                            <MediapipeHandTracker
+                                moveRobotIndex={handleTeleopJoint} />
+                        </Suspense>
+                    )}
+                </MovableModal>
+            )}
 
             {/* Another client took control */}
             {(() => {
