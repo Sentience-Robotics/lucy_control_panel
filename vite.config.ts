@@ -29,9 +29,8 @@ export default defineConfig(({ mode }) => {
     }
   }
 
-  // Hosts allowed to reach the dev server. Vite 5.4.12+ blocks requests whose
-  // Host header isn't whitelisted, which breaks reverse proxies (e.g. Caddy
-  // serving lucy.mister-esman.uk). Allow the public host from the env.
+  // Vite 5.4.12+ blocks requests whose host header isn't whitelisted, which breaks reverse proxies (e.g. Caddy).
+  // Allow the public host from the env.
   const allowedHosts = env.VITE_ALLOWED_HOST
     ? env.VITE_ALLOWED_HOST.split(",").map((h) => h.trim()).filter(Boolean)
     : undefined;
