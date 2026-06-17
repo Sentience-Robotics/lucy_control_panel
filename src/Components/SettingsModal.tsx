@@ -29,7 +29,7 @@ export const SHOW_DEGREES_KEY = 'showDegreesEnabled';
 export const isShowDegreesEnabled = () => localStorage.getItem(SHOW_DEGREES_KEY) !== 'false';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
-    const { connect, currentUrl, connectionStatus } = useRosConnection();
+    const { connect, disconnect, isConnected, currentUrl, connectionStatus } = useRosConnection();
     const { activeHardwareConfigName, controllerConfigsFromActive } = useActiveHardwareRos();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
@@ -56,6 +56,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
             onClose();
         } catch (error) {
             // Error is already logged in the hook
+        }
+    };
+
+    const handleConnectionChange = () => {
+        if (isConnected) {
+            // Disconnecting manually disables auto-connect so it doesn't immediately reconnect.
+            setAutoConnect(false);
+            disconnect();
+        } else {
+            connect(rosUrl).catch(() => { });
         }
     };
 
@@ -112,12 +122,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                 <Form.Item
                     tooltip={{ title: 'When enabled, the application will attempt to connect to the ROS bridge automatically on startup and periodically when disconnected.', icon: <InfoCircleOutlined /> }}
                 >
-                    <ToggleSwitch
-                        isOn={autoConnect}
-                        onToggle={setAutoConnect}
-                        title="Auto-connect"
-                        width={120}
-                    />
+                    <Space align="center" wrap>
+                        <ToggleSwitch
+                            isOn={autoConnect}
+                            onToggle={setAutoConnect}
+                            title="Auto-connect"
+                            width={120}
+                        />
+                        <Button
+                            onClick={handleConnectionChange}
+                            loading={connectionStatus === 'connecting'}
+                            style={{
+                                backgroundColor: UI_COLOR_TRANSPARENT,
+                                borderColor: UI_BORDER_SOFT,
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                            }}
+                        >
+                            {connectionStatus === 'connecting'
+                                ? 'Connecting...'
+                                : isConnected
+                                    ? 'Disconnect'
+                                    : 'Connect'}
+                        </Button>
+                    </Space>
                 </Form.Item>
                 <Form.Item
                     tooltip={{ title: 'Choose whether joint angles are displayed and entered in degrees or radians.', icon: <InfoCircleOutlined /> }}

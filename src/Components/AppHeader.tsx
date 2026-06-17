@@ -18,7 +18,7 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 export const AppHeader: React.FC = () => {
-    const { connectionStatus, isConnected, connect, disconnect, currentUrl } = useRosConnection();
+    const { connectionStatus, isConnected, connect, currentUrl } = useRosConnection();
     const [countState, setCountState] = useState<number>(0);
     const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
     const [activeControllerId, setActiveControllerId] = useState<string>(
@@ -111,14 +111,6 @@ export const AppHeader: React.FC = () => {
         return UI_TEXT_SECONDARY_MUTED;
     };
 
-    const handleConnectionChange = () => {
-        if (isConnected) {
-            disconnect()
-        } else {
-            connect(currentUrl)
-        }
-    }
-
     const bridgeColor = getConnectionStatusColor();
     const controllerColor = getControllerColor();
     const documentationUrl = import.meta.env.VITE_DOCUMENTATION_URL;
@@ -193,15 +185,6 @@ export const AppHeader: React.FC = () => {
             )}
             <Tooltip title="Settings">
                 <Button icon={<SettingOutlined />} onClick={() => setIsSettingsModalVisible(true)} />
-            </Tooltip>
-            <Tooltip title="Quick Connect">
-                <Button onClick={() => handleConnectionChange()} loading={connectionStatus === 'connecting'} >
-                    {
-                        connectionStatus === 'connecting'
-                            ? 'connecting' : connectionStatus === 'connected'
-                                ? 'Disconnect' : 'Connect'
-                    }
-                </Button>
             </Tooltip>
             <SettingsModal
                 visible={isSettingsModalVisible}
