@@ -29,18 +29,26 @@ export default defineConfig(({ mode }) => {
     }
   }
 
+  // Hosts allowed to reach the dev server. Vite 5.4.12+ blocks requests whose
+  // Host header isn't whitelisted, which breaks reverse proxies (e.g. Caddy
+  // serving lucy.mister-esman.uk). Allow the public host from the env.
+  const allowedHosts = env.VITE_ALLOWED_HOST
+    ? env.VITE_ALLOWED_HOST.split(",").map((h) => h.trim()).filter(Boolean)
+    : undefined;
+
   return {
     plugins: [react()],
     server: {
       https,
       host: true,
+      allowedHosts,
       port: parseInt(env.VITE_PORT || "5000"),
       hmr: https
         ? { protocol: "wss", clientPort: parseInt(env.VITE_PORT || "5000") }
         : undefined,
       proxy: {
         "^/rosbridge": {
-          target: "ws://127.0.0.1:9090",
+          target: `ws://127.0.0.1:${env.PORT_ROSBRIDGE || process.env.PORT_ROSBRIDGE || "9090"}`,
           ws: true,
           changeOrigin: true,
           secure: false,
