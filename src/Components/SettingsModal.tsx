@@ -84,6 +84,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
             onCancel={onClose}
             footer={[
                 <Button
+                    onClick={handleConnectionChange}
+                    loading={connectionStatus === 'connecting'}
+                    style={{
+                        backgroundColor: UI_COLOR_TRANSPARENT,
+                        borderColor: UI_BORDER_SOFT,
+                        color: UI_TEXT_PRIMARY_ON_DARK,
+                    }}
+                >
+                    {connectionStatus === 'connecting'
+                        ? 'Connecting...'
+                        : isConnected
+                            ? 'Disconnect'
+                            : 'Connect'}
+                </Button>,
+                <Button
                     key="back"
                     onClick={onClose}
                     style={{
@@ -129,21 +144,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                             title="Auto-connect"
                             width={120}
                         />
-                        <Button
-                            onClick={handleConnectionChange}
-                            loading={connectionStatus === 'connecting'}
-                            style={{
-                                backgroundColor: UI_COLOR_TRANSPARENT,
-                                borderColor: UI_BORDER_SOFT,
-                                color: UI_TEXT_PRIMARY_ON_DARK,
-                            }}
-                        >
-                            {connectionStatus === 'connecting'
-                                ? 'Connecting...'
-                                : isConnected
-                                    ? 'Disconnect'
-                                    : 'Connect'}
-                        </Button>
                     </Space>
                 </Form.Item>
                 <Form.Item
@@ -158,9 +158,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                         width={180}
                     />
                 </Form.Item>
-                <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Connection Info</Text>}>
+                <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>Connection Info</Text>}>
                     <Space direction="vertical">
-                        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Status: {connectionStatus}</Text>
                         <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Joints Loaded: {jointsLoaded}</Text>
                         <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Active Configuration: {activeHardwareConfigName || 'N/A'}</Text>
                     </Space>

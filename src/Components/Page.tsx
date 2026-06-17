@@ -319,7 +319,6 @@ export const Page: React.FC<PageProps> = ({
           background-color: ${UI_ACCENT_GREEN};
           color: ${UI_TEXT_ON_ACCENT};
           box-shadow: 0 0 15px ${uiAccentRgba(0.6)};
-          animation: buttonPulse 2s infinite;
         }
 
         .tui-toggle-divider {
