@@ -23,6 +23,38 @@ interface JointControlProps {
   disabled?: boolean;
 }
 
+interface TrackMarkerProps {
+  percent: number;
+  top: number;
+  color: string;
+  title: string;
+}
+
+// Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
+// Memoized to avoid re-rendering on every slider drag.
+const TrackMarker = React.memo(({ percent, top, color, title }: TrackMarkerProps) => (
+  <div
+    title={title}
+    aria-hidden
+    style={{
+      position: 'absolute',
+      left: 0,
+      top,
+      width: 4,
+      height: 4,
+      marginLeft: -2,
+      marginTop: -2,
+      backgroundColor: color,
+      borderRadius: 2,
+      pointerEvents: 'none',
+      boxShadow: `0 0 4px ${color}`,
+      transform: `translateX(${percent}cqw)`,
+      willChange: 'transform',
+    }}
+  />
+));
+TrackMarker.displayName = 'TrackMarker';
+
 export const JointControl: React.FC<JointControlProps> = React.memo(({
   joint,
   onValueChange,
@@ -151,7 +183,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ flex: 1, position: 'relative' }}>
+          <div style={{ flex: 1, position: 'relative', containerType: 'inline-size' }}>
             <Slider
               min={minDisplay}
               max={maxDisplay}
@@ -167,41 +199,23 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
               }}
             />
             {restBarPercent !== undefined && (
-              <div
+              <TrackMarker
+                percent={restBarPercent}
+                top={-6}
+                color={UI_ACCENT_GREEN}
                 title={`Default: ${actuatorNative || showDegrees
                   ? `${Math.round((actuatorNative ? joint.restValue! : radianToDegree(joint.restValue!)) * 10) / 10}°`
                   : `${Math.round(joint.restValue! * 1000) / 1000}rad`}`}
-                style={{
-                  position: 'absolute',
-                  left: `${restBarPercent}%`,
-                  top: -6,
-                  transform: 'translate(-50%, -50%)',
-                  width: 4,
-                  height: 4,
-                  backgroundColor: UI_ACCENT_GREEN,
-                  borderRadius: 2,
-                  pointerEvents: 'none',
-                  boxShadow: `0 0 4px ${UI_ACCENT_GREEN}`,
-                }}
               />
             )}
             {actualBarPercent !== undefined && (
-              <div
+              <TrackMarker
+                percent={actualBarPercent}
+                top={19}
+                color={UI_ACCENT_BLUE}
                 title={`Actual: ${actuatorNative || showDegrees
                   ? `${Math.round((actuatorNative ? joint.actualValue! : radianToDegree(joint.actualValue!)) * 10) / 10}°`
                   : `${Math.round(joint.actualValue! * 1000) / 1000}rad`}`}
-                style={{
-                  position: 'absolute',
-                  left: `${actualBarPercent}%`,
-                  top: 19,
-                  transform: 'translate(-50%, -50%)',
-                  width: 4,
-                  height: 4,
-                  backgroundColor: UI_ACCENT_BLUE,
-                  borderRadius: 2,
-                  pointerEvents: 'none',
-                  boxShadow: `0 0 4px ${UI_ACCENT_BLUE}`,
-                }}
               />
             )}
           </div>

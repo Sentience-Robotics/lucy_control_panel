@@ -1,9 +1,10 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useContext } from 'react';
 import { Select, Button, Tooltip } from 'antd';
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { StreamPlayer } from "./StreamPlayer.tsx";
 import { StreamMetrics } from "./StreamMetrics.tsx";
 import { MovableModal } from './MovableModal.tsx';
+import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import Robot3DViewer from '../Pages/Robot3DViewer.tsx';
 import { useAvailableTopics } from '../hooks/useAvailableTopics.ts';
 import { useStreamSources } from '../hooks/useStreamSources.ts';
@@ -67,6 +68,7 @@ export function StreamPlayerModal({
     const [hasEmptyDataWarning, setHasEmptyDataWarning] = useState<boolean>(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const headerHeight = useContext(HeaderHeightContext);
     const streamSources = useStreamSources();
     const cameraTopics = useMemo(
         () => streamSources.filter((s) => !s.virtual).map((s) => s.topic),
@@ -180,6 +182,8 @@ export function StreamPlayerModal({
             initialPosition={initialPosition}
             initialSize={initialSize}
             aspectRatio={aspectRatio}
+            mobileFixedTop
+            mobileTopOffset={headerHeight}
         >
             <div ref={containerRef} style={{ width: '100%', height: '100%', backgroundColor: 'black' }}>
                 {is3DView ? (

@@ -12,13 +12,13 @@ import {
     UI_ERROR,
     UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme';
-import { SettingsModal, AUTO_CONNECT_KEY } from './SettingsModal';
+import { SettingsModal, isAutoConnectEnabled } from './SettingsModal';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 export const AppHeader: React.FC = () => {
-    const { connectionStatus, isConnected, connect, disconnect, currentUrl } = useRosConnection();
+    const { connectionStatus, isConnected, connect, currentUrl } = useRosConnection();
     const [countState, setCountState] = useState<number>(0);
     const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
     const [activeControllerId, setActiveControllerId] = useState<string>(
@@ -54,9 +54,8 @@ export const AppHeader: React.FC = () => {
         let timer: ReturnType<typeof setInterval> | null = null;
 
         const checkAutoConnect = () => {
-            const isAutoConnectEnabled = localStorage.getItem(AUTO_CONNECT_KEY) === 'true';
-            if (isAutoConnectEnabled && connectionStatusRef.current === 'disconnected') {
-                connect(currentUrlRef.current).catch(() => {});
+            if (isAutoConnectEnabled() && connectionStatusRef.current === 'disconnected') {
+                connect(currentUrlRef.current).catch(() => { });
             }
         };
 
@@ -64,7 +63,7 @@ export const AppHeader: React.FC = () => {
         timer = setInterval(checkAutoConnect, 5000);
 
         const handleAutoConnectChange = () => {
-            if (localStorage.getItem(AUTO_CONNECT_KEY) === 'true') {
+            if (isAutoConnectEnabled()) {
                 checkAutoConnect();
             }
         };
@@ -111,14 +110,6 @@ export const AppHeader: React.FC = () => {
         if (activeControllerId !== '') return UI_WARNING;
         return UI_TEXT_SECONDARY_MUTED;
     };
-
-    const handleConnectionChange = () => {
-        if (isConnected) {
-            disconnect()
-        } else {
-            connect(currentUrl)
-        }
-    }
 
     const bridgeColor = getConnectionStatusColor();
     const controllerColor = getControllerColor();
@@ -171,17 +162,15 @@ export const AppHeader: React.FC = () => {
                             boxShadow: `0 0 8px ${controllerColor}`,
                         }}
                     />
-                    {!isMobile && (
-                        <Text
-                            style={{
-                                color: controllerColor,
-                                fontFamily: 'monospace',
-                                fontSize: 12,
-                            }}
-                        >
-                            {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
-                        </Text>
-                    )}
+                    <Text
+                        style={{
+                            color: controllerColor,
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                        }}
+                    >
+                        {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
+                    </Text>
                 </div>
             </Tooltip>
             {documentationUrl && (
@@ -196,15 +185,6 @@ export const AppHeader: React.FC = () => {
             )}
             <Tooltip title="Settings">
                 <Button icon={<SettingOutlined />} onClick={() => setIsSettingsModalVisible(true)} />
-            </Tooltip>
-            <Tooltip title="Quick Connect">
-                <Button onClick={() => handleConnectionChange()} loading={connectionStatus === 'connecting'} >
-                    {
-                        connectionStatus === 'connecting'
-                            ? 'connecting' : connectionStatus === 'connected'
-                                ? 'Disconnect' : 'Connect'
-                    }
-                </Button>
             </Tooltip>
             <SettingsModal
                 visible={isSettingsModalVisible}
