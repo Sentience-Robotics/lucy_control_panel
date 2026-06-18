@@ -39,6 +39,7 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
         transition,
         opacity: isBeingDragged ? 0.5 : 1,
         position: 'relative' as const,
+        isolation: 'isolate' as const,
         width: '100%',
         height: '100%',
         display: 'flex',

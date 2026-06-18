@@ -67,6 +67,7 @@ import { AnimationManager } from '../Components/AnimationManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
+import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
     UI_ACCENT_BOX_SHADOW_STRONG,
@@ -81,6 +82,10 @@ import {
     UI_WARNING,
     UI_PANEL_BG,
     UI_BORDER_MUTED,
+    UI_BORDER_DIM,
+    UI_GRADIENT_MODAL_HEADER,
+    UI_MODAL_SURFACE,
+    UI_SHADOW_ELEVATED,
 } from '../Constants/uiTheme.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -108,7 +113,7 @@ export const RobotControlPanel: React.FC = () => {
     const actualPositionsRef = useRef<Map<string, number>>(new Map());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showDegrees, setShowDegrees] = useState(true);
+    const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
@@ -131,6 +136,14 @@ export const RobotControlPanel: React.FC = () => {
     });
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+
+    // Angle units (degrees/radians) are configured in the Settings modal and
+    // persisted to localStorage; sync local state when they change.
+    useEffect(() => {
+        const handleShowDegreesChange = () => setShowDegrees(isShowDegreesEnabled());
+        window.addEventListener('showDegreesChanged', handleShowDegreesChange);
+        return () => window.removeEventListener('showDegreesChanged', handleShowDegreesChange);
+    }, []);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -550,13 +563,6 @@ export const RobotControlPanel: React.FC = () => {
             onClick: handleStopAnimation,
         }] : []),
         {
-            key: 'stream',
-            label: isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM',
-            icon: <VideoCameraOutlined />,
-            onClick: () => setIsStreamVisible(v => !v),
-            style: { color: isStreamVisible ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
-        },
-        {
             key: 'webcam',
             label: isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER',
             icon: <EyeOutlined />,
@@ -587,16 +593,6 @@ export const RobotControlPanel: React.FC = () => {
                         <InfoCircleOutlined style={{ color: '#888888', fontSize: 12, cursor: 'help', marginTop: 2 }} />
                     </Tooltip>
                 </div>
-
-                <ToggleSwitch
-                    isOn={showDegrees}
-                    onToggle={() => setShowDegrees(v => !v)}
-                    title="Angle units"
-                    textOn="DEGREES"
-                    textOff="RADIANS"
-                    width={180}
-                    height={32}
-                />
             </>
         )
     }
@@ -608,6 +604,12 @@ export const RobotControlPanel: React.FC = () => {
             contentStyle={{ padding: 12, position: 'relative' }}
             removeScrollbars={false}
         >
+            <StreamPlayerModal
+                isVisible={isStreamVisible}
+                onClose={() => setIsStreamVisible(false)}
+                initialPosition={{ x: 100, y: 100 }}
+            />
+
             {!isConnected ? (
                 <LucyLoader
                     label={isConnecting ? 'CONNECTING TO ROS BRIDGE' : 'WAITING FOR ROS BRIDGE'}
@@ -620,24 +622,38 @@ export const RobotControlPanel: React.FC = () => {
                     showSpinner={isConnecting}
                 />
             ) : (
-                <>
+                <div style={{ position: 'relative', isolation: 'isolate' }}>
                     <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
                         <Col xs={24} lg="auto" >
                             {isMobile ? (
-                                <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
-                                    <div style={dropdownOverlayStyle}>{menu}</div>
-                                )}>
+                                <Space wrap>
+                                    <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
+                                        <div style={dropdownOverlayStyle}>{menu}</div>
+                                    )}>
+                                        <Button
+                                            icon={<MenuOutlined />}
+                                            style={{
+                                                backgroundColor: UI_COLOR_TRANSPARENT,
+                                                borderColor: UI_BORDER_SOFT,
+                                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                            }}
+                                        >
+                                            Control Options
+                                        </Button>
+                                    </Dropdown>
                                     <Button
-                                        icon={<MenuOutlined />}
+                                        icon={<VideoCameraOutlined />}
+                                        onClick={() => setIsStreamVisible(v => !v)}
                                         style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                            backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                            color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                            borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                            boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
                                         }}
                                     >
-                                        Control Options
+                                        {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
                                     </Button>
-                                </Dropdown>
+                                </Space>
                             ) : (
                                 <Space wrap>
                                     <Button
@@ -708,6 +724,45 @@ export const RobotControlPanel: React.FC = () => {
                         ) : null }
                     </Row>
 
+                    {/* Mobile webcam sits inline under Control Robot and scrolls with the joint boxes. */}
+                    {isMobile && isWebcamActive && (
+                        <div
+                            style={{
+                                position: 'relative',
+                                width: '100%',
+                                height: '33.333vh',
+                                marginBottom: 12,
+                                backgroundColor: UI_MODAL_SURFACE,
+                                border: `1px solid ${UI_BORDER_MUTED}`,
+                                borderRadius: 8,
+                                boxShadow: UI_SHADOW_ELEVATED,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <div
+                                style={{
+                                    height: 36,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '0 8px',
+                                    background: UI_GRADIENT_MODAL_HEADER,
+                                    borderBottom: `1px solid ${UI_BORDER_DIM}`,
+                                }}
+                            >
+                                <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
+                                    WEBCAM
+                                </span>
+                                <Button size="small" danger onClick={() => setIsWebcamActive(false)}>
+                                    X
+                                </Button>
+                            </div>
+                            <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
+                                <MediapipeHandTracker moveRobotIndex={handleTeleopJoint} />
+                            </Suspense>
+                        </div>
+                    )}
+
                     <DndContext
                         sensors={sensors}
                         collisionDetection={rectIntersection}
@@ -761,28 +816,25 @@ export const RobotControlPanel: React.FC = () => {
                             ) : null}
                         </DragOverlay>
                     </DndContext>
-                </>
+                </div>
             )}
 
-            <StreamPlayerModal
-                isVisible={isStreamVisible}
-                onClose={() => setIsStreamVisible(false)}
-                initialPosition={{ x: 100, y: 100 }}
-            />
-
-            <MovableModal
-                modalName="WEBCAM"
-                isVisible={isWebcamActive}
-                onClose={() => setIsWebcamActive(false)}
-                initialPosition={{ x: 400, y: 150 }}
-            >
-                {isWebcamActive && (
-                    <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
-                        <MediapipeHandTracker
-                            moveRobotIndex={handleTeleopJoint} />
-                    </Suspense>
-                )}
-            </MovableModal>
+            {/* Desktop keeps the floating, draggable webcam window. */}
+            {!isMobile && (
+                <MovableModal
+                    modalName="WEBCAM"
+                    isVisible={isWebcamActive}
+                    onClose={() => setIsWebcamActive(false)}
+                    initialPosition={{ x: 400, y: 150 }}
+                >
+                    {isWebcamActive && (
+                        <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
+                            <MediapipeHandTracker
+                                moveRobotIndex={handleTeleopJoint} />
+                        </Suspense>
+                    )}
+                </MovableModal>
+            )}
 
             {/* Another client took control */}
             {(() => {

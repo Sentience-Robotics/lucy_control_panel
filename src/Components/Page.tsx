@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Layout, Typography, Grid } from 'antd';
 import {
@@ -17,6 +17,7 @@ import {
   uiAccentRgba,
 } from '../Constants/uiTheme.ts';
 import { AppHeader } from './AppHeader.tsx';
+import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -41,6 +42,19 @@ export const Page: React.FC<PageProps> = ({
 }) => {
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
+
+  const headerRef = useRef<HTMLElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) { return; }
+    const update = () => setHeaderHeight(el.getBoundingClientRect().height);
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [showHeader]);
 
   const defaultContentStyle: React.CSSProperties = {
     backgroundColor: UI_BG_BLACK,
@@ -229,29 +243,29 @@ export const Page: React.FC<PageProps> = ({
 
         .tui-title {
           color: ${UI_ACCENT_GREEN};
-          font-family: 'monospace';
+          font-family: monospace;
           text-shadow: ${UI_ACCENT_TEXT_SHADOW};
           font-weight: bold;
         }
 
         .tui-text {
           color: ${UI_TEXT_PRIMARY_ON_DARK};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-text-muted {
           color: ${UI_TEXT_SECONDARY_MUTED};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-text-danger {
           color: ${UI_ERROR};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-text-success {
           color: ${UI_ACCENT_GREEN};
-          font-family: 'monospace';
+          font-family: monospace;
         }
 
         .tui-container {
@@ -270,7 +284,7 @@ export const Page: React.FC<PageProps> = ({
           display: inline-flex;
           border: 1px solid ${UI_BORDER_SOFT};
           background-color: ${UI_INPUT_SURFACE};
-          font-family: 'monospace';
+          font-family: monospace;
           font-size: 12px;
           transition: all 0.3s ease;
           position: relative;
@@ -287,7 +301,7 @@ export const Page: React.FC<PageProps> = ({
           border: none;
           background-color: transparent;
           color: ${UI_TEXT_SECONDARY_MUTED};
-          font-family: 'monospace';
+          font-family: monospace;
           font-size: 12px;
           font-weight: bold;
           cursor: pointer;
@@ -305,7 +319,6 @@ export const Page: React.FC<PageProps> = ({
           background-color: ${UI_ACCENT_GREEN};
           color: ${UI_TEXT_ON_ACCENT};
           box-shadow: 0 0 15px ${uiAccentRgba(0.6)};
-          animation: buttonPulse 2s infinite;
         }
 
         .tui-toggle-divider {
@@ -377,6 +390,7 @@ export const Page: React.FC<PageProps> = ({
     <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
       {showHeader && (
         <Header
+          ref={headerRef}
           style={{
             backgroundColor: UI_PANEL_BG,
             borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
@@ -387,7 +401,7 @@ export const Page: React.FC<PageProps> = ({
             paddingBottom: 8,
             position: 'sticky',
             top: 0,
-            zIndex: 1,
+            zIndex: 2,
           }}
         >
           <div style={{
@@ -417,7 +431,11 @@ export const Page: React.FC<PageProps> = ({
         </Header>
       )}
 
-      <Content style={defaultContentStyle}>{children}</Content>
+      <Content style={defaultContentStyle}>
+        <HeaderHeightContext.Provider value={headerHeight}>
+          {children}
+        </HeaderHeightContext.Provider>
+      </Content>
 
       <style>{tuiGlobalCss}</style>
     </Layout>

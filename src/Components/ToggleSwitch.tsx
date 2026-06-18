@@ -1,9 +1,6 @@
 import React from 'react';
 import {
     UI_ACCENT_GREEN,
-    UI_CHROME_SURFACE,
-    UI_TEXT_ON_ACCENT,
-    UI_TOGGLE_TRACK_BORDER,
 } from '../Constants/uiTheme.ts';
 
 export interface ToggleSwitchProps {
@@ -15,7 +12,6 @@ export interface ToggleSwitchProps {
     textOn?: string;
     textOff?: string;
     width?: number;
-    height?: number;
 }
 
 export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
@@ -26,8 +22,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     rightIcon,
     textOn = 'ON',
     textOff = 'OFF',
-    width = 180,
-    height = 32
+    width,
 }) => {
     return (
         <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}>
@@ -41,80 +36,27 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
             }}>
                 {title}
             </span>
-            <button
-                onClick={() => onToggle(!isOn)}
-                aria-pressed={isOn}
-                aria-label={`${title}: ${isOn ? 'on' : 'off'}`}
-                style={{
-                    width,
-                    height,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    position: 'relative',
-                    padding: 2,
-                    borderRadius: 18,
-                    backgroundColor: UI_CHROME_SURFACE,
-                    border: `1px solid ${UI_TOGGLE_TRACK_BORDER}`,
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    outline: 'none',
-                    color: UI_ACCENT_GREEN,
-                }}
-            >
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: 2,
-                        left: isOn ? `calc(50% + 2px)` : 2,
-                        width: `calc(50% - 4px)`,
-                        height: `calc(100% - 4px)`,
-                        borderRadius: 16,
-                        backgroundColor: UI_ACCENT_GREEN,
-                        boxShadow: isOn ? `0 0 12px ${UI_ACCENT_GREEN}` : 'none',
-                        transition: 'left 160ms ease, box-shadow 160ms ease',
-                    }}
-                />
-                <span
-                    style={{
-                        width: '50%',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 4,
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        letterSpacing: 0.5,
-                        zIndex: 1,
-                        color: isOn ? UI_ACCENT_GREEN : UI_TEXT_ON_ACCENT,
-                        opacity: isOn ? 0.9 : 1,
-                    }}
+            <div className="tui-toggle" style={{ width: width ? `${width}px` : 'auto', display: 'flex' }}>
+                <button
+                    className={`tui-toggle-button${!isOn ? ' active' : ''}`}
+                    onClick={() => onToggle(false)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
+                    aria-label={`${title}: ${textOff}`}
                 >
                     {leftIcon}
                     {textOff}
-                </span>
-                <span
-                    style={{
-                        width: '50%',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 4,
-                        textAlign: 'center',
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        letterSpacing: 0.5,
-                        zIndex: 1,
-                        color: isOn ? UI_TEXT_ON_ACCENT : UI_ACCENT_GREEN,
-                    }}
+                </button>
+                <div className="tui-toggle-divider" />
+                <button
+                    className={`tui-toggle-button${isOn ? ' active' : ''}`}
+                    onClick={() => onToggle(true)}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
+                    aria-label={`${title}: ${textOn}`}
                 >
                     {rightIcon}
                     {textOn}
-                </span>
-            </button>
+                </button>
+            </div>
         </div>
     );
 };
