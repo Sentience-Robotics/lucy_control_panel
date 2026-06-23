@@ -113,7 +113,6 @@ export const AppHeader: React.FC = () => {
 
     const bridgeColor = getConnectionStatusColor();
     const controllerColor = getControllerColor();
-    const documentationUrl = import.meta.env.VITE_DOCUMENTATION_URL;
 
     const statusStyle: React.CSSProperties = {
         display: 'inline-flex',
@@ -173,16 +172,14 @@ export const AppHeader: React.FC = () => {
                     </Text>
                 </div>
             </Tooltip>
-            {documentationUrl && (
-                <Tooltip title="Documentation">
-                    <Button
-                        icon={isMobile ? <ReadOutlined /> : undefined}
-                        onClick={() => window.open(documentationUrl, '_blank')}
-                    >
-                        {!isMobile && 'Documentation'}
-                    </Button>
-                </Tooltip>
-            )}
+            <Tooltip title="Documentation">
+                <Button
+                    icon={isMobile ? <ReadOutlined /> : undefined}
+                    onClick={() => window.open('https://docs.sentience-robotics.fr/share/p1x9ikjkhf/p/public-documentation-EExgMX2REV', '_blank')}
+                >
+                    {!isMobile && 'Documentation'}
+                </Button>
+            </Tooltip>
             <Tooltip title="Settings">
                 <Button icon={<SettingOutlined />} onClick={() => setIsSettingsModalVisible(true)} />
             </Tooltip>
