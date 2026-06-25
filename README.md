@@ -140,7 +140,7 @@ VITE_OVERRIDE_ROS_BRIDGE_SERVER_URL=https://100.100.100.100:5000/rosbridge
 
 VITE_ENABLE_LOGS=true
 
-# Hardware YAML editor (`/configuration`): header shows `robot_name` from loaded YAML (via ROS config/get).
+# Hardware YAML editor (`/robot-configuration`): header shows `robot_name` from loaded YAML (via ROS config/get).
 ```
 
 ### Authentication Setup

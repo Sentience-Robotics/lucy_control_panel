@@ -10,6 +10,7 @@ import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
 import { LucyLoader } from './Components/LucyLoader';
+import { ROUTES } from './Constants/routes.ts';
 import {
     UI_ACCENT_GREEN,
     UI_BG_BLACK,
@@ -26,15 +27,16 @@ const { useBreakpoint } = Grid;
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
 const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
 
-const CONTROL_PATH = '/';
-const CONFIG_PATH = '/configuration';
-const SENSORS_PATH = '/sensors';
-const KNOWN_PATHS = new Set<string>([CONTROL_PATH, CONFIG_PATH, SENSORS_PATH]);
+const KNOWN_PATHS = new Set<string>([
+    ROUTES.control,
+    ROUTES.robotConfiguration,
+    ROUTES.sensors,
+]);
 
 /**
  * Render all main pages once and toggle visibility with `display: none`.
  * Keeps page-local state (sliders, edits, expanded panels) alive when the
- * user switches between CONTROL / CONFIGURATION. Lazy pages are only mounted
+ * user switches between CONTROL / ROBOT CONFIGURATION. Lazy pages are only mounted
  * after their first visit so the initial chunk stays small.
  */
 const PersistentPages: FC = () => {
@@ -43,8 +45,8 @@ const PersistentPages: FC = () => {
     const [sensorsVisited, setSensorsVisited] = useState(false);
 
     useEffect(() => {
-        if (pathname === CONFIG_PATH) setConfigVisited(true);
-        if (pathname === SENSORS_PATH) setSensorsVisited(true);
+        if (pathname === ROUTES.robotConfiguration) setConfigVisited(true);
+        if (pathname === ROUTES.sensors) setSensorsVisited(true);
     }, [pathname]);
 
     const isKnown = KNOWN_PATHS.has(pathname);
@@ -55,16 +57,16 @@ const PersistentPages: FC = () => {
 
     return (
         <>
-            <div style={pageStyle(pathname === CONTROL_PATH)}>
+            <div style={pageStyle(pathname === ROUTES.control)}>
                 <RobotControlPanel />
             </div>
             {configVisited ? (
-                <div style={pageStyle(pathname === CONFIG_PATH)}>
+                <div style={pageStyle(pathname === ROUTES.robotConfiguration)}>
                     <Suspense
                         fallback={
                             <LucyLoader
-                                label="LOADING CONFIGURATION"
-                                detail="Preparing the hardware configuration page."
+                                label="LOADING ROBOT CONFIGURATION"
+                                detail="Preparing the robot configuration page."
                             />
                         }
                     >
@@ -73,7 +75,7 @@ const PersistentPages: FC = () => {
                 </div>
             ) : null}
             {sensorsVisited ? (
-                <div style={pageStyle(pathname === SENSORS_PATH)}>
+                <div style={pageStyle(pathname === ROUTES.sensors)}>
                     <Suspense
                         fallback={
                             <LucyLoader

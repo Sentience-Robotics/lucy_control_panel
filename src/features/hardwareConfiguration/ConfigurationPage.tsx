@@ -26,7 +26,7 @@ const ConfigurationPage = () => {
                     <Card style={{ maxWidth: 400, textAlign: 'center', ...UI_CARD_SURFACE_STYLE }}>
                         <Title level={4}>Unsupported Screen Size</Title>
                         <Text>
-                            The hardware configuration page is not available on small screens. Please use a tablet or computer for a better experience.
+                            The robot configuration page is not available on small screens. Please use a tablet or computer for a better experience.
                         </Text>
                     </Card>
                 </div>
@@ -155,7 +155,7 @@ const ConfigurationPage = () => {
 
             {!hw.yamlDoc ? (
                 <LucyLoader
-                    label={hw.loading ? 'LOADING HARDWARE CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
+                    label={hw.loading ? 'LOADING ROBOT CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
                     connectButton={!hw.loading}
                     detail={
                         hw.loading
