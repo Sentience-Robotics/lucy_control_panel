@@ -401,7 +401,7 @@ export const Page: React.FC<PageProps> = ({
             paddingBottom: 8,
             position: 'sticky',
             top: 0,
-            zIndex: 2,
+            zIndex: 10,
           }}
         >
           <div style={{
