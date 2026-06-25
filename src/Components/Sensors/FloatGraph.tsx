@@ -1,17 +1,11 @@
 import React, { useRef } from 'react';
 import { Button } from 'antd';
+import type { SensorSource } from '../../Constants/rosConfig';
 import { UI_ACCENT_GREEN, UI_BG_BLACK, UI_BORDER_SOFT } from '../../Constants/uiTheme';
-import type { SensorSample } from '../../hooks/useSensorStream';
+import { useSensorStream } from '../../hooks/useSensorStream';
 
 interface FloatGraphProps {
-    sourceName: string;
-    topic?: string;
-    samples: SensorSample[];
-    currentValue: number | null;
-    yAxisMin: number | null;
-    yAxisMax: number | null;
-    isPaused: boolean;
-    onPausedChange: (paused: boolean) => void;
+    source: SensorSource;
 }
 
 function resolveYAxisBounds(
@@ -29,18 +23,18 @@ function resolveYAxisBounds(
     return { minValue: historicalMin - pad, maxValue: historicalMax + pad };
 }
 
-export const FloatGraph: React.FC<FloatGraphProps> = ({
-    sourceName,
-    topic,
-    samples,
-    currentValue,
-    yAxisMin,
-    yAxisMax,
-    isPaused,
-    onPausedChange,
-}) => {
+/** Live time-series graph for a single float value on a `sensors/<scope>` Float32Array topic. */
+export const FloatGraph: React.FC<FloatGraphProps> = ({ source }) => {
     const graphRef = useRef<HTMLDivElement>(null);
-    const { minValue, maxValue } = resolveYAxisBounds(yAxisMin, yAxisMax);
+    const {
+        displaySamples,
+        currentValue,
+        historicalMin,
+        historicalMax,
+        isPaused,
+        setPaused,
+    } = useSensorStream(source);
+    const { minValue, maxValue } = resolveYAxisBounds(historicalMin, historicalMax);
 
     const renderGraph = () => {
         const width = graphRef.current?.clientWidth || 300;
@@ -64,11 +58,11 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({
                 (height - paddingY * 2);
 
         const midValue = (minValue + maxValue) / 2;
-        const latest = samples[samples.length - 1];
+        const latest = displaySamples[displaySamples.length - 1];
 
         const pathData =
-            samples.length >= 2
-                ? samples
+            displaySamples.length >= 2
+                ? displaySamples
                       .map((sample, index) => {
                           const x = mapX(sample.time);
                           const y = mapY(sample.value);
@@ -179,19 +173,17 @@ export const FloatGraph: React.FC<FloatGraphProps> = ({
             >
                 <div style={{ minWidth: 0 }}>
                     <span className="tui-text-success" style={{ fontWeight: 'bold' }}>
-                        {sourceName}
+                        {source.name}
                     </span>
-                    {topic ? (
-                        <div className="tui-text-muted" style={{ fontSize: '11px' }}>
-                            {topic}
-                        </div>
-                    ) : null}
+                    <div className="tui-text-muted" style={{ fontSize: '11px' }}>
+                        {source.topic}
+                    </div>
                 </div>
                 <div>
                     <span className="tui-text-muted" style={{ marginRight: '10px' }}>
                         {isPaused ? '[PAUSED]' : '[LIVE]'}
                     </span>
-                    <Button size="small" onClick={() => onPausedChange(!isPaused)}>
+                    <Button size="small" onClick={() => setPaused(!isPaused)}>
                         {isPaused ? 'Resume' : 'Pause'}
                     </Button>
                 </div>

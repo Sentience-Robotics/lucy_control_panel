@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Alert, Col, Row, Select } from 'antd';
-import { PressureSensorGraph } from '../Components/Sensors';
+import { FloatGraph } from '../Components/Sensors';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { useSensorSources } from '../hooks/useSensorSources';
@@ -97,7 +97,7 @@ const SensorDisplay: React.FC = () => {
             <Row gutter={[16, 16]}>
                 {selectedSources.map((source) => (
                     <Col key={source.id} xs={24} sm={12} md={8}>
-                        <PressureSensorGraph source={source} />
+                        <FloatGraph source={source} />
                     </Col>
                 ))}
             </Row>
