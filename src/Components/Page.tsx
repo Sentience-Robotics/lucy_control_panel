@@ -11,6 +11,7 @@ import {
   UI_INPUT_SURFACE,
   UI_PANEL_BG,
   UI_PAGE_HEADER_BORDER_BOTTOM,
+  PAGE_CONTENT_STYLE,
   UI_TEXT_ON_ACCENT,
   UI_TEXT_PRIMARY_ON_DARK,
   UI_TEXT_SECONDARY_MUTED,
@@ -59,7 +60,7 @@ export const Page: React.FC<PageProps> = ({
   const defaultContentStyle: React.CSSProperties = {
     backgroundColor: UI_BG_BLACK,
     minHeight: showHeader ? 'calc(100vh - 70px)' : '100vh',
-    padding: isMobile ? '12px' : '24px',
+    ...PAGE_CONTENT_STYLE,
     ...contentStyle,
   };
 
@@ -391,14 +392,16 @@ export const Page: React.FC<PageProps> = ({
       {showHeader && (
         <Header
           ref={headerRef}
+          className="lucy-page-header"
           style={{
             backgroundColor: UI_PANEL_BG,
             borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
-            padding: isMobile ? '8px 12px' : '0 24px',
+            padding: isMobile ? '8px 12px' : '8px 24px',
             height: 'auto',
             lineHeight: 'normal',
-            paddingTop: 8,
-            paddingBottom: 8,
+            minHeight: isMobile ? 80 : 48,
+            boxSizing: 'border-box',
+            flexShrink: 0,
             position: 'sticky',
             top: 0,
             zIndex: 10,
@@ -408,8 +411,10 @@ export const Page: React.FC<PageProps> = ({
             display: 'flex',
             flexDirection: isMobile ? 'column' : 'row',
             justifyContent: 'space-between',
-            alignItems: isMobile ? 'flex-start' : 'center',
-            gap: isMobile ? 8 : 0,
+            alignItems: 'center',
+            gap: isMobile ? 8 : 12,
+            width: '100%',
+            minHeight: isMobile ? 64 : 32,
           }}>
             {title && (
               <Title

@@ -10,8 +10,10 @@ import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
 import { LucyLoader } from './Components/LucyLoader';
+import { Page } from './Components/Page';
 import { ROUTES } from './Constants/routes.ts';
 import {
+    PAGE_CONTENT_STYLE,
     UI_ACCENT_GREEN,
     UI_BG_BLACK,
     UI_BORDER_STRONG,
@@ -21,7 +23,6 @@ import {
     UI_TEXT_SUBTLE,
 } from './Constants/uiTheme.ts';
 
-const { Content } = Layout;
 const { useBreakpoint } = Grid;
 
 const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
@@ -181,9 +182,17 @@ function App() {
             <Router>
                 <ActiveHardwareRosProvider>
                     <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
-                        <Content style={{ paddingBottom: isMobile ? '60px' : '0' }}>
+                        <Page
+                            showHeader
+                            title
+                            removeScrollbars={false}
+                            contentStyle={{
+                                ...PAGE_CONTENT_STYLE,
+                                paddingBottom: isMobile ? 72 : PAGE_CONTENT_STYLE.padding,
+                            }}
+                        >
                             <PersistentPages />
-                        </Content>
+                        </Page>
                         <Navigation />
                     </Layout>
                 </ActiveHardwareRosProvider>

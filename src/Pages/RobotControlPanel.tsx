@@ -13,7 +13,6 @@ import {
     ReloadOutlined,
     ThunderboltOutlined,
     StopOutlined,
-    InfoCircleOutlined,
     MenuOutlined,
     VideoCameraOutlined,
     EyeOutlined,
@@ -58,7 +57,6 @@ import {
 } from '../Constants/hardwareConfigDefaults';
 
 /* Components */
-import { Page } from '../Components/Page';
 import { LucyLoader } from '../Components/LucyLoader';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
@@ -510,30 +508,28 @@ export const RobotControlPanel: React.FC = () => {
 
     if (isConnected && loading) {
         return (
-            <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                 <Spin size="large" />
                 <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
                     Loading robot configuration...
                 </Text>
-            </Page>
+            </div>
         );
     }
 
     if (isConnected && error) {
         return (
-            <Page>
-                <Alert
-                    message="Error Loading Robot Configuration"
-                    description={error}
-                    type="error"
-                    showIcon
-                    action={
-                        <Button size="small" onClick={() => void refetchActiveHardware()}>
-                            Retry
-                        </Button>
-                    }
-                />
-            </Page>
+            <Alert
+                message="Error Loading Robot Configuration"
+                description={error}
+                type="error"
+                showIcon
+                action={
+                    <Button size="small" onClick={() => void refetchActiveHardware()}>
+                        Retry
+                    </Button>
+                }
+            />
         );
     }
 
@@ -577,33 +573,23 @@ export const RobotControlPanel: React.FC = () => {
         borderRadius: 4,
     };
 
-    const switches = () => {
-        return(
-            <>
-                <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 4 }}>
-                    <ToggleSwitch
-                        isOn={isSending}
-                        onToggle={handleControlRobotToggle}
-                        title="Control Robot"
-                        rightIcon={<ThunderboltOutlined />}
-                        width={180}
-                        height={32}
-                    />
-                    <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
-                        <InfoCircleOutlined style={{ color: '#888888', fontSize: 12, cursor: 'help', marginTop: 2 }} />
-                    </Tooltip>
-                </div>
-            </>
-        )
-    }
+    const switches = () => (
+        <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
+            <span style={{ display: 'inline-flex', cursor: 'help' }}>
+                <ToggleSwitch
+                    isOn={isSending}
+                    onToggle={handleControlRobotToggle}
+                    title="Control Robot"
+                    titlePlacement="inline"
+                    rightIcon={<ThunderboltOutlined />}
+                    width={180}
+                />
+            </span>
+        </Tooltip>
+    );
 
     return (
-        <Page
-            showHeader
-            title
-            contentStyle={{ padding: 12, position: 'relative' }}
-            removeScrollbars={false}
-        >
+        <>
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
@@ -623,9 +609,9 @@ export const RobotControlPanel: React.FC = () => {
                 />
             ) : (
                 <div style={{ position: 'relative', isolation: 'isolate' }}>
-                    <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
-                        <Col xs={24} lg="auto" >
-                            {isMobile ? (
+                    {isMobile ? (
+                        <Row gutter={[12, 12]} align="middle" style={{ marginBottom: 12 }}>
+                            <Col xs={24}>
                                 <Space wrap>
                                     <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
                                         <div style={dropdownOverlayStyle}>{menu}</div>
@@ -654,75 +640,75 @@ export const RobotControlPanel: React.FC = () => {
                                         {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
                                     </Button>
                                 </Space>
-                            ) : (
-                                <Space wrap>
-                                    <Button
-                                        icon={<ReloadOutlined />}
-                                        onClick={handleResetAll}
-                                        style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
-                                        }}
-                                    >
-                                        RESET ALL
-                                    </Button>
-
-                                    <PoseManager
-                                        joints={joints}
-                                        onLoadPose={handleLoadPose}
-                                    />
-                                    <AnimationManager onPlayAnimation={handlePlayAnimation} />
-                                    {isAnimating && (
-                                        <Button
-                                            danger
-                                            icon={<StopOutlined />}
-                                            onClick={handleStopAnimation}
-                                        >
-                                            STOP ANIMATION
-                                        </Button>
-                                    )}
-                                    <Button
-                                        onClick={() => setIsStreamVisible(v => !v)}
-                                        style={{
-                                            backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                            color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                            borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                            boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                        }}
-                                    >
-                                        {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                                    </Button>
-                                    <Button
-                                        onClick={() => setIsWebcamActive(v => !v)}
-                                        style={{
-                                            backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                            color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                            borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                            boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                        }}
-                                    >
-                                        {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
-                                    </Button>
-                                </Space>
-                            )}
-                            { isMobile ? null : (
-                                <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
-                                    <Col>
-                                        {switches()}
-                                    </Col>
-                                </Row>
-                            )}
-                        </Col>
-
-                        { isMobile ? (
-                            <Col xs={24} lg="auto" style={{ display: 'flex', justifyContent: 'center' }}>
-                                <Space wrap style={{ justifyContent: 'center', width: '100%' }}>
-                                    {switches()}
-                                </Space>
                             </Col>
-                        ) : null }
-                    </Row>
+                            <Col xs={24} style={{ display: 'flex', justifyContent: 'center' }}>
+                                {switches()}
+                            </Col>
+                        </Row>
+                    ) : (
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                                marginBottom: 12,
+                            }}
+                        >
+                            <Space wrap>
+                                <Button
+                                    icon={<ReloadOutlined />}
+                                    onClick={handleResetAll}
+                                    style={{
+                                        backgroundColor: UI_COLOR_TRANSPARENT,
+                                        borderColor: UI_BORDER_SOFT,
+                                        color: UI_TEXT_PRIMARY_ON_DARK,
+                                    }}
+                                >
+                                    RESET ALL
+                                </Button>
+
+                                <PoseManager
+                                    joints={joints}
+                                    onLoadPose={handleLoadPose}
+                                />
+                                <AnimationManager onPlayAnimation={handlePlayAnimation} />
+                                {isAnimating && (
+                                    <Button
+                                        danger
+                                        icon={<StopOutlined />}
+                                        onClick={handleStopAnimation}
+                                    >
+                                        STOP ANIMATION
+                                    </Button>
+                                )}
+                                <Button
+                                    onClick={() => setIsStreamVisible(v => !v)}
+                                    style={{
+                                        backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                        color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                        borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                        boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                    }}
+                                >
+                                    {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
+                                </Button>
+                                <Button
+                                    onClick={() => setIsWebcamActive(v => !v)}
+                                    style={{
+                                        backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                        color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                        borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                        boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                    }}
+                                >
+                                    {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
+                                </Button>
+                            </Space>
+                            {switches()}
+                        </div>
+                    )}
 
                     {/* Mobile webcam sits inline under Control Robot and scrolls with the joint boxes. */}
                     {isMobile && isWebcamActive && (
@@ -902,6 +888,6 @@ export const RobotControlPanel: React.FC = () => {
                 );
             })()}
 
-        </Page>
+        </>
     );
 };
