@@ -1,6 +1,5 @@
 import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography, Grid } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Page } from '../../Components/Page.tsx';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
 import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigManager.tsx';
 import { LucyLoader } from '../../Components/LucyLoader.tsx';
@@ -21,26 +20,19 @@ const ConfigurationPage = () => {
 
     if (isMobile) {
         return (
-            <Page showHeader title>
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)', padding: 24 }}>
-                    <Card style={{ maxWidth: 400, textAlign: 'center', ...UI_CARD_SURFACE_STYLE }}>
-                        <Title level={4}>Unsupported Screen Size</Title>
-                        <Text>
-                            The hardware configuration page is not available on small screens. Please use a tablet or computer for a better experience.
-                        </Text>
-                    </Card>
-                </div>
-            </Page>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 'calc(100vh - 200px)', padding: 24 }}>
+                <Card style={{ maxWidth: 400, textAlign: 'center', ...UI_CARD_SURFACE_STYLE }}>
+                    <Title level={4}>Unsupported Screen Size</Title>
+                    <Text>
+                        The robot configuration page is not available on small screens. Please use a tablet or computer for a better experience.
+                    </Text>
+                </Card>
+            </div>
         );
     }
 
     return (
-        <Page
-            showHeader
-            title
-            contentStyle={{ padding: isMobile ? 12 : 24, position: 'relative' }}
-            removeScrollbars={false}
-        >
+        <>
             {hw.contextHolderMessage}
 
             <div
@@ -155,7 +147,7 @@ const ConfigurationPage = () => {
 
             {!hw.yamlDoc ? (
                 <LucyLoader
-                    label={hw.loading ? 'LOADING HARDWARE CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
+                    label={hw.loading ? 'LOADING ROBOT CONFIGURATION' : 'WAITING FOR ROS BRIDGE'}
                     connectButton={!hw.loading}
                     detail={
                         hw.loading
@@ -367,7 +359,7 @@ const ConfigurationPage = () => {
                     </Card>
                 </div>
             ) : null}
-        </Page>
+        </>
     );
 };
 

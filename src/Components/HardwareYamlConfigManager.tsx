@@ -197,7 +197,7 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
             <Modal
                 title={
                     <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-                        <SaveOutlined /> SAVE HARDWARE CONFIGURATION
+                        <SaveOutlined /> SAVE ROBOT CONFIGURATION
                     </Title>
                 }
                 open={saveModalVisible}
@@ -284,7 +284,7 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
             <Modal
                 title={
                     <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-                        <FolderOpenOutlined /> LOAD HARDWARE CONFIGURATION
+                        <FolderOpenOutlined /> LOAD ROBOT CONFIGURATION
                     </Title>
                 }
                 open={loadModalVisible}
