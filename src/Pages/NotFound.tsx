@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Typography, Button, Space } from 'antd';
 import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { Page } from '../Components/Page';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
@@ -98,13 +97,13 @@ export const NotFound: React.FC = () => {
   };
 
   return (
-    <Page
-      contentStyle={{
+    <div
+      style={{
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center',
         alignItems: 'center',
-        textAlign: 'center'
+        textAlign: 'center',
       }}
     >
         {/* Header */}
@@ -293,6 +292,6 @@ export const NotFound: React.FC = () => {
           </Text>
         </div>
 
-      </Page>
+      </div>
   );
 };
