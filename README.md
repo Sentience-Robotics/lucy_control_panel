@@ -42,7 +42,7 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 
 > **Quick Node upgrade with nvm**
 >
-> If you have Node < 22 (e.g. the Ubuntu 22.04 default 18.x), install nvm and switch:
+> If you have Node < 22 (e.g. the Ubuntu 24.04 Noble default 18.x), install nvm and switch:
 > ```sh
 > # Install nvm (skip if already installed)
 > curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
