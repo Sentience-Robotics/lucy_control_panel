@@ -41,9 +41,9 @@ export default defineConfig(({ mode }) => {
       https,
       host: true,
       allowedHosts,
-      port: parseInt(env.VITE_PORT || "4000"),
+      port: parseInt(env.VITE_PORT || "4004"),
       hmr: https
-        ? { protocol: "wss", clientPort: parseInt(env.VITE_PORT || "4000") }
+        ? { protocol: "wss", clientPort: parseInt(env.VITE_PORT || "4004") }
         : undefined,
       proxy: {
         "^/rosbridge": {
