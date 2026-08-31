@@ -51,12 +51,20 @@ export class ConnectedClientsHandler {
             serviceType: 'lucy_msgs/srv/GetInt',
         });
         const request = new ROSLIB.ServiceRequest({});
-        this.connectedClientsService.callService(request, (result: ROSLIB.ServiceResponse) => {
-            const value = (result as unknown as { value?: number }).value;
-            if (value !== undefined && value !== null) {
-                callback(value);
-            }
-        });
+        this.connectedClientsService.callService(
+            request,
+            (result: ROSLIB.ServiceResponse) => {
+                const value = (result as unknown as { value?: number }).value;
+                if (value !== undefined && value !== null) {
+                    callback(value);
+                }
+            },
+            // Without this callback roslib drops rosbridge's error, so a client
+            // registry that never advertised looks identical to one still starting.
+            (error: string) => {
+                console.warn(`Cannot read client count: ${error}`);
+            },
+        );
     }
 
     static cleanup(): void {

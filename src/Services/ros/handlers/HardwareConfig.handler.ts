@@ -43,10 +43,21 @@ function callService<TReq extends Record<string, unknown>, TRes>(
         const timer = window.setTimeout(() => {
             reject(new Error(`Service ${name} timed out after ${SERVICE_TIMEOUT_MS}ms`));
         }, SERVICE_TIMEOUT_MS);
-        svc.callService(req, (result: TRes) => {
-            window.clearTimeout(timer);
-            resolve(result);
-        });
+        svc.callService(
+            req,
+            (result: TRes) => {
+                window.clearTimeout(timer);
+                resolve(result);
+            },
+            // rosbridge reports a failed call (unadvertised service, handler
+            // exception) within milliseconds. Without this callback roslib drops
+            // that message, the promise never settles, and the timeout above
+            // reports a timeout that never happened.
+            (error: string) => {
+                window.clearTimeout(timer);
+                reject(new Error(error || `Service ${name} failed.`));
+            },
+        );
     });
 }
 
