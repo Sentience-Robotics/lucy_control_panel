@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback, useState, useEffect } from 'react';
-import { Card, Slider, InputNumber, Typography, Space, Tag } from 'antd';
+import { Card, Slider, InputNumber, Typography, Space, Tag, Button } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
 
 import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
@@ -8,6 +9,7 @@ import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
+    UI_COLOR_TRANSPARENT,
     UI_INPUT_SURFACE,
     UI_LIST_ROW_BG,
     UI_TEXT_PRIMARY_ON_DARK,
@@ -19,6 +21,7 @@ const { Text } = Typography;
 interface JointControlProps {
   joint: JointControlState;
   onValueChange: (name: string, value: number) => void;
+  onReset?: (name: string) => void;
   showDegrees?: boolean;
   disabled?: boolean;
 }
@@ -58,6 +61,7 @@ TrackMarker.displayName = 'TrackMarker';
 export const JointControl: React.FC<JointControlProps> = React.memo(({
   joint,
   onValueChange,
+  onReset,
   showDegrees = true,
   disabled = false,
 }) => {
@@ -83,6 +87,10 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
       onValueChange(joint.name, clampedValue);
     }
   }, [joint.name, joint.minValue, joint.maxValue, onValueChange]);
+
+  const handleReset = useCallback(() => {
+    onReset?.(joint.name);
+  }, [onReset, joint.name]);
 
   const actuatorNative = Boolean(joint.valueInActuatorDegrees && showDegrees);
 
@@ -235,6 +243,24 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             }}
             addonAfter={showDegrees ? '°' : 'rad'}
           />
+
+          {onReset && (
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              disabled={disabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleReset();
+              }}
+              style={{
+                backgroundColor: UI_COLOR_TRANSPARENT,
+                borderColor: UI_BORDER_SOFT,
+                color: UI_TEXT_PRIMARY_ON_DARK
+              }}
+              title={`Reset ${joint.displayName ?? joint.name} to its rest value`}
+            />
+          )}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: UI_TEXT_SECONDARY_MUTED }}>
