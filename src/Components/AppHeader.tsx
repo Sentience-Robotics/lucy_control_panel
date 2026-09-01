@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Tooltip, Typography, Grid } from 'antd';
-import { SettingOutlined, ReadOutlined } from '@ant-design/icons';
+import { SettingOutlined, ReadOutlined, BugOutlined, NodeIndexOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
@@ -13,6 +13,7 @@ import {
     UI_TEXT_SECONDARY_MUTED,
 } from '../Constants/uiTheme';
 import { SettingsModal, isAutoConnectEnabled } from './SettingsModal';
+import { ConnectionDebugModal, CommandDebugModal } from './PipelineDebugModal';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -21,6 +22,8 @@ export const AppHeader: React.FC = () => {
     const { connectionStatus, isConnected, connect, currentUrl } = useRosConnection();
     const [countState, setCountState] = useState<number>(0);
     const [isSettingsModalVisible, setIsSettingsModalVisible] = useState(false);
+    const [isConnectionDebugVisible, setIsConnectionDebugVisible] = useState(false);
+    const [isCommandDebugVisible, setIsCommandDebugVisible] = useState(false);
     const [activeControllerId, setActiveControllerId] = useState<string>(
         () => ControlModeHandler.getInstance().currentControllerId
     );
@@ -180,12 +183,26 @@ export const AppHeader: React.FC = () => {
                     {!isMobile && 'Documentation'}
                 </Button>
             </Tooltip>
+            <Tooltip title="Debug: connection pipeline">
+                <Button icon={<NodeIndexOutlined />} onClick={() => setIsConnectionDebugVisible(true)} />
+            </Tooltip>
+            <Tooltip title="Debug: command pipeline (slider to joint)">
+                <Button icon={<BugOutlined />} onClick={() => setIsCommandDebugVisible(true)} />
+            </Tooltip>
             <Tooltip title="Settings">
                 <Button icon={<SettingOutlined />} onClick={() => setIsSettingsModalVisible(true)} />
             </Tooltip>
             <SettingsModal
                 visible={isSettingsModalVisible}
                 onClose={() => setIsSettingsModalVisible(false)}
+            />
+            <ConnectionDebugModal
+                isVisible={isConnectionDebugVisible}
+                onClose={() => setIsConnectionDebugVisible(false)}
+            />
+            <CommandDebugModal
+                isVisible={isCommandDebugVisible}
+                onClose={() => setIsCommandDebugVisible(false)}
             />
         </div>
     );
