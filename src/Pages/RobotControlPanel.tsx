@@ -386,6 +386,19 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
+    const handleResetJoint = useCallback((name: string) => {
+        setJoints((prevJoints) =>
+            prevJoints.map((joint) => {
+                if (joint.name === name) {
+                    const rest = joint.restValue ?? 0;
+                    const clamped = Math.max(joint.minValue, Math.min(joint.maxValue, rest));
+                    return { ...joint, currentValue: clamped, targetValue: clamped };
+                }
+                return joint;
+            })
+        );
+    }, []);
+
     const handleResetCategory = useCallback((category: string) => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
@@ -779,6 +792,7 @@ export const RobotControlPanel: React.FC = () => {
                                                 joints={categorizedJoints[category]}
                                                 onJointValueChange={handleJointValueChange}
                                                 onResetCategory={handleResetCategory}
+                                                onResetJoint={handleResetJoint}
                                                 showDegrees={showDegrees}
                                                 disabled={!isSending}
                                             />
