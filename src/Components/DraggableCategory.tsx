@@ -12,6 +12,7 @@ interface DraggableCategoryProps {
   joints: JointControlState[];
   onJointValueChange: (name: string, value: number) => void;
   onResetCategory: (category: string) => void;
+  onResetJoint?: (name: string) => void;
   showDegrees: boolean;
   disabled?: boolean;
 }
@@ -22,6 +23,7 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
   joints,
   onJointValueChange,
   onResetCategory,
+  onResetJoint,
   showDegrees,
   disabled = false,
 }) => {
@@ -87,6 +89,7 @@ export const DraggableCategory: React.FC<DraggableCategoryProps> = ({
                         joints={joints}
                         onJointValueChange={onJointValueChange}
                         onResetCategory={onResetCategory}
+                        onResetJoint={onResetJoint}
                         showDegrees={showDegrees}
                         disabled={disabled}
                     />
