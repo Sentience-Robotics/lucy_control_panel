@@ -7,6 +7,7 @@ import {
 } from '../../../Utils/jointConfigLookup.ts';
 import { actuatorDegToJointRad } from '../../../Utils/actuatorJointMapping.ts';
 import { RosBridgeService } from '../ros.service.ts';
+import { Diagnostics } from '../../diagnostics.service.ts';
 
 /** ROS time (sec + nsec) for trajectory header; from /clock when use_sim_time, else wall clock. */
 function getRosTimeNow(rosTime: { sec: number; nanosec: number } | null): { sec: number; nanosec: number } {
@@ -142,6 +143,8 @@ export class JointStateHandler {
       const js = msg as unknown as { name: string[]; position: number[] };
       if (!js.name?.length || !js.position?.length) return;
       const positions = js.name.map((name, i) => ({ name, value: js.position[i] }));
+      Diagnostics.record('connection', 'jointstates', 'ok', `${positions.length} joints`, true);
+      Diagnostics.record('command', 'echoed', 'ok', `${positions.length} joints reported`, true);
       callback(positions);
     });
     return () => sub.unsubscribe();
@@ -217,6 +220,8 @@ export class JointStateHandler {
       if (names.length === 0) continue;
       const topic = this.topicByTopicName.get(cfg.topic);
       if (!topic) continue;
+      Diagnostics.record('command', 'slider', 'ok', `${names.length} joint(s) on ${cfg.defaultCategory}`);
+      Diagnostics.record('command', 'converted', 'ok', 'actuator deg -> URDF rad');
       const stamp = getRosTimeNow(this.lastClock);
       const message = new ROSLIB.Message({
         header: { stamp, frame_id: '' },
@@ -224,6 +229,7 @@ export class JointStateHandler {
         points: [{ positions, time_from_start: { sec: 0, nanosec: 0.8e9 } }],
       });
       topic.publish(message);
+      Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`, true);
     }
   }
 }

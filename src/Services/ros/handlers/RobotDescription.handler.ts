@@ -1,5 +1,6 @@
 import ROSLIB from 'roslib';
 import { RosBridgeService } from '../ros.service.ts';
+import { Diagnostics } from '../../diagnostics.service.ts';
 
 /**
  * Subscribes to the latched `/robot_description` topic published by
@@ -57,6 +58,11 @@ export class RobotDescriptionHandler {
     private setUrdf(v: string | null) {
         if (v === this._urdf) return;
         this._urdf = v;
+        Diagnostics.record(
+            'connection', 'description',
+            v ? 'ok' : 'pending',
+            v ? `${v.length} bytes of URDF` : 'not received',
+        );
         this.listeners.forEach((cb) => cb(v));
     }
 
