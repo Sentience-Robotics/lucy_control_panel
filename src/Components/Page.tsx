@@ -319,7 +319,6 @@ export const Page: React.FC<PageProps> = ({
         .tui-toggle-button.off {
           background-color: ${UI_ERROR};
           color: ${UI_TEXT_ON_ACCENT};
-          box-shadow: 0 0 15px ${uiAccentRgba(0.6)};
         }
 
         .tui-toggle-button.on {
