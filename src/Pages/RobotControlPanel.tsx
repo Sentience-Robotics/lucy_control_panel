@@ -51,6 +51,7 @@ import {
     jointRadToActuatorDeg,
     type ActuatorMapping,
 } from '../Utils/actuatorJointMapping';
+import { describeClient } from '../Utils/clientIdentity';
 import {
     DEFAULT_JOINT_SLIDER_BOUNDS_DEG,
     DEFAULT_JOINT_SLIDER_VALUE_DEG,
@@ -120,6 +121,11 @@ export const RobotControlPanel: React.FC = () => {
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
     const retakeCountRef = useRef(0);
+    // Snapshot of who held control when we asked to preempt them. Kept out of the live
+    // controller state on purpose: the prompt describes the moment the user clicked ON,
+    // so it must not turn into "controlled by nobody" if they release while it is open.
+    const [controllerToPreempt, setControllerToPreempt] = useState('');
+    const [showConfirmTakeControlModal, setShowConfirmTakeControlModal] = useState(false);
 
     const screens = useBreakpoint();
     const isMobile = !screens.md;
@@ -353,15 +359,32 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
-    const handleControlRobotToggle = useCallback((next: boolean) => {
-        setIsSending(next);
+    /** Flip control without asking. Callers own the decision to preempt another client. */
+    const applyControlToggle = useCallback((shouldControl: boolean) => {
+        setIsSending(shouldControl);
         setShowControlTakenModal(false);
-        if (next) {
+        setShowConfirmTakeControlModal(false);
+        if (shouldControl) {
             ControlModeHandler.getInstance().takeControl();
         } else {
             ControlModeHandler.getInstance().releaseControl();
         }
     }, []);
+
+    const handleControlRobotToggle = useCallback((shouldControl: boolean) => {
+        const handler = ControlModeHandler.getInstance();
+        // Read the handler, not React state: it holds the freshest controller we know of.
+        // The registry never refuses a claim, so this check is advisory — the other client
+        // may have released in the meantime, and the worst case is one needless prompt.
+        const otherHasControl =
+            handler.currentControllerId !== '' && handler.currentControllerId !== handler.clientId;
+        if (shouldControl && otherHasControl) {
+            setControllerToPreempt(handler.currentControllerId);
+            setShowConfirmTakeControlModal(true);
+            return;
+        }
+        applyControlToggle(shouldControl);
+    }, [applyControlToggle]);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
@@ -857,7 +880,7 @@ export const RobotControlPanel: React.FC = () => {
                                 onClick={() => {
                                     retakeCountRef.current += 1;
                                     setShowControlTakenModal(false);
-                                    handleControlRobotToggle(true);
+                                    applyControlToggle(true);
                                 }}
                                 style={{
                                     backgroundColor: UI_ACCENT_GREEN,
@@ -903,6 +926,55 @@ export const RobotControlPanel: React.FC = () => {
                     </Modal>
                 );
             })()}
+
+            {/* We are about to take control away from another client */}
+            <Modal
+                title={
+                    <Title level={4} style={{ color: UI_WARNING, margin: 0 }}>
+                        <ThunderboltOutlined /> Take control from another client?
+                    </Title>
+                }
+                open={showConfirmTakeControlModal}
+                onCancel={() => setShowConfirmTakeControlModal(false)}
+                footer={[
+                    <Button
+                        key="take"
+                        icon={<ThunderboltOutlined />}
+                        onClick={() => applyControlToggle(true)}
+                        style={{
+                            backgroundColor: UI_ACCENT_GREEN,
+                            borderColor: UI_ACCENT_GREEN,
+                            color: UI_TEXT_ON_ACCENT,
+                        }}
+                    >
+                        Take Control Anyway
+                    </Button>,
+                    <Button
+                        key="cancel"
+                        onClick={() => setShowConfirmTakeControlModal(false)}
+                        style={{
+                            backgroundColor: UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        Cancel
+                    </Button>,
+                ]}
+                style={{ top: 200 }}
+                styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
+                className="dark-modal"
+            >
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+                        The robot is currently controlled by {describeClient(controllerToPreempt)}.
+                    </Text>
+                    <Text style={{ color: UI_TEXT_SUBTLE }}>
+                        Control is exclusive: their Control Robot switches to <Text style={{ color: UI_ERROR }}>OFF</Text> immediately,
+                        and they are told you took over.
+                    </Text>
+                </Space>
+            </Modal>
 
         </>
     );
