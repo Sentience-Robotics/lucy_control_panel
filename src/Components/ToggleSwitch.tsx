@@ -14,6 +14,7 @@ export interface ToggleSwitchProps {
     width?: number;
     /** `above` stacks the label over the control; `inline` keeps label and control on one row. */
     titlePlacement?: 'above' | 'inline';
+    color?: string;
 }
 
 export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
@@ -26,6 +27,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     textOff = 'OFF',
     width,
     titlePlacement = 'above',
+    color = UI_ACCENT_GREEN,
 }) => {
     const titleStyle: React.CSSProperties = {
         fontFamily: 'monospace',
@@ -40,7 +42,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     const toggle = (
         <div className="tui-toggle" style={{ width: width ? `${width}px` : 'auto', display: 'flex' }}>
             <button
-                className={`tui-toggle-button${!isOn ? ' active' : ''}`}
+                className={`tui-toggle-button${!isOn ? ' off' : ''}`}
                 onClick={() => onToggle(false)}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
                 aria-label={`${title}: ${textOff}`}
@@ -50,7 +52,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
             </button>
             <div className="tui-toggle-divider" />
             <button
-                className={`tui-toggle-button${isOn ? ' active' : ''}`}
+                className={`tui-toggle-button${isOn ? ' on' : ''}`}
                 onClick={() => onToggle(true)}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
                 aria-label={`${title}: ${textOn}`}
