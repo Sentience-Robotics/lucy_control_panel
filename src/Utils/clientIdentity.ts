@@ -36,5 +36,5 @@ export function describeClient(clientId: string): string {
     if (!startedAt) return kind;
 
     const time = startedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    return `${kind} (since ${time})`;
+    return `${kind} (connected since ${time})`;
 }
