@@ -552,6 +552,7 @@ export const RobotControlPanel: React.FC = () => {
             label: 'RESET ALL',
             icon: <ReloadOutlined />,
             onClick: handleResetAll,
+            disabled: !isSending,
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         {
@@ -678,6 +679,7 @@ export const RobotControlPanel: React.FC = () => {
                                         borderColor: UI_BORDER_SOFT,
                                         color: UI_TEXT_PRIMARY_ON_DARK,
                                     }}
+                                    disabled={!isSending}
                                 >
                                     RESET ALL
                                 </Button>
