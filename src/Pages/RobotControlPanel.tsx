@@ -17,6 +17,7 @@ import {
     MenuOutlined,
     VideoCameraOutlined,
     EyeOutlined,
+    CodeSandboxOutlined,
 } from '@ant-design/icons';
 import {
     DndContext,
@@ -43,6 +44,8 @@ import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
 /* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
+import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
+import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Types */
@@ -66,6 +69,7 @@ import { PoseManager } from '../Components/PoseManager';
 import { AnimationManager } from '../Components/AnimationManager';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
+import { Robot3DViewerModal } from "../Components/Robot3DViewerModal";
 import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
@@ -134,14 +138,12 @@ export const RobotControlPanel: React.FC = () => {
     // The page header is `position: sticky; top: 0`, so the control toolbar has to park below it.
     const headerHeight = useContext(HeaderHeightContext);
 
-    // Floating stream window state
-    const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
+    // Floating window state, restored across reloads.
+    const [isStreamVisible, setIsStreamVisible] = usePersistentBoolean('lucy_stream_visible');
+    const [isVisualizerVisible, setIsVisualizerVisible] = usePersistentBoolean('lucy_visualizer_visible');
 
-    const [isStreamVisible, setIsStreamVisible] = useState<boolean>(() => {
-        if (typeof window === 'undefined') { return false; }
-        const saved = localStorage.getItem(STREAM_VISIBLE_KEY);
-        return saved ? saved === 'true' : false;
-    });
+    // A camera stream needs a publisher; the 3D view only needs joint states.
+    const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
 
@@ -611,6 +613,44 @@ export const RobotControlPanel: React.FC = () => {
         borderRadius: 4,
     };
 
+    const toggleButtonStyle = (isActive: boolean): React.CSSProperties => ({
+        backgroundColor: isActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+        color: isActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+        borderColor: isActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+        boxShadow: isActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+    });
+
+    const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
+
+    const visualizerButton = (label: string, icon?: React.ReactNode) => (
+        <Button
+            icon={icon}
+            onClick={() => setIsVisualizerVisible(v => !v)}
+            style={toggleButtonStyle(isVisualizerVisible)}
+        >
+            {isVisualizerVisible ? `HIDE ${label}` : `SHOW ${label}`}
+        </Button>
+    );
+
+    const streamButton = (label: string, icon?: React.ReactNode) => (
+        <Tooltip
+            title={isStreamDisabled
+                ? 'No camera is publishing — start the simulation or connect a camera'
+                : ''}
+        >
+            <span style={{ display: 'inline-flex' }}>
+                <Button
+                    icon={icon}
+                    disabled={isStreamDisabled}
+                    onClick={() => setIsStreamVisible(v => !v)}
+                    style={isStreamDisabled ? undefined : toggleButtonStyle(isStreamVisible)}
+                >
+                    {isStreamVisible ? `HIDE ${label}` : `SHOW ${label}`}
+                </Button>
+            </span>
+        </Tooltip>
+    );
+
     const switches = () => (
         <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
             <span style={{ display: 'inline-flex', cursor: 'help' }}>
@@ -628,10 +668,16 @@ export const RobotControlPanel: React.FC = () => {
 
     return (
         <>
+            <Robot3DViewerModal
+                isVisible={isVisualizerVisible}
+                onClose={() => setIsVisualizerVisible(false)}
+                initialPosition={{ x: 100, y: 100 }}
+            />
+
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
-                initialPosition={{ x: 100, y: 100 }}
+                initialPosition={{ x: 650, y: 100 }}
             />
 
             {!isConnected ? (
@@ -676,18 +722,8 @@ export const RobotControlPanel: React.FC = () => {
                                                 Control Options
                                             </Button>
                                         </Dropdown>
-                                        <Button
-                                            icon={<VideoCameraOutlined />}
-                                            onClick={() => setIsStreamVisible(v => !v)}
-                                            style={{
-                                                backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                                color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                                borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                                boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                            }}
-                                        >
-                                            {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                                        </Button>
+                                        {visualizerButton('3D VIEW', <CodeSandboxOutlined />)}
+                                        {streamButton('STREAM', <VideoCameraOutlined />)}
                                     </Space>
                                 </Col>
                                 <Col xs={24} style={{ display: 'flex', justifyContent: 'center' }}>
@@ -732,25 +768,11 @@ export const RobotControlPanel: React.FC = () => {
                                             STOP ANIMATION
                                         </Button>
                                     )}
-                                    <Button
-                                        onClick={() => setIsStreamVisible(v => !v)}
-                                        style={{
-                                            backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                            color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                            borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                            boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                        }}
-                                    >
-                                        {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                                    </Button>
+                                    {visualizerButton('3D VISUALIZATION')}
+                                    {streamButton('STREAM')}
                                     <Button
                                         onClick={() => setIsWebcamActive(v => !v)}
-                                        style={{
-                                            backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                            color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                            borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                            boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                        }}
+                                        style={toggleButtonStyle(isWebcamActive)}
                                     >
                                         {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
                                     </Button>

@@ -1,9 +1,15 @@
 import { useEffect, useState } from 'react';
 import { RosBridgeService } from '../Services/ros/ros.service.ts';
 
+const DEFAULT_POLL_INTERVAL_MS = 5000;
+
 /**
  * Of the given `topics`, the subset that currently has a publisher — refreshed
- * while `enabled` and on every (re)connection.
+ * while `enabled`, on every (re)connection, and every `pollIntervalMs`.
+ *
+ * The poll is what makes a stream that starts *after* the bridge connection
+ * (a simulation launched from the panel, a camera node restarted) show up
+ * without a reconnect. Pass `pollIntervalMs: 0` to refresh on connection only.
  *
  * Returns `null` while unknown (not yet fetched, disconnected, or rosapi
  * absent). Treat `null` as "assume available" so a working stream is never
@@ -12,7 +18,11 @@ import { RosBridgeService } from '../Services/ros/ros.service.ts';
  * See RosBridgeService.getPublishers for why we check publishers, not mere
  * topic existence.
  */
-export function useAvailableTopics(topics: string[], enabled: boolean): Set<string> | null {
+export function useAvailableTopics(
+    topics: string[],
+    enabled: boolean,
+    pollIntervalMs: number = DEFAULT_POLL_INTERVAL_MS,
+): Set<string> | null {
     const [published, setPublished] = useState<Set<string> | null>(null);
     const topicsKey = topics.join('|');
 
@@ -39,6 +49,7 @@ export function useAvailableTopics(topics: string[], enabled: boolean): Set<stri
         };
 
         refresh();
+        const timer = pollIntervalMs > 0 ? setInterval(refresh, pollIntervalMs) : null;
         const unsubscribe = service.onStatusChange(status => {
             if (status === 'connected') refresh();
             else if (!cancelled) setPublished(null);
@@ -46,10 +57,11 @@ export function useAvailableTopics(topics: string[], enabled: boolean): Set<stri
 
         return () => {
             cancelled = true;
+            if (timer) clearInterval(timer);
             unsubscribe();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [topicsKey, enabled]);
+    }, [topicsKey, enabled, pollIntervalMs]);
 
     return published;
 }
