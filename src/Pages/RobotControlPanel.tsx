@@ -621,7 +621,6 @@ export const RobotControlPanel: React.FC = () => {
                     titlePlacement="inline"
                     rightIcon={<ThunderboltOutlined />}
                     width={180}
-                    color={UI_ERROR}
                 />
             </span>
         </Tooltip>

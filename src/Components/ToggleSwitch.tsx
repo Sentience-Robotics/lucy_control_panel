@@ -14,7 +14,6 @@ export interface ToggleSwitchProps {
     width?: number;
     /** `above` stacks the label over the control; `inline` keeps label and control on one row. */
     titlePlacement?: 'above' | 'inline';
-    color?: string;
 }
 
 export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
@@ -27,7 +26,6 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     textOff = 'OFF',
     width,
     titlePlacement = 'above',
-    color = UI_ACCENT_GREEN,
 }) => {
     const titleStyle: React.CSSProperties = {
         fontFamily: 'monospace',
