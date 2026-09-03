@@ -30,6 +30,13 @@ function describeRosBridgeFailure(error: unknown, url: string, opts?: { timeout?
     ].join('\n');
 }
 
+export function getOriginRosUrl(): string {
+    if (typeof window === 'undefined') {
+        throw new Error('Window is undefined');
+    }
+    return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/rosbridge`;
+}
+
 export function getDefaultRosUrl(): string {
     if (typeof window === 'undefined') {
         throw new Error('Window is undefined');
@@ -44,9 +51,7 @@ export function getDefaultRosUrl(): string {
         return stored;
     }
 
-    return (
-        `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`
-    );
+    return getOriginRosUrl();
 }
 
 class RosBridgeService {
