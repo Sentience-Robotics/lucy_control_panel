@@ -207,6 +207,8 @@ export function useRobotModel(): UseRobotModelReturn {
     }, [parseAndLoad, reloadToken]);
 
     const reload = useCallback(() => {
+        // Re-running the hook alone would not touch the rosbridge subscription.
+        RobotDescriptionHandler.getInstance().resubscribe();
         globalCache           = { ready: false };
         loadedUrdfRef.current = null;
         setRobot(null);
