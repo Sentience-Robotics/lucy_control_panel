@@ -121,9 +121,6 @@ export const RobotControlPanel: React.FC = () => {
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
     const retakeCountRef = useRef(0);
-    // Snapshot of who held control when we asked to preempt them. Kept out of the live
-    // controller state on purpose: the prompt describes the moment the user clicked ON,
-    // so it must not turn into "controlled by nobody" if they release while it is open.
     const [controllerToPreempt, setControllerToPreempt] = useState('');
     const [showConfirmTakeControlModal, setShowConfirmTakeControlModal] = useState(false);
 
@@ -359,7 +356,7 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
-    /** Flip control without asking. Callers own the decision to preempt another client. */
+    /** Function responsible of flipping control without asking. Callers own the decision to preempt another client. */
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setIsSending(shouldControl);
         setShowControlTakenModal(false);
@@ -373,9 +370,6 @@ export const RobotControlPanel: React.FC = () => {
 
     const handleControlRobotToggle = useCallback((shouldControl: boolean) => {
         const handler = ControlModeHandler.getInstance();
-        // Read the handler, not React state: it holds the freshest controller we know of.
-        // The registry never refuses a claim, so this check is advisory — the other client
-        // may have released in the meantime, and the worst case is one needless prompt.
         const otherHasControl =
             handler.currentControllerId !== '' && handler.currentControllerId !== handler.clientId;
         if (shouldControl && otherHasControl) {
