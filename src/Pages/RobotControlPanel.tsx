@@ -3,6 +3,7 @@ import React, {
     useRef,
     useEffect,
     useCallback,
+    useContext,
     useMemo,
     lazy,
     Suspense,
@@ -85,7 +86,10 @@ import {
     UI_GRADIENT_MODAL_HEADER,
     UI_MODAL_SURFACE,
     UI_SHADOW_ELEVATED,
+    UI_BG_BLACK,
+    PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
+import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -126,6 +130,9 @@ export const RobotControlPanel: React.FC = () => {
 
     const screens = useBreakpoint();
     const isMobile = !screens.md;
+
+    // The page header is `position: sticky; top: 0`, so the control toolbar has to park below it.
+    const headerHeight = useContext(HeaderHeightContext);
 
     // Floating stream window state
     const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
@@ -640,26 +647,92 @@ export const RobotControlPanel: React.FC = () => {
                 />
             ) : (
                 <div style={{ position: 'relative', isolation: 'isolate' }}>
-                    {isMobile ? (
-                        <Row gutter={[12, 12]} align="middle" style={{ marginBottom: 12 }}>
-                            <Col xs={24}>
-                                <Space wrap>
-                                    <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
-                                        <div style={dropdownOverlayStyle}>{menu}</div>
-                                    )}>
+                    <div
+                        style={{
+                            position: 'sticky',
+                            top: headerHeight,
+                            zIndex: 5,
+                            backgroundColor: UI_BG_BLACK,
+                            borderBottom: `1px solid ${UI_BORDER_MUTED}`,
+                            margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 12px`,
+                            padding: PAGE_CONTENT_STYLE.padding,
+                        }}
+                    >
+                        {isMobile ? (
+                            <Row gutter={[12, 12]} align="middle">
+                                <Col xs={24}>
+                                    <Space wrap>
+                                        <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
+                                            <div style={dropdownOverlayStyle}>{menu}</div>
+                                        )}>
+                                            <Button
+                                                icon={<MenuOutlined />}
+                                                style={{
+                                                    backgroundColor: UI_COLOR_TRANSPARENT,
+                                                    borderColor: UI_BORDER_SOFT,
+                                                    color: UI_TEXT_PRIMARY_ON_DARK,
+                                                }}
+                                            >
+                                                Control Options
+                                            </Button>
+                                        </Dropdown>
                                         <Button
-                                            icon={<MenuOutlined />}
+                                            icon={<VideoCameraOutlined />}
+                                            onClick={() => setIsStreamVisible(v => !v)}
                                             style={{
-                                                backgroundColor: UI_COLOR_TRANSPARENT,
-                                                borderColor: UI_BORDER_SOFT,
-                                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                                backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                                color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                                borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                                boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
                                             }}
                                         >
-                                            Control Options
+                                            {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
                                         </Button>
-                                    </Dropdown>
+                                    </Space>
+                                </Col>
+                                <Col xs={24} style={{ display: 'flex', justifyContent: 'center' }}>
+                                    {switches()}
+                                </Col>
+                            </Row>
+                        ) : (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 12,
+                                }}
+                            >
+                                <Space wrap>
                                     <Button
-                                        icon={<VideoCameraOutlined />}
+                                        icon={<ReloadOutlined />}
+                                        onClick={handleResetAll}
+                                        style={{
+                                            backgroundColor: UI_COLOR_TRANSPARENT,
+                                            borderColor: UI_BORDER_SOFT,
+                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                        }}
+                                        disabled={!isSending}
+                                    >
+                                        RESET ALL
+                                    </Button>
+
+                                    <PoseManager
+                                        joints={joints}
+                                        onLoadPose={handleLoadPose}
+                                    />
+                                    <AnimationManager onPlayAnimation={handlePlayAnimation} />
+                                    {isAnimating && (
+                                        <Button
+                                            danger
+                                            icon={<StopOutlined />}
+                                            onClick={handleStopAnimation}
+                                        >
+                                            STOP ANIMATION
+                                        </Button>
+                                    )}
+                                    <Button
                                         onClick={() => setIsStreamVisible(v => !v)}
                                         style={{
                                             backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
@@ -670,77 +743,22 @@ export const RobotControlPanel: React.FC = () => {
                                     >
                                         {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
                                     </Button>
-                                </Space>
-                            </Col>
-                            <Col xs={24} style={{ display: 'flex', justifyContent: 'center' }}>
-                                {switches()}
-                            </Col>
-                        </Row>
-                    ) : (
-                        <div
-                            style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: 12,
-                                marginBottom: 12,
-                            }}
-                        >
-                            <Space wrap>
-                                <Button
-                                    icon={<ReloadOutlined />}
-                                    onClick={handleResetAll}
-                                    style={{
-                                        backgroundColor: UI_COLOR_TRANSPARENT,
-                                        borderColor: UI_BORDER_SOFT,
-                                        color: UI_TEXT_PRIMARY_ON_DARK,
-                                    }}
-                                    disabled={!isSending}
-                                >
-                                    RESET ALL
-                                </Button>
-
-                                <PoseManager
-                                    joints={joints}
-                                    onLoadPose={handleLoadPose}
-                                />
-                                <AnimationManager onPlayAnimation={handlePlayAnimation} />
-                                {isAnimating && (
                                     <Button
-                                        danger
-                                        icon={<StopOutlined />}
-                                        onClick={handleStopAnimation}
+                                        onClick={() => setIsWebcamActive(v => !v)}
+                                        style={{
+                                            backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+                                            color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+                                            borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+                                            boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+                                        }}
                                     >
-                                        STOP ANIMATION
+                                        {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
                                     </Button>
-                                )}
-                                <Button
-                                    onClick={() => setIsStreamVisible(v => !v)}
-                                    style={{
-                                        backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                        color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                        borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                        boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                    }}
-                                >
-                                    {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                                </Button>
-                                <Button
-                                    onClick={() => setIsWebcamActive(v => !v)}
-                                    style={{
-                                        backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                        color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                        borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                        boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                    }}
-                                >
-                                    {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
-                                </Button>
-                            </Space>
-                            {switches()}
-                        </div>
-                    )}
+                                </Space>
+                                {switches()}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Mobile webcam sits inline under Control Robot and scrolls with the joint boxes. */}
                     {isMobile && isWebcamActive && (
