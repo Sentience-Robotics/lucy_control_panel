@@ -1,3 +1,4 @@
+import { useContext } from 'react';
 import { Alert, Button, Card, Input, Select, Space, Table, Tag, Tooltip, Typography, Grid } from 'antd';
 import { PlusOutlined, ReloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { HardwareConfigPresetHeaderTag } from '../../Components/HardwareConfigPresetTag.tsx';
@@ -5,6 +6,7 @@ import { HardwareYamlConfigManager } from '../../Components/HardwareYamlConfigMa
 import { LucyLoader } from '../../Components/LucyLoader.tsx';
 import { UNPARSED_VALIDATION_KEY, GENERAL_VALIDATION_KEY } from '../../Utils/hardwareConfigServerErrors.ts';
 import { UI_CARD_SURFACE_STYLE, UI_PRIMARY_GREEN_BUTTON_STYLE } from '../../Constants/uiTheme.ts';
+import { HeaderHeightContext } from '../../contexts/HeaderHeightContext.ts';
 import './configuration.switch.css';
 import { ActivateConfigureWorkflowModal } from './components/ActivateConfigureWorkflowModal.tsx';
 import { useHardwareConfiguration } from './hooks/useHardwareConfiguration.tsx';
@@ -15,6 +17,8 @@ const { useBreakpoint } = Grid;
 const ConfigurationPage = () => {
     const hw = useHardwareConfiguration();
     const editorLocked = hw.editorLocked;
+    // The page header is `position: sticky; top: 0`, so the actuator table header has to park below it.
+    const headerHeight = useContext(HeaderHeightContext);
     const screens = useBreakpoint();
     const isMobile = !screens.lg;
 
@@ -295,6 +299,7 @@ const ConfigurationPage = () => {
                         <Table
                             size="small"
                             scroll={{ x: 'max-content' }}
+                            sticky={{ offsetHeader: headerHeight }}
                             pagination={false}
                             dataSource={hw.actuatorRows}
                             columns={hw.actuatorColumns}
