@@ -40,7 +40,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     const toggle = (
         <div className="tui-toggle" style={{ width: width ? `${width}px` : 'auto', display: 'flex' }}>
             <button
-                className={`tui-toggle-button${!isOn ? ' active' : ''}`}
+                className={`tui-toggle-button${!isOn ? ' off' : ''}`}
                 onClick={() => onToggle(false)}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
                 aria-label={`${title}: ${textOff}`}
@@ -50,7 +50,7 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
             </button>
             <div className="tui-toggle-divider" />
             <button
-                className={`tui-toggle-button${isOn ? ' active' : ''}`}
+                className={`tui-toggle-button${isOn ? ' on' : ''}`}
                 onClick={() => onToggle(true)}
                 style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, boxShadow: 'none', animation: 'none' }}
                 aria-label={`${title}: ${textOn}`}

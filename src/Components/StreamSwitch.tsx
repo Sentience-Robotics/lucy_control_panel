@@ -12,7 +12,7 @@ interface StreamSwitchProps {
 export const StreamSwitch: React.FC<StreamSwitchProps> = ({ labelA = 'OFF', labelB = 'ON', value, onChange }) => (
     <div className="tui-toggle">
         <button
-            className={`tui-toggle-button${!value ? ' active' : ''}`}
+            className={`tui-toggle-button${!value ? ' off' : ''}`}
             onClick={() => onChange(!value)}
             style={{ padding: '2px 8px', fontSize: 10 }}
         >
@@ -20,7 +20,7 @@ export const StreamSwitch: React.FC<StreamSwitchProps> = ({ labelA = 'OFF', labe
         </button>
         <div className="tui-toggle-divider" />
         <button
-            className={`tui-toggle-button${value ? ' active' : ''}`}
+            className={`tui-toggle-button${value ? ' on' : ''}`}
             onClick={() => onChange(!value)}
             style={{ padding: '2px 8px', fontSize: 10 }}
         >
