@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Input, Button, Form, Typography, Space } from 'antd';
 import { InfoCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
+import { getOriginRosUrl } from '../Services/ros/ros.service';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import {
+    UI_ACCENT_BLUE,
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
@@ -27,6 +29,9 @@ export const isAutoConnectEnabled = () => localStorage.getItem(AUTO_CONNECT_KEY)
 export const SHOW_DEGREES_KEY = 'showDegreesEnabled';
 
 export const isShowDegreesEnabled = () => localStorage.getItem(SHOW_DEGREES_KEY) !== 'false';
+
+/** Fixed hint for the URL field: the bridge served alongside this page. */
+const originRosUrl = getOriginRosUrl();
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     const { connect, disconnect, isConnected, currentUrl, connectionStatus } = useRosConnection();
@@ -127,11 +132,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
             className="dark-modal"
         >
             <Form layout="vertical">
-                <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>ROS Bridge URL</Text>}>
+                <Form.Item
+                    label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>ROS Bridge URL</Text>}
+                    tooltip={{
+                        title: 'WebSocket address of the rosbridge server (e.g. ws://host:port/rosbridge). Saved locally and reused on next launch.',
+                        icon: <InfoCircleOutlined style={{ color: UI_ACCENT_BLUE }} />,
+                    }}
+                >
                     <Input
                         value={rosUrl}
                         onChange={(e) => setRosUrl(e.target.value)}
-                        placeholder="ws://localhost:9090"
+                        placeholder={originRosUrl}
                     />
                 </Form.Item>
                 <Form.Item

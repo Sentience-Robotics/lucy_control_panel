@@ -29,6 +29,20 @@ function describeRosBridgeFailure(error: unknown, url: string, opts?: { timeout?
     ].join('\n');
 }
 
+/**
+ * The bridge served next to the page itself: same host and port, `/rosbridge`
+ * path. Independent of any stored or overridden URL, so it stays valid as the
+ * placeholder/fallback whatever the user has typed before.
+ */
+export function getOriginRosUrl(): string {
+    if (typeof window === 'undefined') {
+        throw new Error('Window is undefined');
+    }
+    // `host` already carries the port when there is one — `hostname` + `port`
+    // leaves a dangling colon on the default 80/443.
+    return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/rosbridge`;
+}
+
 export function getDefaultRosUrl(): string {
     if (typeof window === 'undefined') {
         throw new Error('Window is undefined');
@@ -43,9 +57,7 @@ export function getDefaultRosUrl(): string {
         return stored;
     }
 
-    return (
-        `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`
-    );
+    return getOriginRosUrl();
 }
 
 class RosBridgeService {
