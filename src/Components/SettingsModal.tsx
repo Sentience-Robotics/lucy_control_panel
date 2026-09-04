@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Input, Button, Form, Typography, Space } from 'antd';
+import { Input, Button, Form, Typography, Space } from 'antd';
 import { InfoCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { getOriginRosUrl } from '../Services/ros/ros.service';
@@ -9,13 +9,14 @@ import {
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
-    UI_MODAL_MASK_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
 } from '../Constants/uiTheme';
 import { ToggleSwitch } from './ToggleSwitch';
+import { GETTING_STARTED_COMPLETED_KEY, REDO_GETTING_STARTED_EVENT } from './GettingStartedModal';
+import { MovableModal } from './MovableModal';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface SettingsModalProps {
     visible: boolean;
@@ -59,7 +60,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         try {
             await connect(rosUrl);
             onClose();
-        } catch (error) {
+        } catch {
             // Error is already logged in the hook
         }
     };
@@ -79,15 +80,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         : 0;
 
     return (
-        <Modal
-            title={
-                <Title level={4} style={{ color: UI_TEXT_PRIMARY_ON_DARK, margin: 0 }}>
-                    <SettingOutlined /> Settings
-                </Title>
-            }
-            open={visible}
-            onCancel={onClose}
-            footer={[
+        <MovableModal
+            modalName="SETTINGS"
+            isVisible={visible}
+            onClose={onClose}
+            initialPosition={{ x: 1130, y: 120 }}
+            initialSize={{ w: 350, h: 650 }}
+            header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}
+            footer={
+                <>
                 <Button
                     onClick={handleConnectionChange}
                     loading={connectionStatus === 'connecting'}
@@ -102,7 +103,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                         : isConnected
                             ? 'Disconnect'
                             : 'Connect'}
-                </Button>,
+                </Button>
                 <Button
                     key="back"
                     onClick={onClose}
@@ -113,7 +114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     }}
                 >
                     Cancel
-                </Button>,
+                </Button>
                 <Button
                     key="submit"
                     type="primary"
@@ -126,10 +127,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                     }}
                 >
                     Save & Connect
-                </Button>,
-            ]}
-            styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
-            className="dark-modal"
+                </Button>
+                </>
+            }
         >
             <Form layout="vertical">
                 <Form.Item
@@ -175,7 +175,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                         <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Active Configuration: {activeHardwareConfigName || 'N/A'}</Text>
                     </Space>
                 </Form.Item>
+                <Form.Item>
+                    <Button
+                        onClick={() => {
+                            localStorage.removeItem(GETTING_STARTED_COMPLETED_KEY);
+                            window.dispatchEvent(new Event(REDO_GETTING_STARTED_EVENT));
+                            onClose();
+                        }}
+                        style={{
+                            backgroundColor: UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        Redo getting started
+                    </Button>
+                </Form.Item>
             </Form>
-        </Modal>
+        </MovableModal>
     );
 };

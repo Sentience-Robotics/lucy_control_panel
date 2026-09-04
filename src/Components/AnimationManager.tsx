@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  Modal,
   Button,
   Input,
   Space,
@@ -16,16 +15,16 @@ import {
   DeleteOutlined
 } from '@ant-design/icons';
 import { storageService, type SavedPose, type SavedAnimation } from '../Services/storage.service.ts';
+import { MovableModal } from './MovableModal';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
     UI_INPUT_SURFACE,
-    UI_MODAL_MASK_BG,
     UI_TEXT_PRIMARY_ON_DARK,
 } from '../Constants/uiTheme.ts';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { Option } = Select;
 
 interface AnimationManagerProps {
@@ -168,16 +167,16 @@ export const AnimationManager: React.FC<AnimationManagerProps> = ({ onPlayAnimat
       </Space>
 
       {/* Manage Animation Modal */}
-      <Modal
-        title={
-          <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-            <SettingOutlined /> Manage Animations
-          </Title>
-        }
-        open={manageModalVisible}
-        onCancel={() => setManageModalVisible(false)}
-        footer={[
-           editingAnimId ? (
+      <MovableModal
+        modalName="MANAGE ANIMATIONS"
+        isVisible={manageModalVisible}
+        onClose={() => setManageModalVisible(false)}
+        initialPosition={{ x: 760, y: 120 }}
+        initialSize={{ w: 350, h: 650 }}
+        header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}
+        footer={
+          <>
+           {editingAnimId ? (
                <Popconfirm
                     key="delete"
                     title="Delete this animation?"
@@ -187,17 +186,15 @@ export const AnimationManager: React.FC<AnimationManagerProps> = ({ onPlayAnimat
                >
                    <Button danger icon={<DeleteOutlined />}>Delete</Button>
                </Popconfirm>
-           ) : null,
+           ) : null}
            <Button key="cancel" onClick={() => setManageModalVisible(false)}>
                Cancel
-           </Button>,
+           </Button>
            <Button key="save" type="primary" loading={loading} onClick={() => void handleSaveAnimation()} style={{ backgroundColor: UI_ACCENT_GREEN, borderColor: UI_ACCENT_GREEN }}>
                {editingAnimId ? 'Update Animation' : 'Create Animation'}
            </Button>
-        ]}
-        style={{ top: 100 }}
-        styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
-        className="dark-modal"
+          </>
+        }
       >
         <Space direction="vertical" style={{ width: '100%', marginTop: 16 }} size="large">
           <div>
@@ -255,7 +252,7 @@ export const AnimationManager: React.FC<AnimationManagerProps> = ({ onPlayAnimat
             <Switch checked={loop} onChange={setLoop} />
           </div>
         </Space>
-      </Modal>
+      </MovableModal>
     </>
   );
 };

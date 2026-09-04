@@ -4,9 +4,11 @@ import {
     UI_ACCENT_GREEN,
     UI_BORDER_DIM,
     UI_BORDER_MUTED,
-    UI_GRADIENT_MODAL_HEADER,
+    UI_CHROME_SURFACE,
     UI_MODAL_SURFACE,
     UI_SHADOW_ELEVATED,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
 
 const { useBreakpoint } = Grid;
@@ -14,12 +16,13 @@ const { useBreakpoint } = Grid;
 interface MediapipeHandTrackerModalProps {
     children: ReactNode;
     header?: ReactNode;
+    footer?: ReactNode;
     modalName: string;
     isVisible: boolean;
     onClose: () => void;
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
-    aspectRatio?: number;
+    contentPadding?: number | string;
     mobileFixedTop?: boolean;
     mobileTopOffset?: number;
 }
@@ -27,21 +30,31 @@ interface MediapipeHandTrackerModalProps {
 export function MovableModal({
     children,
     header,
+    footer,
     modalName,
     isVisible,
     onClose,
-    initialPosition = { x: 100, y: 100 },
-    initialSize = { w: 480, h: 320 },
-    aspectRatio = 4 / 3,
+    initialPosition = { x: 100, y: 120 },
+    initialSize = { w: 350, h: 650 },
+    contentPadding = 24,
     mobileFixedTop = false,
     mobileTopOffset = 0,
 }: MediapipeHandTrackerModalProps) {
-    const [{ x, y }, setPos] = useState(initialPosition);
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+    const hasResolvedBreakpoint = screens.md !== undefined;
+    const hasInitializedPositionRef = useRef(hasResolvedBreakpoint);
+    const [{ x, y }, setPos] = useState(isMobile ? { x: 20, y: 120 } : initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
-    const screens = useBreakpoint();
     const isLocked = mobileFixedTop && !screens.md;
+
+    React.useEffect(() => {
+        if (!hasResolvedBreakpoint || hasInitializedPositionRef.current) return;
+        hasInitializedPositionRef.current = true;
+        setPos(isMobile ? { x: 20, y: 120 } : initialPosition);
+    }, [hasResolvedBreakpoint, initialPosition, isMobile]);
 
     if (!isVisible) { return null; }
 
@@ -86,11 +99,8 @@ export function MovableModal({
             if (!resizingRef.current) { return; }
             const dw = ev.clientX - resizingRef.current.startX;
             const dh = ev.clientY - resizingRef.current.startY;
-
-            // Use the larger delta to maintain aspect ratio
-            const delta = Math.max(dw, dh);
-            const newW = Math.max(260, resizingRef.current.origW + delta);
-            const newH = Math.max(195, newW / aspectRatio);
+            const newW = Math.max(260, resizingRef.current.origW + dw);
+            const newH = Math.max(195, resizingRef.current.origH + dh);
 
             setSize({ w: newW, h: newH });
         };
@@ -118,9 +128,10 @@ export function MovableModal({
                 zIndex: isLocked ? 1 : 1000,
                 backgroundColor: UI_MODAL_SURFACE,
                 border: `1px solid ${UI_BORDER_MUTED}`,
-                borderRadius: 8,
+                borderRadius: 0,
                 boxShadow: UI_SHADOW_ELEVATED,
                 overflow: 'hidden',
+                overscrollBehavior: 'contain',
                 userSelect: 'none',
             }}
         >
@@ -128,29 +139,82 @@ export function MovableModal({
             <div
                 onMouseDown={isLocked ? undefined : handleDragStart}
                 style={{
-                    height: 36,
+                    height: 56,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '0 8px',
-                    background: UI_GRADIENT_MODAL_HEADER,
+                    padding: '0 24px',
+                    backgroundColor: UI_MODAL_SURFACE,
                     borderBottom: `1px solid ${UI_BORDER_DIM}`,
                     cursor: isLocked ? 'default' : 'move',
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+                    <span style={{
+                        color: UI_ACCENT_GREEN,
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        letterSpacing: '0.04em',
+                        whiteSpace: 'nowrap',
+                    }}>
                         {modalName}
                     </span>
                     {header}
                 </div>
-                <Space size={6} align="center">
-                    <Button size="small" danger onClick={onClose}>
+                <Space size={6} align="center" style={{ marginLeft: 16 }}>
+                    <Button
+                        type="text"
+                        size="small"
+                        onClick={onClose}
+                        aria-label={`Close ${modalName}`}
+                        style={{
+                            color: UI_TEXT_SUBTLE,
+                            backgroundColor: 'transparent',
+                            borderColor: 'transparent',
+                            fontSize: 16,
+                            lineHeight: 1,
+                            padding: '4px 8px',
+                        }}
+                        onMouseEnter={(event) => {
+                            event.currentTarget.style.color = UI_TEXT_PRIMARY_ON_DARK;
+                            event.currentTarget.style.backgroundColor = UI_CHROME_SURFACE;
+                        }}
+                        onMouseLeave={(event) => {
+                            event.currentTarget.style.color = UI_TEXT_SUBTLE;
+                            event.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                    >
                         X
                     </Button>
                 </Space>
             </div>
-            {children}
+            <div
+                style={{
+                    padding: contentPadding,
+                    boxSizing: 'border-box',
+                    height: footer ? 'calc(100% - 56px - 57px)' : 'calc(100% - 56px)',
+                    overflow: 'auto',
+                    overscrollBehavior: 'contain',
+                }}
+            >
+                {children}
+            </div>
+            {footer ? (
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '12px 24px',
+                        borderTop: `1px solid ${UI_BORDER_DIM}`,
+                        backgroundColor: UI_CHROME_SURFACE,
+                    }}
+                >
+                    {footer}
+                </div>
+            ) : null}
 
             {/* Resize Handle */}
             {!isLocked && (

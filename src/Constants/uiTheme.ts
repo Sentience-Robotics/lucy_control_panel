@@ -26,7 +26,7 @@ export const UI_BORDER_STRONG = '#333333';
 export const UI_BORDER_SOFT = '#444444';
 export const UI_BORDER_DIM = '#222222';
 export const UI_TEXT_ON_ACCENT = '#000000';
-export const UI_TEXT_PRIMARY_ON_DARK = '#ffffff';
+export const UI_TEXT_PRIMARY_ON_DARK = '#F7F1E5';
 export const UI_TEXT_SECONDARY_MUTED = '#666666';
 /** Muted labels / secondary lines (Ant `colorTextSecondary` parity). */
 export const UI_TEXT_SUBTLE = '#888888';
