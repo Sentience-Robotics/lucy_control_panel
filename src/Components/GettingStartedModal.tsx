@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Button, Space, Typography } from 'antd';
+import { Button, Divider, Space, Typography } from 'antd';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
@@ -44,12 +44,26 @@ export function parseGettingStartedSections(markdown: string): GettingStartedSec
 }
 
 function renderInline(text: string): React.ReactNode[] {
-    return text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean).map((part, index) => {
+    return text.split(/(`[^`]+`|\*\*[^*]+\*\*|\[[^\]]+\]\(https?:\/\/[^)\s]+\))/g).filter(Boolean).map((part, index) => {
         if (part.startsWith('`') && part.endsWith('`')) {
             return <Text code key={index}>{part.slice(1, -1)}</Text>;
         }
         if (part.startsWith('**') && part.endsWith('**')) {
             return <Text strong key={index}>{part.slice(2, -2)}</Text>;
+        }
+        const link = part.match(/^\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)$/);
+        if (link) {
+            return (
+                <a
+                    key={index}
+                    href={link[2]}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: UI_ACCENT_GREEN, textDecoration: 'underline' }}
+                >
+                    {link[1]}
+                </a>
+            );
         }
         return <React.Fragment key={index}>{part}</React.Fragment>;
     });
@@ -83,6 +97,15 @@ function MarkdownContent({ content }: { content: string }) {
         if (!trimmed) {
             flushParagraph();
             flushList();
+        } else if (/^-{3,}$/.test(trimmed)) {
+            flushParagraph();
+            flushList();
+            blocks.push(
+                <Divider
+                    key={`divider-${index}`}
+                    style={{ borderColor: UI_BORDER_MUTED, margin: '20px 0' }}
+                />,
+            );
         } else if (trimmed.startsWith('- ')) {
             flushParagraph();
             listItems.push(trimmed.slice(2));
