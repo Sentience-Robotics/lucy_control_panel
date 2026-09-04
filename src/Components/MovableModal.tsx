@@ -42,11 +42,19 @@ export function MovableModal({
 }: MediapipeHandTrackerModalProps) {
     const screens = useBreakpoint();
     const isMobile = !screens.md;
+    const hasResolvedBreakpoint = screens.md !== undefined;
+    const hasInitializedPositionRef = useRef(hasResolvedBreakpoint);
     const [{ x, y }, setPos] = useState(isMobile ? { x: 20, y: 120 } : initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
     const isLocked = mobileFixedTop && !screens.md;
+
+    React.useEffect(() => {
+        if (!hasResolvedBreakpoint || hasInitializedPositionRef.current) return;
+        hasInitializedPositionRef.current = true;
+        setPos(isMobile ? { x: 20, y: 120 } : initialPosition);
+    }, [hasResolvedBreakpoint, initialPosition, isMobile]);
 
     if (!isVisible) { return null; }
 
