@@ -98,6 +98,69 @@ const { useBreakpoint } = Grid;
 const REFRESH_RATE = 300;
 const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
 
+interface ControlTakenModalProps {
+    isVisible: boolean;
+    fighting: boolean;
+    onClose: () => void;
+    onRetake: () => void;
+}
+
+const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
+    isVisible,
+    fighting,
+    onClose,
+    onRetake,
+}) => (
+    <MovableModal
+        modalName={fighting ? 'STOP FIGHTING' : 'CONTROL TAKEN'}
+        isVisible={isVisible}
+        onClose={onClose}
+        initialPosition={{ x: 160, y: 200 }}
+        initialSize={{ w: 560, h: 280 }}
+        header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
+        footer={
+            <>
+                <Button
+                    icon={<ThunderboltOutlined />}
+                    onClick={onRetake}
+                    style={{
+                        backgroundColor: UI_ACCENT_GREEN,
+                        borderColor: UI_ACCENT_GREEN,
+                        color: UI_TEXT_ON_ACCENT,
+                    }}
+                >
+                    {fighting ? 'I WILL WIN THIS BATTLE' : 'Retake Control'}
+                </Button>
+                <Button
+                    onClick={onClose}
+                    style={{
+                        backgroundColor: UI_COLOR_TRANSPARENT,
+                        borderColor: UI_BORDER_SOFT,
+                        color: UI_TEXT_PRIMARY_ON_DARK,
+                    }}
+                >
+                    {fighting ? "Let's calm down" : 'Close'}
+                </Button>
+            </>
+        }
+    >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+                {fighting
+                    ? 'You and another client keep taking control from each other. Maybe… talk it out?'
+                    : <>Another connected client turned Control Robot <Text style={{ color: UI_ACCENT_GREEN }}>ON</Text> and now has exclusive control.</>
+                }
+            </Text>
+            <Text style={{ color: UI_TEXT_SUBTLE }}>
+                {fighting
+                    ? 'The robot is confused. You should be too.'
+                    : <>Your Control Robot was automatically turned <Text style={{ color: UI_ERROR }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.</>
+                }
+            </Text>
+        </Space>
+    </MovableModal>
+);
+
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
 
@@ -544,28 +607,58 @@ export const RobotControlPanel: React.FC = () => {
 
     if (isConnected && loading) {
         return (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Spin size="large" />
-                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
-                    Loading robot configuration...
-                </Text>
-            </div>
+            <>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <Spin size="large" />
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
+                        Loading robot configuration...
+                    </Text>
+                </div>
+                <ControlTakenModal
+                    isVisible={showControlTakenModal}
+                    fighting={retakeCountRef.current >= 3}
+                    onClose={() => {
+                        retakeCountRef.current = 0;
+                        setShowControlTakenModal(false);
+                    }}
+                    onRetake={() => {
+                        retakeCountRef.current += 1;
+                        setShowControlTakenModal(false);
+                        applyControlToggle(true);
+                    }}
+                />
+            </>
         );
     }
 
     if (isConnected && error) {
         return (
-            <Alert
-                message="Error Loading Robot Configuration"
-                description={error}
-                type="error"
-                showIcon
-                action={
-                    <Button size="small" onClick={() => void refetchActiveHardware()}>
-                        Retry
-                    </Button>
-                }
-            />
+            <>
+                <Alert
+                    message="Error Loading Robot Configuration"
+                    description={error}
+                    type="error"
+                    showIcon
+                    action={
+                        <Button size="small" onClick={() => void refetchActiveHardware()}>
+                            Retry
+                        </Button>
+                    }
+                />
+                <ControlTakenModal
+                    isVisible={showControlTakenModal}
+                    fighting={retakeCountRef.current >= 3}
+                    onClose={() => {
+                        retakeCountRef.current = 0;
+                        setShowControlTakenModal(false);
+                    }}
+                    onRetake={() => {
+                        retakeCountRef.current += 1;
+                        setShowControlTakenModal(false);
+                        applyControlToggle(true);
+                    }}
+                />
+            </>
         );
     }
 
@@ -872,79 +965,32 @@ export const RobotControlPanel: React.FC = () => {
                 </MovableModal>
             )}
 
-            {/* Another client took control */}
-            {(() => {
-                const fighting = retakeCountRef.current >= 3;
-                return (
-                    <MovableModal
-                        modalName={fighting ? 'STOP FIGHTING' : 'CONTROL TAKEN'}
-                        isVisible={showControlTakenModal}
-                        onClose={() => { retakeCountRef.current = 0; setShowControlTakenModal(false); }}
-                        initialPosition={{ x: 160, y: 200 }}
-                        initialSize={{ w: 560, h: 280 }}
-                        header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
-                        footer={
-                          <>
-                            <Button
-                                key="retake"
-                                icon={<ThunderboltOutlined />}
-                                onClick={() => {
-                                    retakeCountRef.current += 1;
-                                    setShowControlTakenModal(false);
-                                    applyControlToggle(true);
-                                }}
-                                style={{
-                                    backgroundColor: UI_ACCENT_GREEN,
-                                    borderColor: UI_ACCENT_GREEN,
-                                    color: UI_TEXT_ON_ACCENT,
-                                }}
-                            >
-                                {fighting ? 'I WILL WIN THIS BATTLE' : 'Retake Control'}
-                            </Button>
-                            <Button
-                                key="close"
-                                onClick={() => {
-                                    retakeCountRef.current = 0;
-                                    setShowControlTakenModal(false);
-                                }}
-                                style={{
-                                    backgroundColor: UI_COLOR_TRANSPARENT,
-                                    borderColor: UI_BORDER_SOFT,
-                                    color: UI_TEXT_PRIMARY_ON_DARK,
-                                }}
-                            >
-                                {fighting ? "Let's calm down" : 'Close'}
-                            </Button>
-                          </>
-                        }
-                    >
-                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                            <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
-                                {fighting
-                                    ? 'You and another client keep taking control from each other. Maybe… talk it out?'
-                                    : <>Another connected client turned Control Robot <Text style={{ color: UI_ACCENT_GREEN }}>ON</Text> and now has exclusive control.</>
-                                }
-                            </Text>
-                            <Text style={{ color: UI_TEXT_SUBTLE }}>
-                                {fighting
-                                    ? 'The robot is confused. You should be too.'
-                                    : <>Your Control Robot was automatically turned <Text style={{ color: UI_ERROR }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.</>
-                                }
-                            </Text>
-                        </Space>
-                    </MovableModal>
-                );
-            })()}
+            <ControlTakenModal
+                isVisible={showControlTakenModal}
+                fighting={retakeCountRef.current >= 3}
+                onClose={() => {
+                    retakeCountRef.current = 0;
+                    setShowControlTakenModal(false);
+                }}
+                onRetake={() => {
+                    retakeCountRef.current += 1;
+                    setShowControlTakenModal(false);
+                    applyControlToggle(true);
+                }}
+            />
 
             {/* We are about to take control away from another client */}
-            <Modal
-                title={
-                    <Title level={4} style={{ color: UI_WARNING, margin: 0 }}>
-                        <ThunderboltOutlined /> Take control from another client?
-                    </Title>
+            <MovableModal
+                modalName="TAKE CONTROL"
+                isVisible={showConfirmTakeControlModal}
+                onClose={() => setShowConfirmTakeControlModal(false)}
+                initialPosition={{ x: 100, y: 200 }}
+                initialSize={{ w: 500, h: 300 }}
+                header={
+                    <Text style={{ color: UI_WARNING, fontFamily: 'monospace', fontSize: 12 }}>
+                        <ThunderboltOutlined /> TAKE CONTROL FROM ANOTHER CLIENT?
+                    </Text>
                 }
-                open={showConfirmTakeControlModal}
-                onCancel={() => setShowConfirmTakeControlModal(false)}
                 footer={[
                     <Button
                         key="take"
@@ -970,9 +1016,6 @@ export const RobotControlPanel: React.FC = () => {
                         Cancel
                     </Button>,
                 ]}
-                style={{ top: 200 }}
-                styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
-                className="dark-modal"
             >
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
                     <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
@@ -983,7 +1026,7 @@ export const RobotControlPanel: React.FC = () => {
                         and they are told you took over.
                     </Text>
                 </Space>
-            </Modal>
+            </MovableModal>
 
         </>
     );
