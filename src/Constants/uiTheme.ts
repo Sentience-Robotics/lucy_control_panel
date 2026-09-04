@@ -73,6 +73,12 @@ export const UI_ACCENT_BOX_SHADOW_SOFT = `0 0 8px ${UI_ACCENT_GREEN}`;
 export const UI_ACCENT_BOX_SHADOW_STRONG = `0 0 10px ${UI_ACCENT_GREEN}`;
 export const UI_PAGE_HEADER_BORDER_BOTTOM = `2px solid ${UI_BORDER_MUTED}`;
 
+/** Shared shell padding for main app pages (control, sensors, robot configuration). */
+export const PAGE_CONTENT_STYLE = {
+    padding: 12,
+    position: 'relative',
+} as const;
+
 export const UI_CARD_SURFACE_STYLE = {
     background: UI_PANEL_BG,
     borderColor: UI_BORDER_MUTED,

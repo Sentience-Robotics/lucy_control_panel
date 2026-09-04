@@ -42,7 +42,7 @@ The application features a distinctive green-on-black cyberpunk aesthetic remini
 
 > **Quick Node upgrade with nvm**
 >
-> If you have Node < 22 (e.g. the Ubuntu 22.04 default 18.x), install nvm and switch:
+> If you have Node < 22 (e.g. the Ubuntu 24.04 Noble default 18.x), install nvm and switch:
 > ```sh
 > # Install nvm (skip if already installed)
 > curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
@@ -140,7 +140,7 @@ VITE_OVERRIDE_ROS_BRIDGE_SERVER_URL=https://100.100.100.100:5000/rosbridge
 
 VITE_ENABLE_LOGS=true
 
-# Hardware YAML editor (`/configuration`): header shows `robot_name` from loaded YAML (via ROS config/get).
+# Hardware YAML editor (`/robot-configuration`): header shows `robot_name` from loaded YAML (via ROS config/get).
 ```
 
 ### Authentication Setup
