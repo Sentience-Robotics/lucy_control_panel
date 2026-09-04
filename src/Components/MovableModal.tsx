@@ -121,6 +121,7 @@ export function MovableModal({
                 borderRadius: 8,
                 boxShadow: UI_SHADOW_ELEVATED,
                 overflow: 'hidden',
+                overscrollBehavior: 'contain',
                 userSelect: 'none',
             }}
         >

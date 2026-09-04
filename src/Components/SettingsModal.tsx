@@ -14,6 +14,7 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
 } from '../Constants/uiTheme';
 import { ToggleSwitch } from './ToggleSwitch';
+import { GETTING_STARTED_COMPLETED_KEY, REDO_GETTING_STARTED_EVENT } from './GettingStartedModal';
 
 const { Text, Title } = Typography;
 
@@ -59,7 +60,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
         try {
             await connect(rosUrl);
             onClose();
-        } catch (error) {
+        } catch {
             // Error is already logged in the hook
         }
     };
@@ -174,6 +175,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
                         <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Joints Loaded: {jointsLoaded}</Text>
                         <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Active Configuration: {activeHardwareConfigName || 'N/A'}</Text>
                     </Space>
+                </Form.Item>
+                <Form.Item>
+                    <Button
+                        onClick={() => {
+                            localStorage.removeItem(GETTING_STARTED_COMPLETED_KEY);
+                            window.dispatchEvent(new Event(REDO_GETTING_STARTED_EVENT));
+                            onClose();
+                        }}
+                        style={{
+                            backgroundColor: UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        Redo getting started
+                    </Button>
                 </Form.Item>
             </Form>
         </Modal>
