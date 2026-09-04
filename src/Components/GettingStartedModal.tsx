@@ -169,7 +169,7 @@ export const GettingStartedModal: React.FC = () => {
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    height: 'calc(100% - 36px)',
+                    height: 'calc(100% - 56px)',
                     backgroundColor: UI_PANEL_BG,
                 }}
             >
