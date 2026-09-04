@@ -29,15 +29,15 @@ import {
     UI_COLOR_TRANSPARENT,
     UI_INPUT_SURFACE,
     UI_LIST_ROW_BG,
-    UI_MODAL_MASK_BG,
     UI_PANEL_BG,
     UI_PRIMARY_GREEN_BUTTON_STYLE,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
 import { storageService, type SavedPose, PoseInUseError } from '../Services/storage.service.ts';
+import { MovableModal } from './MovableModal';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 interface PoseManagerProps {
   joints: JointControlState[];
@@ -202,26 +202,22 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
       </Space>
 
       {/* Save Pose Modal */}
-      <Modal
-        title={
-          <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-            <SaveOutlined /> Save Current Pose
-          </Title>
-        }
-        open={saveModalVisible}
-        onOk={() => void handleSavePose()}
-        onCancel={() => {
+      <MovableModal
+        modalName="SAVE POSE"
+        isVisible={saveModalVisible}
+        onClose={() => {
           setSaveModalVisible(false);
           setPoseName('');
         }}
-        confirmLoading={loading}
-        okText="Save Pose"
-        cancelText="Cancel"
-        style={{ top: 100 }}
-        styles={{
-          mask: { backgroundColor: UI_MODAL_MASK_BG }
-        }}
-        className="dark-modal"
+        initialPosition={{ x: 20, y: 120 }}
+        initialSize={{ w: 350, h: 650 }}
+        header={<SaveOutlined style={{ color: UI_ACCENT_GREEN }} />}
+        footer={
+          <>
+            <Button onClick={() => { setSaveModalVisible(false); setPoseName(''); }}>CANCEL</Button>
+            <Button type="primary" loading={loading} onClick={() => void handleSavePose()} style={UI_PRIMARY_GREEN_BUTTON_STYLE}>SAVE POSE</Button>
+          </>
+        }
       >
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
           <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
@@ -282,36 +278,17 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
             </Row>
           </Card>
         </Space>
-      </Modal>
+      </MovableModal>
 
       {/* Load Pose Modal */}
-      <Modal
-        title={
-          <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-            <FolderOpenOutlined /> Load Saved Pose
-          </Title>
-        }
-        open={loadModalVisible}
-        footer={[
-          <Button
-            key="close"
-            onClick={() => setLoadModalVisible(false)}
-            style={{
-              backgroundColor: UI_COLOR_TRANSPARENT,
-              borderColor: UI_BORDER_SOFT,
-              color: UI_TEXT_PRIMARY_ON_DARK,
-            }}
-          >
-            Close
-          </Button>
-        ]}
-        onCancel={() => setLoadModalVisible(false)}
-        width={700}
-        style={{ top: 50 }}
-        styles={{
-          mask: { backgroundColor: UI_MODAL_MASK_BG }
-        }}
-        className="dark-modal"
+      <MovableModal
+        modalName="LOAD POSE"
+        isVisible={loadModalVisible}
+        onClose={() => setLoadModalVisible(false)}
+        initialPosition={{ x: 390, y: 120 }}
+        initialSize={{ w: 350, h: 650 }}
+        header={<FolderOpenOutlined style={{ color: UI_ACCENT_GREEN }} />}
+        footer={<Button onClick={() => setLoadModalVisible(false)} style={{ backgroundColor: UI_COLOR_TRANSPARENT, borderColor: UI_BORDER_SOFT, color: UI_TEXT_PRIMARY_ON_DARK }}>CLOSE</Button>}
       >
         {savedPoses.length === 0 ? (
           <Card style={{ textAlign: 'center', backgroundColor: UI_PANEL_BG, borderColor: UI_BORDER_MUTED }}>
@@ -384,7 +361,7 @@ export const PoseManager: React.FC<PoseManagerProps> = ({ joints, onLoadPose }) 
             )}
           />
         )}
-      </Modal>
+      </MovableModal>
     </>
   );
 };

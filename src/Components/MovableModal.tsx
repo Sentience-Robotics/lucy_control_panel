@@ -16,12 +16,13 @@ const { useBreakpoint } = Grid;
 interface MediapipeHandTrackerModalProps {
     children: ReactNode;
     header?: ReactNode;
+    footer?: ReactNode;
     modalName: string;
     isVisible: boolean;
     onClose: () => void;
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
-    aspectRatio?: number;
+    contentPadding?: number | string;
     mobileFixedTop?: boolean;
     mobileTopOffset?: number;
 }
@@ -29,20 +30,22 @@ interface MediapipeHandTrackerModalProps {
 export function MovableModal({
     children,
     header,
+    footer,
     modalName,
     isVisible,
     onClose,
-    initialPosition = { x: 100, y: 100 },
-    initialSize = { w: 480, h: 320 },
-    aspectRatio = 4 / 3,
+    initialPosition = { x: 100, y: 120 },
+    initialSize = { w: 350, h: 650 },
+    contentPadding = 24,
     mobileFixedTop = false,
     mobileTopOffset = 0,
 }: MediapipeHandTrackerModalProps) {
-    const [{ x, y }, setPos] = useState(initialPosition);
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+    const [{ x, y }, setPos] = useState(isMobile ? { x: 20, y: 120 } : initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
-    const screens = useBreakpoint();
     const isLocked = mobileFixedTop && !screens.md;
 
     if (!isVisible) { return null; }
@@ -88,11 +91,8 @@ export function MovableModal({
             if (!resizingRef.current) { return; }
             const dw = ev.clientX - resizingRef.current.startX;
             const dh = ev.clientY - resizingRef.current.startY;
-
-            // Use the larger delta to maintain aspect ratio
-            const delta = Math.max(dw, dh);
-            const newW = Math.max(260, resizingRef.current.origW + delta);
-            const newH = Math.max(195, newW / aspectRatio);
+            const newW = Math.max(260, resizingRef.current.origW + dw);
+            const newH = Math.max(195, resizingRef.current.origH + dh);
 
             setSize({ w: newW, h: newH });
         };
@@ -181,7 +181,32 @@ export function MovableModal({
                     </Button>
                 </Space>
             </div>
-            {children}
+            <div
+                style={{
+                    padding: contentPadding,
+                    boxSizing: 'border-box',
+                    height: footer ? 'calc(100% - 56px - 57px)' : 'calc(100% - 56px)',
+                    overflow: 'auto',
+                    overscrollBehavior: 'contain',
+                }}
+            >
+                {children}
+            </div>
+            {footer ? (
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '12px 24px',
+                        borderTop: `1px solid ${UI_BORDER_DIM}`,
+                        backgroundColor: UI_CHROME_SURFACE,
+                    }}
+                >
+                    {footer}
+                </div>
+            ) : null}
 
             {/* Resize Handle */}
             {!isLocked && (

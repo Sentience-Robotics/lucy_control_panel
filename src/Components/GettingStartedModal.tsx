@@ -158,7 +158,7 @@ export const GettingStartedModal: React.FC = () => {
             onClose={complete}
             initialPosition={{ x: 120, y: 80 }}
             initialSize={{ w: 720, h: 520 }}
-            aspectRatio={18 / 13}
+            contentPadding={0}
             header={
                 <Text style={{ color: UI_TEXT_SUBTLE, fontFamily: 'monospace', fontSize: 11 }}>
                     SECTION {sectionIndex + 1}/{sections.length}
@@ -169,7 +169,7 @@ export const GettingStartedModal: React.FC = () => {
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    height: 'calc(100% - 56px)',
+                    height: '100%',
                     backgroundColor: UI_PANEL_BG,
                 }}
             >

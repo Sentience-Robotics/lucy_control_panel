@@ -8,7 +8,7 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, Modal, message, Dropdown, Grid } from 'antd';
+import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, message, Dropdown, Grid } from 'antd';
 import type { MenuProps } from 'antd';
 import {
     ReloadOutlined,
@@ -75,7 +75,6 @@ import {
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
     UI_ERROR,
-    UI_MODAL_MASK_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
@@ -93,7 +92,7 @@ import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
@@ -877,15 +876,15 @@ export const RobotControlPanel: React.FC = () => {
             {(() => {
                 const fighting = retakeCountRef.current >= 3;
                 return (
-                    <Modal
-                        title={
-                            <Title level={4} style={{ color: UI_WARNING, margin: 0 }}>
-                                <ThunderboltOutlined /> {fighting ? 'Stop fighting!' : 'Someone else took control'}
-                            </Title>
-                        }
-                        open={showControlTakenModal}
-                        onCancel={() => { retakeCountRef.current = 0; setShowControlTakenModal(false); }}
-                        footer={[
+                    <MovableModal
+                        modalName={fighting ? 'STOP FIGHTING' : 'CONTROL TAKEN'}
+                        isVisible={showControlTakenModal}
+                        onClose={() => { retakeCountRef.current = 0; setShowControlTakenModal(false); }}
+                        initialPosition={{ x: 160, y: 200 }}
+                        initialSize={{ w: 560, h: 280 }}
+                        header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
+                        footer={
+                          <>
                             <Button
                                 key="retake"
                                 icon={<ThunderboltOutlined />}
@@ -901,7 +900,7 @@ export const RobotControlPanel: React.FC = () => {
                                 }}
                             >
                                 {fighting ? 'I WILL WIN THIS BATTLE' : 'Retake Control'}
-                            </Button>,
+                            </Button>
                             <Button
                                 key="close"
                                 onClick={() => {
@@ -915,11 +914,9 @@ export const RobotControlPanel: React.FC = () => {
                                 }}
                             >
                                 {fighting ? "Let's calm down" : 'Close'}
-                            </Button>,
-                        ]}
-                        style={{ top: 200 }}
-                        styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
-                        className="dark-modal"
+                            </Button>
+                          </>
+                        }
                     >
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
@@ -935,7 +932,7 @@ export const RobotControlPanel: React.FC = () => {
                                 }
                             </Text>
                         </Space>
-                    </Modal>
+                    </MovableModal>
                 );
             })()}
 
