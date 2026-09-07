@@ -62,8 +62,7 @@ import {
 import { LucyLoader } from '../Components/LucyLoader';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
-import { PoseManager } from '../Components/PoseManager';
-import { AnimationManager } from '../Components/AnimationManager';
+import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
 import { MovableModal } from '../Components/MovableModal';
@@ -564,12 +563,16 @@ export const RobotControlPanel: React.FC = () => {
         }
 
         let currentIndex = 0;
+        let completedLoops = 0;
         const playNextFrame = () => {
             handleLoadPose(poses[currentIndex].joints);
             currentIndex++;
 
             if (currentIndex >= poses.length) {
-                if (animation.loop) {
+                completedLoops++;
+                const hasMoreLoops = animation.loop
+                    && (animation.loopCount === 0 || completedLoops < animation.loopCount);
+                if (hasMoreLoops) {
                     currentIndex = 0;
                 } else {
                     setIsAnimating(false);
@@ -672,13 +675,16 @@ export const RobotControlPanel: React.FC = () => {
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         {
-            key: 'pose',
-            label: <PoseManager joints={joints} onLoadPose={handleLoadPose} />,
-            style: { color: UI_TEXT_PRIMARY_ON_DARK }
-        },
-        {
-            key: 'animation',
-            label: <AnimationManager onPlayAnimation={handlePlayAnimation} />,
+            key: 'poses',
+            label: (
+                <ManagePosesModal
+                    joints={joints}
+                    onLoadPose={handleLoadPose}
+                    onPlayAnimation={handlePlayAnimation}
+                    isAnimating={isAnimating}
+                    onStopAnimation={handleStopAnimation}
+                />
+            ),
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         ...(isAnimating ? [{
@@ -810,11 +816,13 @@ export const RobotControlPanel: React.FC = () => {
                                         RESET ALL
                                     </Button>
 
-                                    <PoseManager
+                                    <ManagePosesModal
                                         joints={joints}
                                         onLoadPose={handleLoadPose}
+                                        onPlayAnimation={handlePlayAnimation}
+                                        isAnimating={isAnimating}
+                                        onStopAnimation={handleStopAnimation}
                                     />
-                                    <AnimationManager onPlayAnimation={handlePlayAnimation} />
                                     {isAnimating && (
                                         <Button
                                             danger

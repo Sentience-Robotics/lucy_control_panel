@@ -11,6 +11,7 @@ export interface SavedPose {
   id: string;
   name: string;
   timestamp: number;
+  date?: string;
   joints: Record<string, number>; // joint name -> value mapping
 }
 
@@ -21,6 +22,7 @@ export interface SavedAnimation {
     poseIds: string[];
     speed: number; // 1 = normal
     loop: boolean;
+    loopCount: number; // 0 = infinite when looping is enabled
 }
 
 export interface StorageService {
@@ -84,6 +86,7 @@ class LocalStorageService implements StorageService {
       id: this.generateId(),
       name: name.trim(),
       timestamp: Date.now(),
+      date: new Date().toISOString(),
       joints: jointValues
     };
 
@@ -160,7 +163,13 @@ class LocalStorageService implements StorageService {
       if (!data) return [];
 
       const animations = JSON.parse(data);
-      return Array.isArray(animations) ? animations : [];
+      return Array.isArray(animations)
+        ? animations.map((animation: SavedAnimation) => ({
+            ...animation,
+            loop: animation.loop ?? true,
+            loopCount: animation.loopCount ?? 0,
+          }))
+        : [];
     } catch (error) {
       console.warn('Failed to load animations from localStorage:', error);
       return [];
@@ -204,7 +213,8 @@ class LocalStorageService implements StorageService {
             timestamp: Date.now(),
             poseIds: animationData.poseIds,
             speed: animationData.speed ?? 1,
-            loop: animationData.loop ?? false,
+            loop: animationData.loop ?? true,
+            loopCount: animationData.loopCount ?? 0,
         };
 
         const existingNames = animations.map(a => a.name);
