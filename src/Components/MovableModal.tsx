@@ -4,44 +4,153 @@ import {
     UI_ACCENT_GREEN,
     UI_BORDER_DIM,
     UI_BORDER_MUTED,
-    UI_GRADIENT_MODAL_HEADER,
+    UI_CHROME_SURFACE,
     UI_MODAL_SURFACE,
     UI_SHADOW_ELEVATED,
+    UI_TEXT_PRIMARY_ON_DARK,
+    UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
 
 const { useBreakpoint } = Grid;
 
-interface MediapipeHandTrackerModalProps {
+interface ModalPosition {
+    x: number;
+    y: number;
+}
+
+interface ModalSize {
+    w: number;
+    h: number;
+}
+
+interface RegisteredModal {
+    position: ModalPosition;
+    size: ModalSize;
+}
+
+const registeredModals = new Map<symbol, RegisteredModal>();
+const VIEWPORT_MARGIN = 8;
+const PLACEMENT_STEP = 24;
+
+const clampPosition = (position: ModalPosition, size: ModalSize): ModalPosition => {
+    const maxX = Math.max(VIEWPORT_MARGIN, window.innerWidth - size.w - VIEWPORT_MARGIN);
+    const maxY = Math.max(VIEWPORT_MARGIN, window.innerHeight - size.h - VIEWPORT_MARGIN);
+
+    return {
+        x: Math.min(Math.max(VIEWPORT_MARGIN, position.x), maxX),
+        y: Math.min(Math.max(VIEWPORT_MARGIN, position.y), maxY),
+    };
+};
+
+const overlaps = (first: RegisteredModal, second: RegisteredModal) => (
+    first.position.x < second.position.x + second.size.w
+    && first.position.x + first.size.w > second.position.x
+    && first.position.y < second.position.y + second.size.h
+    && first.position.y + first.size.h > second.position.y
+);
+
+const findAvailablePosition = (preferredPosition: ModalPosition, size: ModalSize, id: symbol): ModalPosition => {
+    const preferred = clampPosition(preferredPosition, size);
+    const occupied = Array.from(registeredModals.entries())
+        .filter(([registeredId]) => registeredId !== id)
+        .map(([, modal]) => modal);
+    const fits = (position: ModalPosition) => {
+        const candidate = { position, size };
+        return occupied.every(modal => !overlaps(candidate, modal));
+    };
+
+    if (fits(preferred)) {
+        return preferred;
+    }
+
+    const maxX = Math.max(VIEWPORT_MARGIN, window.innerWidth - size.w - VIEWPORT_MARGIN);
+    const maxY = Math.max(VIEWPORT_MARGIN, window.innerHeight - size.h - VIEWPORT_MARGIN);
+    for (let y = VIEWPORT_MARGIN; y <= maxY; y += PLACEMENT_STEP) {
+        for (let x = VIEWPORT_MARGIN; x <= maxX; x += PLACEMENT_STEP) {
+            const candidate = { x, y };
+            if (fits(candidate)) {
+                return candidate;
+            }
+        }
+    }
+
+    // The viewport is fully occupied; retaining the preferred position is the least surprising fallback.
+    return preferred;
+};
+
+interface MovableModalProps {
     children: ReactNode;
     header?: ReactNode;
+    footer?: ReactNode;
     modalName: string;
     isVisible: boolean;
     onClose: () => void;
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
-    aspectRatio?: number;
+    contentPadding?: number | string;
     mobileFixedTop?: boolean;
     mobileTopOffset?: number;
+    footerWrap?: boolean;
+    minWidth?: number;
 }
 
 export function MovableModal({
     children,
     header,
+    footer,
     modalName,
     isVisible,
     onClose,
-    initialPosition = { x: 100, y: 100 },
-    initialSize = { w: 480, h: 320 },
-    aspectRatio = 4 / 3,
+    initialPosition = { x: 100, y: 120 },
+    initialSize = { w: 350, h: 650 },
+    contentPadding = 24,
     mobileFixedTop = false,
     mobileTopOffset = 0,
-}: MediapipeHandTrackerModalProps) {
-    const [{ x, y }, setPos] = useState(initialPosition);
+    footerWrap = true,
+    minWidth = 260,
+}: MovableModalProps) {
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
+    const hasResolvedBreakpoint = screens.md !== undefined;
+    const hasInitializedPositionRef = useRef(hasResolvedBreakpoint);
+    const [{ x, y }, setPos] = useState(isMobile ? { x: 20, y: 120 } : initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
+    const modalIdRef = useRef(Symbol(modalName));
+    const wasVisibleRef = useRef(false);
+    const hasOpenedRef = useRef(false);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
-    const screens = useBreakpoint();
     const isLocked = mobileFixedTop && !screens.md;
+
+    React.useEffect(() => {
+        if (!hasResolvedBreakpoint || hasInitializedPositionRef.current) return;
+        hasInitializedPositionRef.current = true;
+        setPos(isMobile ? { x: 20, y: 120 } : initialPosition);
+    }, [hasResolvedBreakpoint, initialPosition, isMobile]);
+
+    React.useEffect(() => {
+        const modalId = modalIdRef.current;
+        if (!hasResolvedBreakpoint || !isVisible || isLocked) {
+            registeredModals.delete(modalId);
+            wasVisibleRef.current = false;
+            return;
+        }
+
+        if (!wasVisibleRef.current) {
+            const preferredPosition = hasOpenedRef.current || isMobile ? { x, y } : initialPosition;
+            const position = findAvailablePosition(preferredPosition, { w, h }, modalId);
+            setPos(position);
+            registeredModals.set(modalId, { position, size: { w, h } });
+            wasVisibleRef.current = true;
+            hasOpenedRef.current = true;
+        } else {
+            registeredModals.set(modalId, { position: { x, y }, size: { w, h } });
+        }
+
+        return () => {
+            registeredModals.delete(modalId);
+        };
+    }, [h, hasResolvedBreakpoint, initialPosition, isLocked, isMobile, isVisible, w, x, y]);
 
     if (!isVisible) { return null; }
 
@@ -86,11 +195,8 @@ export function MovableModal({
             if (!resizingRef.current) { return; }
             const dw = ev.clientX - resizingRef.current.startX;
             const dh = ev.clientY - resizingRef.current.startY;
-
-            // Use the larger delta to maintain aspect ratio
-            const delta = Math.max(dw, dh);
-            const newW = Math.max(260, resizingRef.current.origW + delta);
-            const newH = Math.max(195, newW / aspectRatio);
+            const newW = Math.max(minWidth, resizingRef.current.origW + dw);
+            const newH = Math.max(195, resizingRef.current.origH + dh);
 
             setSize({ w: newW, h: newH });
         };
@@ -113,44 +219,109 @@ export function MovableModal({
                 left: isLocked ? undefined : x,
                 top: isLocked ? mobileTopOffset : y,
                 width: isLocked ? '100%' : w,
+                minWidth: isLocked ? undefined : minWidth,
                 height: isLocked ? '33.333vh' : h,
                 marginBottom: isLocked ? 12 : undefined,
                 zIndex: isLocked ? 1 : 1000,
                 backgroundColor: UI_MODAL_SURFACE,
                 border: `1px solid ${UI_BORDER_MUTED}`,
-                borderRadius: 8,
+                borderRadius: 0,
                 boxShadow: UI_SHADOW_ELEVATED,
                 overflow: 'hidden',
+                overscrollBehavior: 'contain',
                 userSelect: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box',
             }}
         >
             {/* Header Bar */}
             <div
                 onMouseDown={isLocked ? undefined : handleDragStart}
                 style={{
-                    height: 36,
+                    height: 56,
+                    flex: '0 0 56px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '0 8px',
-                    background: UI_GRADIENT_MODAL_HEADER,
+                    padding: '0 24px',
+                    backgroundColor: UI_MODAL_SURFACE,
                     borderBottom: `1px solid ${UI_BORDER_DIM}`,
                     cursor: isLocked ? 'default' : 'move',
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <span style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+                    <span style={{
+                        color: UI_ACCENT_GREEN,
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        letterSpacing: '0.04em',
+                        whiteSpace: 'nowrap',
+                    }}>
                         {modalName}
                     </span>
                     {header}
                 </div>
-                <Space size={6} align="center">
-                    <Button size="small" danger onClick={onClose}>
+                <Space size={6} align="center" style={{ marginLeft: 16 }}>
+                    <Button
+                        type="text"
+                        size="small"
+                        onClick={onClose}
+                        aria-label={`Close ${modalName}`}
+                        style={{
+                            color: UI_TEXT_SUBTLE,
+                            backgroundColor: 'transparent',
+                            borderColor: 'transparent',
+                            fontSize: 16,
+                            lineHeight: 1,
+                            padding: '4px 8px',
+                        }}
+                        onMouseEnter={(event) => {
+                            event.currentTarget.style.color = UI_TEXT_PRIMARY_ON_DARK;
+                            event.currentTarget.style.backgroundColor = UI_CHROME_SURFACE;
+                        }}
+                        onMouseLeave={(event) => {
+                            event.currentTarget.style.color = UI_TEXT_SUBTLE;
+                            event.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                    >
                         X
                     </Button>
                 </Space>
             </div>
-            {children}
+            <div
+                style={{
+                    padding: contentPadding,
+                    boxSizing: 'border-box',
+                    flex: '1 1 auto',
+                    minHeight: 0,
+                    overflow: 'auto',
+                    overscrollBehavior: 'contain',
+                }}
+            >
+                {children}
+            </div>
+            {footer ? (
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '12px 24px',
+                        borderTop: `1px solid ${UI_BORDER_DIM}`,
+                        backgroundColor: UI_CHROME_SURFACE,
+                        boxSizing: 'border-box',
+                        flex: '0 0 auto',
+                        flexWrap: footerWrap ? 'wrap' : 'nowrap',
+                        overflow: 'auto',
+                        minWidth: 0,
+                    }}
+                >
+                    {footer}
+                </div>
+            ) : null}
 
             {/* Resize Handle */}
             {!isLocked && (

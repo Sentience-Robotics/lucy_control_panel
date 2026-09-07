@@ -5,7 +5,6 @@ import {
     Col,
     Input,
     List,
-    Modal,
     Popconfirm,
     Row,
     Space,
@@ -31,13 +30,13 @@ import {
     UI_COLOR_TRANSPARENT,
     UI_INPUT_SURFACE,
     UI_LIST_ROW_BG,
-    UI_MODAL_MASK_BG,
     UI_PRIMARY_GREEN_BUTTON_STYLE,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
+import { MovableModal } from './MovableModal';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const QUICK_CONFIG_NAMES = ['default', 'staging', 'test_bench', 'production', 'minimal'];
 
@@ -125,10 +124,6 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
         [onLoadConfig],
     );
 
-    const modalStyles = {
-        mask: { backgroundColor: UI_MODAL_MASK_BG },
-    };
-
     const inputDarkStyle = {
         backgroundColor: UI_INPUT_SURFACE,
         borderColor: UI_BORDER_SOFT,
@@ -194,29 +189,22 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                 </Button>
             </Space>
 
-            <Modal
-                title={
-                    <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-                        <SaveOutlined /> SAVE ROBOT CONFIGURATION
-                    </Title>
-                }
-                open={saveModalVisible}
-                onOk={handleSaveConfig}
-                onCancel={() => {
+            <MovableModal
+                modalName="SAVE CONFIGURATION"
+                isVisible={saveModalVisible}
+                onClose={() => {
                     setSaveModalVisible(false);
                     setConfigNameInput('');
                 }}
-                confirmLoading={saving}
-                okText="SAVE CONFIGURATION"
-                cancelText="CANCEL"
-                okButtonProps={{
-                    disabled: !yamlDoc || !isDirty || !configNameInput.trim(),
-                    style: UI_PRIMARY_GREEN_BUTTON_STYLE,
-                }}
-                style={{ top: 100 }}
-                styles={modalStyles}
-                className="dark-modal"
-                destroyOnClose
+                initialPosition={{ x: 120, y: 80 }}
+                initialSize={{ w: 680, h: 520 }}
+                header={<SaveOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                footer={
+                    <>
+                        <Button onClick={() => { setSaveModalVisible(false); setConfigNameInput(''); }}>CANCEL</Button>
+                        <Button type="primary" loading={saving} disabled={!yamlDoc || !isDirty || !configNameInput.trim()} onClick={() => void handleSaveConfig()} style={UI_PRIMARY_GREEN_BUTTON_STYLE}>SAVE CONFIGURATION</Button>
+                    </>
+                }
             >
                 <Space direction="vertical" style={{ width: '100%' }} size="large">
                     {!isDirty && !saving ? (
@@ -279,25 +267,16 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                         </Row>
                     </Card>
                 </Space>
-            </Modal>
+            </MovableModal>
 
-            <Modal
-                title={
-                    <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-                        <FolderOpenOutlined /> LOAD ROBOT CONFIGURATION
-                    </Title>
-                }
-                open={loadModalVisible}
-                footer={
-                    <Button onClick={() => setLoadModalVisible(false)} style={outlineBtnStyle}>
-                        CLOSE
-                    </Button>
-                }
-                onCancel={() => setLoadModalVisible(false)}
-                width={720}
-                style={{ top: 50 }}
-                styles={modalStyles}
-                className="dark-modal"
+            <MovableModal
+                modalName="LOAD CONFIGURATION"
+                isVisible={loadModalVisible}
+                onClose={() => setLoadModalVisible(false)}
+                initialPosition={{ x: 100, y: 60 }}
+                initialSize={{ w: 720, h: 600 }}
+                header={<FolderOpenOutlined style={{ color: UI_ACCENT_GREEN }} />}
+                footer={<Button onClick={() => setLoadModalVisible(false)} style={outlineBtnStyle}>CLOSE</Button>}
             >
                 <Space direction="vertical" style={{ width: '100%', marginBottom: 12 }} size="small">
                     <Button
@@ -429,7 +408,7 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                         }}
                     />
                 )}
-            </Modal>
+            </MovableModal>
         </>
     );
 };
