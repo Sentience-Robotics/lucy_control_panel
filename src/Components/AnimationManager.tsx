@@ -190,7 +190,16 @@ export const AnimationManager: React.FC<AnimationManagerProps> = ({ onPlayAnimat
            <Button key="cancel" onClick={() => setManageModalVisible(false)}>
                Cancel
            </Button>
-           <Button key="save" type="primary" loading={loading} onClick={() => void handleSaveAnimation()} style={{ backgroundColor: UI_ACCENT_GREEN, borderColor: UI_ACCENT_GREEN }}>
+           <Button
+            key="save"
+            type="primary"
+            loading={loading}
+            onClick={() => void handleSaveAnimation()}
+            style={{
+              backgroundColor: UI_COLOR_TRANSPARENT,
+              borderColor: UI_BORDER_SOFT,
+              color: UI_TEXT_PRIMARY_ON_DARK
+            }}>
                {editingAnimId ? 'Update Animation' : 'Create Animation'}
            </Button>
           </>

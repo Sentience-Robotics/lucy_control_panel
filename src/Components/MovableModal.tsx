@@ -13,7 +13,72 @@ import {
 
 const { useBreakpoint } = Grid;
 
-interface MediapipeHandTrackerModalProps {
+interface ModalPosition {
+    x: number;
+    y: number;
+}
+
+interface ModalSize {
+    w: number;
+    h: number;
+}
+
+interface RegisteredModal {
+    position: ModalPosition;
+    size: ModalSize;
+}
+
+const registeredModals = new Map<symbol, RegisteredModal>();
+const VIEWPORT_MARGIN = 8;
+const PLACEMENT_STEP = 24;
+
+const clampPosition = (position: ModalPosition, size: ModalSize): ModalPosition => {
+    const maxX = Math.max(VIEWPORT_MARGIN, window.innerWidth - size.w - VIEWPORT_MARGIN);
+    const maxY = Math.max(VIEWPORT_MARGIN, window.innerHeight - size.h - VIEWPORT_MARGIN);
+
+    return {
+        x: Math.min(Math.max(VIEWPORT_MARGIN, position.x), maxX),
+        y: Math.min(Math.max(VIEWPORT_MARGIN, position.y), maxY),
+    };
+};
+
+const overlaps = (first: RegisteredModal, second: RegisteredModal) => (
+    first.position.x < second.position.x + second.size.w
+    && first.position.x + first.size.w > second.position.x
+    && first.position.y < second.position.y + second.size.h
+    && first.position.y + first.size.h > second.position.y
+);
+
+const findAvailablePosition = (preferredPosition: ModalPosition, size: ModalSize, id: symbol): ModalPosition => {
+    const preferred = clampPosition(preferredPosition, size);
+    const occupied = Array.from(registeredModals.entries())
+        .filter(([registeredId]) => registeredId !== id)
+        .map(([, modal]) => modal);
+    const fits = (position: ModalPosition) => {
+        const candidate = { position, size };
+        return occupied.every(modal => !overlaps(candidate, modal));
+    };
+
+    if (fits(preferred)) {
+        return preferred;
+    }
+
+    const maxX = Math.max(VIEWPORT_MARGIN, window.innerWidth - size.w - VIEWPORT_MARGIN);
+    const maxY = Math.max(VIEWPORT_MARGIN, window.innerHeight - size.h - VIEWPORT_MARGIN);
+    for (let y = VIEWPORT_MARGIN; y <= maxY; y += PLACEMENT_STEP) {
+        for (let x = VIEWPORT_MARGIN; x <= maxX; x += PLACEMENT_STEP) {
+            const candidate = { x, y };
+            if (fits(candidate)) {
+                return candidate;
+            }
+        }
+    }
+
+    // The viewport is fully occupied; retaining the preferred position is the least surprising fallback.
+    return preferred;
+};
+
+interface MovableModalProps {
     children: ReactNode;
     header?: ReactNode;
     footer?: ReactNode;
@@ -25,6 +90,8 @@ interface MediapipeHandTrackerModalProps {
     contentPadding?: number | string;
     mobileFixedTop?: boolean;
     mobileTopOffset?: number;
+    footerWrap?: boolean;
+    minWidth?: number;
 }
 
 export function MovableModal({
@@ -39,13 +106,18 @@ export function MovableModal({
     contentPadding = 24,
     mobileFixedTop = false,
     mobileTopOffset = 0,
-}: MediapipeHandTrackerModalProps) {
+    footerWrap = true,
+    minWidth = 260,
+}: MovableModalProps) {
     const screens = useBreakpoint();
     const isMobile = !screens.md;
     const hasResolvedBreakpoint = screens.md !== undefined;
     const hasInitializedPositionRef = useRef(hasResolvedBreakpoint);
     const [{ x, y }, setPos] = useState(isMobile ? { x: 20, y: 120 } : initialPosition);
     const [{ w, h }, setSize] = useState(initialSize);
+    const modalIdRef = useRef(Symbol(modalName));
+    const wasVisibleRef = useRef(false);
+    const hasOpenedRef = useRef(false);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
     const isLocked = mobileFixedTop && !screens.md;
@@ -55,6 +127,30 @@ export function MovableModal({
         hasInitializedPositionRef.current = true;
         setPos(isMobile ? { x: 20, y: 120 } : initialPosition);
     }, [hasResolvedBreakpoint, initialPosition, isMobile]);
+
+    React.useEffect(() => {
+        const modalId = modalIdRef.current;
+        if (!hasResolvedBreakpoint || !isVisible || isLocked) {
+            registeredModals.delete(modalId);
+            wasVisibleRef.current = false;
+            return;
+        }
+
+        if (!wasVisibleRef.current) {
+            const preferredPosition = hasOpenedRef.current || isMobile ? { x, y } : initialPosition;
+            const position = findAvailablePosition(preferredPosition, { w, h }, modalId);
+            setPos(position);
+            registeredModals.set(modalId, { position, size: { w, h } });
+            wasVisibleRef.current = true;
+            hasOpenedRef.current = true;
+        } else {
+            registeredModals.set(modalId, { position: { x, y }, size: { w, h } });
+        }
+
+        return () => {
+            registeredModals.delete(modalId);
+        };
+    }, [h, hasResolvedBreakpoint, initialPosition, isLocked, isMobile, isVisible, w, x, y]);
 
     if (!isVisible) { return null; }
 
@@ -99,7 +195,7 @@ export function MovableModal({
             if (!resizingRef.current) { return; }
             const dw = ev.clientX - resizingRef.current.startX;
             const dh = ev.clientY - resizingRef.current.startY;
-            const newW = Math.max(260, resizingRef.current.origW + dw);
+            const newW = Math.max(minWidth, resizingRef.current.origW + dw);
             const newH = Math.max(195, resizingRef.current.origH + dh);
 
             setSize({ w: newW, h: newH });
@@ -123,6 +219,7 @@ export function MovableModal({
                 left: isLocked ? undefined : x,
                 top: isLocked ? mobileTopOffset : y,
                 width: isLocked ? '100%' : w,
+                minWidth: isLocked ? undefined : minWidth,
                 height: isLocked ? '33.333vh' : h,
                 marginBottom: isLocked ? 12 : undefined,
                 zIndex: isLocked ? 1 : 1000,
@@ -133,6 +230,9 @@ export function MovableModal({
                 overflow: 'hidden',
                 overscrollBehavior: 'contain',
                 userSelect: 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box',
             }}
         >
             {/* Header Bar */}
@@ -140,6 +240,7 @@ export function MovableModal({
                 onMouseDown={isLocked ? undefined : handleDragStart}
                 style={{
                     height: 56,
+                    flex: '0 0 56px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -193,7 +294,8 @@ export function MovableModal({
                 style={{
                     padding: contentPadding,
                     boxSizing: 'border-box',
-                    height: footer ? 'calc(100% - 56px - 57px)' : 'calc(100% - 56px)',
+                    flex: '1 1 auto',
+                    minHeight: 0,
                     overflow: 'auto',
                     overscrollBehavior: 'contain',
                 }}
@@ -210,6 +312,11 @@ export function MovableModal({
                         padding: '12px 24px',
                         borderTop: `1px solid ${UI_BORDER_DIM}`,
                         backgroundColor: UI_CHROME_SURFACE,
+                        boxSizing: 'border-box',
+                        flex: '0 0 auto',
+                        flexWrap: footerWrap ? 'wrap' : 'nowrap',
+                        overflow: 'auto',
+                        minWidth: 0,
                     }}
                 >
                     {footer}
