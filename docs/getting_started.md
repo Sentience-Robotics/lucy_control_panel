@@ -4,7 +4,7 @@
 
 This short getting-started guide will walk you through the basics of the control panel and help you get familiar with the main features.
 
-> You can skip this guide with the button bellow.
+> You can skip this guide with the button below.
 > If you want to replay the guide, you can find it in the setting popup at the top right corner.
 
 ---
@@ -25,19 +25,19 @@ Let's have a quick word about ROS 2.
 
 > [ROS](https://www.ros.org/) (Robot Operating System) is a standard in the field of robotic.
 
-Lucy use ROS 2 internaly to manage everything, from connecting to the physical actuators from displaying the number of connected controller.
+Lucy use ROS 2 internaly to manage everything, from connecting to the physical actuators to displaying the number of connected controller.
 
 ---
 
-The control panel has to connect to this bridge everytime, which is made automaticaly for you by default.
+The control panel has to connect to this bridge everytime, which is made automatically for you by default.
 > If at any point you need to update the connection URL, or toggle the auto-connect feature, you can visit the setting popup.
 
 <-- Control -->
 
 > This is where you'll control your robot, and it's full of stuff, so let's go over the basics!
 
-First thing first, you will need to take control from the other control applications. This can be achieve by using the 'Control robot' toggle.
-> This security system ensure that no more than one controller is sending instruction to your robot.
+First thing first, you will need to take control over the robot. This can be achieved by using the 'Control robot' toggle.
+> This security system ensure that no more than one controller is sending instruction to your robot. When activated, this will take control from other control applications.
 
 ---
 
@@ -47,10 +47,10 @@ The main part of the screen is occupied by the 'actuators categories', each of t
 
 > You will be able to assign each & every actuator to a category in the configuration page.
 
-Each of this actuators has it's own control box, letting you update it position in real time.
+Each of these actuators has its own control box, letting you update its position in real time.
 Every slider comes with two indicators:
-- The top green one indicate the default position for this actuators.
-- The bottom blue one indicate the actual position. It will move more or less slowly depending on the physical configuration of the actuator.
+- The top green one indicates the default position for this actuator.
+- The bottom blue one indicates the actual position. It will move more or less slowly depending on the physical configuration of the actuator.
 
 <-- Poses & Animations -->
 
@@ -60,7 +60,7 @@ In the top bar controls, you can find the 'Save pose' & 'Load pose' popups.
 
 They will let you save every actuators position and load them at a later time when needed.
 
-> Every pose is saved localy on your browser localStorage.
+> Every pose is saved locally in your browser's localStorage.
 
 ---
 
@@ -68,7 +68,7 @@ They will let you save every actuators position and load them at a later time wh
 
 The animation system uses the saved poses.
 
-> Once at least two poses are created, you will be able to select them int he 'Manage animation' popup and create an animation with them.
+> Once at least two poses are created, you will be able to select them in the 'Manage animation' popup and create an animation with them.
 
 <-- Sensors -->
 
@@ -83,7 +83,7 @@ Using the drop-down menu, you can select every sensors you want to watch.
 ---
 
 > We currently support direct data display & temperatures, with a graph.
-> If you have a sensors which data cannot be displayed, feel free to create an [issue](https://github.com/Sentience-Robotics/lucy_control_panel/issues) or to [contact us](https://discord.gg/g4KNZ3eeBd) directly.
+> If you have sensors whose data cannot be displayed, feel free to create an [issue](https://github.com/Sentience-Robotics/lucy_control_panel/issues) or to [contact us](https://discord.gg/g4KNZ3eeBd) directly.
 
 <-- Configuration -->
 
