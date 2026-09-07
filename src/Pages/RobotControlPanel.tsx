@@ -860,7 +860,7 @@ export const RobotControlPanel: React.FC = () => {
                                             STOP ANIMATION
                                         </Button>
                                     )}
-                                    {visualizerButton('3D VISUALIZATION')}
+                                    {visualizerButton('3D VIEW')}
                                     {streamButton('STREAM')}
                                     <Button
                                         onClick={() => setIsWebcamActive(v => !v)}
