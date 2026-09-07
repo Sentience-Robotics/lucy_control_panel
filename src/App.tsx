@@ -7,6 +7,7 @@ import { RobotControlPanel } from './Pages/RobotControlPanel';
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
+import { GettingStartedModal } from './Components/GettingStartedModal';
 /* Components */
 import { AuthForm } from './Components/AuthForm';
 import { LucyLoader } from './Components/LucyLoader';
@@ -194,6 +195,7 @@ function App() {
                             <PersistentPages />
                         </Page>
                         <Navigation />
+                        <GettingStartedModal />
                     </Layout>
                 </ActiveHardwareRosProvider>
             </Router>

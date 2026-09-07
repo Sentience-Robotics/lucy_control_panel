@@ -22,7 +22,6 @@ export function Robot3DViewerModal({
             onClose={onClose}
             initialPosition={initialPosition}
             initialSize={initialSize}
-            aspectRatio={4 / 3}
         >
             <Robot3DViewer />
         </FloatingViewerModal>

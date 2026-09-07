@@ -37,7 +37,6 @@ interface StreamPlayerModalProps {
     onClose: () => void;
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
-    aspectRatio?: number;
 }
 
 export function StreamPlayerModal({
@@ -45,7 +44,6 @@ export function StreamPlayerModal({
     onClose,
     initialPosition = { x: 100, y: 100 },
     initialSize = { w: 480, h: 320 },
-    aspectRatio = 4.5 / 3,
 }: StreamPlayerModalProps) {
     const [frameDelay, setFrameDelay] = useState<number>(0);
     const [fps, setFps] = useState<number>(0);
@@ -114,7 +112,6 @@ export function StreamPlayerModal({
             onClose={onClose}
             initialPosition={initialPosition}
             initialSize={initialSize}
-            aspectRatio={aspectRatio}
         >
             {activeSource ? (
                 <StreamPlayer

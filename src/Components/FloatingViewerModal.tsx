@@ -12,7 +12,6 @@ interface FloatingViewerModalProps {
     onClose: () => void;
     initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
-    aspectRatio?: number;
     children: ReactNode;
 }
 
@@ -28,7 +27,6 @@ export function FloatingViewerModal({
     onClose,
     initialPosition = { x: 100, y: 100 },
     initialSize = { w: 480, h: 320 },
-    aspectRatio = 4.5 / 3,
     children,
 }: FloatingViewerModalProps) {
     const headerHeight = useContext(HeaderHeightContext);
@@ -53,7 +51,6 @@ export function FloatingViewerModal({
             onClose={onClose}
             initialPosition={initialPosition}
             initialSize={initialSize}
-            aspectRatio={aspectRatio}
             mobileFixedTop
             mobileTopOffset={headerHeight}
         >
