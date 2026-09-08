@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Button,
     Card,
@@ -8,6 +8,7 @@ import {
     InputNumber,
     List,
     Modal,
+    Pagination,
     Popconfirm,
     Select,
     Space,
@@ -71,6 +72,8 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     const [visible, setVisible] = useState(false);
     const [poseName, setPoseName] = useState('');
     const [poses, setPoses] = useState<SavedPose[]>([]);
+    const [poseSearch, setPoseSearch] = useState('');
+    const [posePage, setPosePage] = useState(1);
     const [poseNames, setPoseNames] = useState<Record<string, string>>({});
     const [animations, setAnimations] = useState<SavedAnimation[]>([]);
     const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
@@ -80,6 +83,12 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     const [loop, setLoop] = useState(true);
     const [loopCount, setLoopCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const filteredPoses = useMemo(() => {
+        const query = poseSearch.trim().toLocaleLowerCase();
+        if (!query) return poses;
+        return poses.filter(pose => (poseNames[pose.id] ?? pose.name).toLocaleLowerCase().includes(query));
+    }, [poseNames, poseSearch, poses]);
+    const paginatedPoses = filteredPoses.slice((posePage - 1) * 5, posePage * 5);
 
     const loadData = useCallback(async () => {
         const [loadedPoses, loadedAnimations] = await Promise.all([
@@ -94,6 +103,15 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     useEffect(() => {
         if (visible) void loadData();
     }, [loadData, visible]);
+
+    useEffect(() => {
+        setPosePage(1);
+    }, [poseSearch]);
+
+    useEffect(() => {
+        const pageCount = Math.max(1, Math.ceil(filteredPoses.length / 5));
+        setPosePage(current => Math.min(current, pageCount));
+    }, [filteredPoses.length]);
 
     const resetAnimationEditor = () => {
         setSelectedAnimationId(null);
@@ -334,45 +352,65 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                     <section>
                         <Title level={4} style={{ color: UI_ACCENT_GREEN, marginTop: 0 }}>Load</Title>
                         {poses.length === 0 ? <Empty description="No saved poses yet" /> : (
-                            <List
-                                dataSource={poses}
-                                renderItem={pose => (
-                                    <List.Item
-                                        style={{ backgroundColor: UI_LIST_ROW_BG, border: `1px solid ${UI_BORDER_MUTED}`, padding: 12 }}
-                                        actions={[
-                                            <Button
-                                                key="load"
-                                                type="primary"
-                                                icon={<FolderOpenOutlined />}
-                                                loading={loading}
-                                                onClick={() => void handleLoadPose(pose.id)}
-                                                style={{ ...UI_PRIMARY_GREEN_BUTTON_STYLE, color: UI_TEXT_ON_ACCENT }}
-                                            >
-                                                LOAD
-                                            </Button>,
-                                            <Popconfirm key="delete" title={`Delete "${pose.name}"?`} onConfirm={() => void deletePose(pose.id, pose.name)} okButtonProps={{ danger: true }}>
-                                                <Button danger type="text" icon={<DeleteOutlined />} />
-                                            </Popconfirm>,
-                                        ]}
-                                    >
-                                        <List.Item.Meta
-                                            title={(
-                                                <Input
-                                                    value={poseNames[pose.id] ?? pose.name}
-                                                    maxLength={50}
-                                                    onChange={event => setPoseNames(current => ({ ...current, [pose.id]: event.target.value }))}
-                                                    onBlur={() => void handleRenamePose(pose.id)}
-                                                    onPressEnter={event => {
-                                                        event.currentTarget.blur();
-                                                    }}
-                                                    aria-label={`Rename pose ${pose.name}`}
-                                                />
+                            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                <Input.Search
+                                    value={poseSearch}
+                                    allowClear
+                                    placeholder="Search saved poses"
+                                    onChange={event => setPoseSearch(event.target.value)}
+                                />
+                                {filteredPoses.length === 0 ? <Empty description="No matching poses" /> : (
+                                    <>
+                                        <List
+                                            dataSource={paginatedPoses}
+                                            renderItem={pose => (
+                                                <List.Item
+                                                    style={{ backgroundColor: UI_LIST_ROW_BG, border: `1px solid ${UI_BORDER_MUTED}`, padding: 12 }}
+                                                    actions={[
+                                                        <Button
+                                                            key="load"
+                                                            type="primary"
+                                                            icon={<FolderOpenOutlined />}
+                                                            loading={loading}
+                                                            onClick={() => void handleLoadPose(pose.id)}
+                                                            style={{ ...UI_PRIMARY_GREEN_BUTTON_STYLE, color: UI_TEXT_ON_ACCENT }}
+                                                        >
+                                                            LOAD
+                                                        </Button>,
+                                                        <Popconfirm key="delete" title={`Delete "${pose.name}"?`} onConfirm={() => void deletePose(pose.id, pose.name)} okButtonProps={{ danger: true }}>
+                                                            <Button danger type="text" icon={<DeleteOutlined />} />
+                                                        </Popconfirm>,
+                                                    ]}
+                                                >
+                                                    <List.Item.Meta
+                                                        title={(
+                                                            <Input
+                                                                value={poseNames[pose.id] ?? pose.name}
+                                                                maxLength={50}
+                                                                onChange={event => setPoseNames(current => ({ ...current, [pose.id]: event.target.value }))}
+                                                                onBlur={() => void handleRenamePose(pose.id)}
+                                                                onPressEnter={event => {
+                                                                    event.currentTarget.blur();
+                                                                }}
+                                                                aria-label={`Rename pose ${pose.name}`}
+                                                            />
+                                                        )}
+                                                        description={<Text style={{ color: UI_TEXT_SUBTLE }}>{formatDate(pose.date ?? pose.timestamp)} - {Object.keys(pose.joints).length} joints</Text>}
+                                                    />
+                                                </List.Item>
                                             )}
-                                            description={<Text style={{ color: UI_TEXT_SUBTLE }}>{formatDate(pose.date ?? pose.timestamp)} - {Object.keys(pose.joints).length} joints</Text>}
                                         />
-                                    </List.Item>
+                                        <Pagination
+                                            current={posePage}
+                                            pageSize={5}
+                                            total={filteredPoses.length}
+                                            showSizeChanger={false}
+                                            onChange={setPosePage}
+                                            hideOnSinglePage
+                                        />
+                                    </>
                                 )}
-                            />
+                            </Space>
                         )}
                     </section>
 
