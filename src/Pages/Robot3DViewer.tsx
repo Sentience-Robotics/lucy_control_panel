@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { Typography } from 'antd';
 import { RobotFKModel } from '../Components/RobotFKModel';
 import { StreamSwitch } from '../Components/StreamSwitch';
@@ -23,6 +24,13 @@ const { Text } = Typography;
 const SETTINGS_BOX_WIDTH = 150;
 
 const MOUSE_HINTS = ['L-drag · rotate', 'scroll · zoom', 'R-drag · pan'];
+
+type Vec3 = [number, number, number];
+
+const savedCamera: { position: Vec3; target: Vec3 } = {
+    position: [0, 2, 3],
+    target: [0, 1, 0],
+};
 
 const CENTERED_FILL: React.CSSProperties = {
     width: '100%', height: '100%',
@@ -96,6 +104,18 @@ const Robot3DViewer: React.FC = () => {
     const [showGrid, setShowGrid] = useState(true);
     const [opacity, setOpacity] = useState(0.85);
     const [wireframe, setWireframe] = useState(false);
+    const controlsRef = useRef<OrbitControlsImpl | null>(null);
+    const initialCamera = useRef({
+        position: [...savedCamera.position] as Vec3,
+        target: [...savedCamera.target] as Vec3,
+    }).current;
+
+    const handleControlsChange = () => {
+        const controls = controlsRef.current;
+        if (!controls) { return; }
+        savedCamera.position = controls.object.position.toArray() as Vec3;
+        savedCamera.target = controls.target.toArray() as Vec3;
+    };
 
     if (error) {
         return (
@@ -116,7 +136,7 @@ const Robot3DViewer: React.FC = () => {
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
             {loading && <LoadingBar progress={progress} />}
             <Canvas
-                camera={{ position: [0, 2, 3], fov: 50, near: 0.1, far: 500 }}
+                camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
                 style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
             >
                 <ambientLight intensity={0.6} />
@@ -148,7 +168,9 @@ const Robot3DViewer: React.FC = () => {
                 )}
 
                 <OrbitControls
-                    target={[0, 1, 0]}
+                    ref={controlsRef}
+                    target={initialCamera.target}
+                    onChange={handleControlsChange}
                     enablePan
                     enableZoom
                     enableRotate
