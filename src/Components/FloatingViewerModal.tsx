@@ -11,13 +11,14 @@ interface FloatingViewerModalProps {
     isVisible: boolean;
     onClose: () => void;
     initialSize?: { w: number; h: number };
+    contentAspectRatio?: number | null;
     children: ReactNode;
 }
 
 /**
  * Shared chrome for the floating viewer windows: draggable modal, fullscreen
- * toggle, and a black content box the viewer fills. Each viewer supplies its
- * own header controls and body.
+ * toggle, and a black content box the viewer fills edge to edge. Each viewer
+ * supplies its own header controls and body.
  */
 export function FloatingViewerModal({
     modalName,
@@ -25,6 +26,7 @@ export function FloatingViewerModal({
     isVisible,
     onClose,
     initialSize = { w: 480, h: 320 },
+    contentAspectRatio = null,
     children,
 }: FloatingViewerModalProps) {
     const headerHeight = useContext(HeaderHeightContext);
@@ -48,6 +50,8 @@ export function FloatingViewerModal({
             isVisible={isVisible}
             onClose={onClose}
             initialSize={initialSize}
+            contentPadding={0}
+            contentAspectRatio={contentAspectRatio}
             mobileFixedTop
             mobileTopOffset={headerHeight}
         >

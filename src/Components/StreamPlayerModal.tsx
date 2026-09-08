@@ -49,6 +49,7 @@ export function StreamPlayerModal({
     const [fps, setFps] = useState<number>(0);
     const [selectedSourceId, setSelectedSourceId] = useState<string | null>(null);
     const [hasEmptyDataWarning, setHasEmptyDataWarning] = useState<boolean>(false);
+    const [aspectRatio, setAspectRatio] = useState<number | null>(null);
     const { sources, availableTopics, liveSources } = useLiveCameraSources();
 
     const isAvailable = useCallback(
@@ -112,6 +113,7 @@ export function StreamPlayerModal({
             onClose={onClose}
             initialPosition={initialPosition}
             initialSize={initialSize}
+            contentAspectRatio={aspectRatio}
         >
             {activeSource ? (
                 <StreamPlayer
@@ -119,6 +121,7 @@ export function StreamPlayerModal({
                     onFpsChange={setFps}
                     streamSource={activeSource}
                     onEmptyDataWarning={setHasEmptyDataWarning}
+                    onAspectRatioChange={setAspectRatio}
                 />
             ) : (
                 <div

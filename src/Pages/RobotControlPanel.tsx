@@ -207,6 +207,7 @@ export const RobotControlPanel: React.FC = () => {
     const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+    const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
 
     // Angle units (degrees/radians) are configured in the Settings modal and
     // persisted to localStorage; sync local state when they change.
@@ -983,11 +984,15 @@ export const RobotControlPanel: React.FC = () => {
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}
+                    initialSize={{ w: 480, h: 400 }}
+                    contentPadding={0}
+                    contentAspectRatio={webcamAspectRatio}
                 >
                     {isWebcamActive && (
                         <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
                             <MediapipeHandTracker
-                                moveRobotIndex={handleTeleopJoint} />
+                                moveRobotIndex={handleTeleopJoint}
+                                onAspectRatioChange={setWebcamAspectRatio} />
                         </Suspense>
                     )}
                 </MovableModal>
