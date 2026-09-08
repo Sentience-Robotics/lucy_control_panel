@@ -84,8 +84,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
             modalName="SETTINGS"
             isVisible={visible}
             onClose={onClose}
-            initialPosition={{ x: 1130, y: 120 }}
-            initialSize={{ w: 480, h: 650 }}
+            centered
+            initialSize={{ w: 480, h: 550 }}
             minWidth={480}
             footerWrap={false}
             header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}

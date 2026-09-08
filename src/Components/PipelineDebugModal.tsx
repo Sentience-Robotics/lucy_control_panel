@@ -189,7 +189,9 @@ export function ConnectionDebugModal(props: { isVisible: boolean; onClose: () =>
             modalName="Connection pipeline"
             isVisible={props.isVisible}
             onClose={props.onClose}
+            initialPosition={{ x: 80, y: 150 }}
             initialSize={{ w: 460, h: 520 }}
+            contentPadding={0}
             header={
                 <Button size="small" onClick={probe} loading={probing}>
                     Re-probe
@@ -237,7 +239,9 @@ export function CommandDebugModal(props: { isVisible: boolean; onClose: () => vo
             modalName="Command pipeline"
             isVisible={props.isVisible}
             onClose={props.onClose}
+            initialPosition={{ x: 580, y: 150 }}
             initialSize={{ w: 520, h: 560 }}
+            contentPadding={0}
             header={
                 <Button size="small" onClick={checkController} loading={checking}>
                     Re-check

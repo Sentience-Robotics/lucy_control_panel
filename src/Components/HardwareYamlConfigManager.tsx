@@ -196,8 +196,8 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                     setSaveModalVisible(false);
                     setConfigNameInput('');
                 }}
-                initialPosition={{ x: 120, y: 80 }}
-                initialSize={{ w: 680, h: 520 }}
+                centered
+                initialSize={{ w: 680, h: 420 }}
                 header={<SaveOutlined style={{ color: UI_ACCENT_GREEN }} />}
                 footer={
                     <>
@@ -273,8 +273,8 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                 modalName="LOAD CONFIGURATION"
                 isVisible={loadModalVisible}
                 onClose={() => setLoadModalVisible(false)}
-                initialPosition={{ x: 100, y: 60 }}
-                initialSize={{ w: 720, h: 600 }}
+                centered
+                initialSize={{ w: 720, h: 500 }}
                 header={<FolderOpenOutlined style={{ color: UI_ACCENT_GREEN }} />}
                 footer={<Button onClick={() => setLoadModalVisible(false)} style={outlineBtnStyle}>CLOSE</Button>}
             >

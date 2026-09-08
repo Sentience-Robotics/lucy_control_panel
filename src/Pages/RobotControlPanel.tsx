@@ -124,6 +124,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
         footer={
             <>
                 <Button
+                    type="primary"
                     icon={<ThunderboltOutlined />}
                     onClick={onRetake}
                     style={{
@@ -1023,6 +1024,7 @@ export const RobotControlPanel: React.FC = () => {
                 footer={[
                     <Button
                         key="take"
+                        type="primary"
                         icon={<ThunderboltOutlined />}
                         onClick={() => applyControlToggle(true)}
                         style={{

@@ -1,4 +1,5 @@
 import React, { useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Button, Space, Grid } from 'antd';
 import {
     UI_ACCENT_GREEN,
@@ -97,7 +98,7 @@ interface MovableModalProps {
     footerWrap?: boolean;
     minWidth?: number;
     contentAspectRatio?: number | null;
-    /** Pins the modal to the centre of a blurred backdrop that closes it on click. */
+    /** Pins the modal to the centre of a blurred backdrop that closes it on click. Height follows the content. */
     centered?: boolean;
 }
 
@@ -265,7 +266,7 @@ export function MovableModal({
                 width: isLocked ? '100%' : w,
                 maxWidth: centered ? '100%' : undefined,
                 minWidth: isLocked ? undefined : minWidth,
-                height: isLocked ? '33.333vh' : h,
+                height: centered ? 'auto' : isLocked ? '33.333vh' : h,
                 maxHeight: centered ? '100%' : undefined,
                 marginBottom: isLocked ? 12 : undefined,
                 zIndex: centered ? undefined : isLocked ? 1 : 1000,
@@ -391,7 +392,9 @@ export function MovableModal({
         return frame;
     }
 
-    return (
+    // Portalled to the body: an ancestor stacking context (the sticky page header)
+    // would otherwise keep the backdrop below the floating viewers.
+    return createPortal(
         <div
             onMouseDown={onClose}
             style={{
@@ -408,6 +411,7 @@ export function MovableModal({
             }}
         >
             {frame}
-        </div>
+        </div>,
+        document.body,
     );
 }
