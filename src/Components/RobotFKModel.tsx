@@ -4,6 +4,7 @@
  * urdf-loader handles URDF parsing, FK, Collada/STL loading, and visual
  * origins natively — we just render the resulting Three.js scene graph via
  * React Three Fiber's <primitive> and update joint angles every frame.
+ * (Mesh bytes themselves are fetched via MeshHandler in useRobotModel.)
  *
  * Coordinate system:
  *   URDF / ROS uses Z-up. Three.js uses Y-up.
