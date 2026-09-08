@@ -13,7 +13,7 @@ export function Robot3DViewerModal({
     isVisible,
     onClose,
     initialPosition = { x: 100, y: 100 },
-    initialSize = { w: 560, h: 420 },
+    initialSize = { w: 400, h: 800 },
 }: Robot3DViewerModalProps) {
     return (
         <FloatingViewerModal
