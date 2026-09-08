@@ -6,6 +6,7 @@ import {
     UI_BORDER_MUTED,
     UI_CHROME_SURFACE,
     UI_MODAL_SURFACE,
+    UI_OVERLAY_BACKDROP_SOFT,
     UI_SHADOW_ELEVATED,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
@@ -96,6 +97,8 @@ interface MovableModalProps {
     footerWrap?: boolean;
     minWidth?: number;
     contentAspectRatio?: number | null;
+    /** Pins the modal to the centre of a blurred backdrop that closes it on click. */
+    centered?: boolean;
 }
 
 export function MovableModal({
@@ -113,6 +116,7 @@ export function MovableModal({
     footerWrap = true,
     minWidth = 260,
     contentAspectRatio = null,
+    centered = false,
 }: MovableModalProps) {
     const screens = useBreakpoint();
     const isMobile = !screens.md;
@@ -125,7 +129,9 @@ export function MovableModal({
     const hasOpenedRef = useRef(false);
     const draggingRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
     const resizingRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null);
-    const isLocked = mobileFixedTop && !screens.md;
+    const isLocked = mobileFixedTop && !screens.md && !centered;
+    // Centered modals are placed by their backdrop, so they skip dragging, resizing and auto-placement.
+    const isPinned = centered || isLocked;
 
     const framePadding = typeof contentPadding === 'number' ? contentPadding : 0;
     const chromeWidth = framePadding * 2 + BORDER_WIDTH * 2;
@@ -159,7 +165,7 @@ export function MovableModal({
 
     React.useEffect(() => {
         const modalId = modalIdRef.current;
-        if (!hasResolvedBreakpoint || !isVisible || isLocked) {
+        if (!hasResolvedBreakpoint || !isVisible || isLocked || centered) {
             registeredModals.delete(modalId);
             wasVisibleRef.current = false;
             return;
@@ -179,7 +185,7 @@ export function MovableModal({
         return () => {
             registeredModals.delete(modalId);
         };
-    }, [h, hasResolvedBreakpoint, initialPosition, isLocked, isMobile, isVisible, w, x, y]);
+    }, [centered, h, hasResolvedBreakpoint, initialPosition, isLocked, isMobile, isVisible, w, x, y]);
 
     if (!isVisible) { return null; }
 
@@ -248,18 +254,21 @@ export function MovableModal({
         window.addEventListener('mouseup', onUp);
     };
 
-    return (
+    const frame = (
         <div
+            onMouseDown={centered ? (event) => event.stopPropagation() : undefined}
             style={{
 
-                position: isLocked ? 'sticky' : 'fixed',
-                left: isLocked ? undefined : x,
-                top: isLocked ? mobileTopOffset : y,
+                position: centered ? 'relative' : isLocked ? 'sticky' : 'fixed',
+                left: isPinned ? undefined : x,
+                top: centered ? undefined : isLocked ? mobileTopOffset : y,
                 width: isLocked ? '100%' : w,
+                maxWidth: centered ? '100%' : undefined,
                 minWidth: isLocked ? undefined : minWidth,
                 height: isLocked ? '33.333vh' : h,
+                maxHeight: centered ? '100%' : undefined,
                 marginBottom: isLocked ? 12 : undefined,
-                zIndex: isLocked ? 1 : 1000,
+                zIndex: centered ? undefined : isLocked ? 1 : 1000,
                 backgroundColor: UI_MODAL_SURFACE,
                 border: `1px solid ${UI_BORDER_MUTED}`,
                 borderRadius: 0,
@@ -274,7 +283,7 @@ export function MovableModal({
         >
             {/* Header Bar */}
             <div
-                onMouseDown={isLocked ? undefined : handleDragStart}
+                onMouseDown={isPinned ? undefined : handleDragStart}
                 style={{
                     height: HEADER_HEIGHT,
                     flex: `0 0 ${HEADER_HEIGHT}px`,
@@ -284,7 +293,7 @@ export function MovableModal({
                     padding: '0 24px',
                     backgroundColor: UI_MODAL_SURFACE,
                     borderBottom: `1px solid ${UI_BORDER_DIM}`,
-                    cursor: isLocked ? 'default' : 'move',
+                    cursor: isPinned ? 'default' : 'move',
                 }}
             >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
@@ -361,7 +370,7 @@ export function MovableModal({
             ) : null}
 
             {/* Resize Handle */}
-            {!isLocked && (
+            {!isPinned && (
                 <div
                     onMouseDown={handleResizeStart}
                     style={{
@@ -375,6 +384,30 @@ export function MovableModal({
                     }}
                 />
             )}
+        </div>
+    );
+
+    if (!centered) {
+        return frame;
+    }
+
+    return (
+        <div
+            onMouseDown={onClose}
+            style={{
+                position: 'fixed',
+                inset: 0,
+                zIndex: 1100,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 16,
+                backgroundColor: UI_OVERLAY_BACKDROP_SOFT,
+                backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+            }}
+        >
+            {frame}
         </div>
     );
 }

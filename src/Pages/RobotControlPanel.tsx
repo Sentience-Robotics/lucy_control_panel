@@ -118,7 +118,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
         modalName={fighting ? 'STOP FIGHTING' : 'CONTROL TAKEN'}
         isVisible={isVisible}
         onClose={onClose}
-        initialPosition={{ x: 160, y: 200 }}
+        centered
         initialSize={{ w: 560, h: 280 }}
         header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
         footer={
@@ -1014,16 +1014,12 @@ export const RobotControlPanel: React.FC = () => {
 
             {/* We are about to take control away from another client */}
             <MovableModal
-                modalName="TAKE CONTROL"
+                modalName="TAKE CONTROL FROM ANOTHER CLIENT?"
                 isVisible={showConfirmTakeControlModal}
                 onClose={() => setShowConfirmTakeControlModal(false)}
-                initialPosition={{ x: 100, y: 200 }}
+                centered
                 initialSize={{ w: 500, h: 300 }}
-                header={
-                    <Text style={{ color: UI_WARNING, fontFamily: 'monospace', fontSize: 12 }}>
-                        <ThunderboltOutlined /> TAKE CONTROL FROM ANOTHER CLIENT?
-                    </Text>
-                }
+                header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
                 footer={[
                     <Button
                         key="take"
