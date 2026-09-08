@@ -239,8 +239,8 @@ export function MovableModal({
             <div
                 onMouseDown={isLocked ? undefined : handleDragStart}
                 style={{
-                    height: 56,
-                    flex: '0 0 56px',
+                    height: 40,
+                    flex: '0 0 40px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
