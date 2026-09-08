@@ -293,7 +293,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                                 type="primary"
                                 icon={<SaveOutlined />}
                                 loading={loading}
-                                disabled={isAnimating}
+                                disabled={isAnimating || !poseName.trim()}
                                 onClick={() => void handleSavePose()}
                                 style={UI_PRIMARY_GREEN_BUTTON_STYLE}
                             >
