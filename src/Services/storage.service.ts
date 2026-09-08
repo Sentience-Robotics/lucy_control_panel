@@ -28,6 +28,7 @@ export interface SavedAnimation {
 export interface StorageService {
   savePose(name: string, joints: JointControlState[]): Promise<SavedPose>;
   loadPoses(): Promise<SavedPose[]>;
+  renamePose(id: string, name: string): Promise<SavedPose>;
   deletePose(id: string, force?: boolean): Promise<void>;
   loadPose(id: string): Promise<SavedPose | null>;
   saveJointConfigurations(configs: Record<string, JointConfiguration>): Promise<void>;
@@ -110,6 +111,34 @@ class LocalStorageService implements StorageService {
   async loadPoses(): Promise<SavedPose[]> {
     const poses = this.loadPosesFromStorage();
     return poses.sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  async renamePose(id: string, name: string): Promise<SavedPose> {
+    const poses = this.loadPosesFromStorage();
+    const poseIndex = poses.findIndex(pose => pose.id === id);
+    if (poseIndex === -1) {
+      throw new Error('Pose not found');
+    }
+
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new Error('Pose name cannot be empty');
+    }
+
+    const existingNames = poses
+      .filter(pose => pose.id !== id)
+      .map(pose => pose.name);
+    let finalName = trimmedName;
+    let counter = 1;
+    while (existingNames.includes(finalName)) {
+      finalName = `${trimmedName} (${counter})`;
+      counter++;
+    }
+
+    const renamedPose = { ...poses[poseIndex], name: finalName };
+    poses[poseIndex] = renamedPose;
+    this.savePosesToStorage(poses);
+    return renamedPose;
   }
 
   async deletePose(id: string, force = false): Promise<void> {

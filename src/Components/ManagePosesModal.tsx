@@ -71,6 +71,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     const [visible, setVisible] = useState(false);
     const [poseName, setPoseName] = useState('');
     const [poses, setPoses] = useState<SavedPose[]>([]);
+    const [poseNames, setPoseNames] = useState<Record<string, string>>({});
     const [animations, setAnimations] = useState<SavedAnimation[]>([]);
     const [selectedAnimationId, setSelectedAnimationId] = useState<string | null>(null);
     const [animationName, setAnimationName] = useState('');
@@ -86,6 +87,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
             storageService.loadAnimations(),
         ]);
         setPoses(loadedPoses);
+        setPoseNames(Object.fromEntries(loadedPoses.map(pose => [pose.id, pose.name])));
         setAnimations(loadedAnimations);
     }, []);
 
@@ -156,6 +158,30 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
             console.error('Error loading pose:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRenamePose = async (id: string) => {
+        const name = poseNames[id] ?? '';
+        const pose = poses.find(item => item.id === id);
+        if (!pose || name.trim() === pose.name) return;
+        if (!name.trim()) {
+            setPoseNames(current => ({ ...current, [id]: pose.name }));
+            message.warning('Please enter a pose name');
+            return;
+        }
+
+        try {
+            const renamedPose = await storageService.renamePose(id, name);
+            setPoses(current => current.map(item => item.id === id ? renamedPose : item));
+            setPoseNames(current => ({ ...current, [id]: renamedPose.name }));
+            if (renamedPose.name !== name.trim()) {
+                message.info(`Pose renamed to "${renamedPose.name}" to avoid a duplicate name`);
+            }
+        } catch (error) {
+            message.error('Failed to rename pose');
+            console.error('Error renaming pose:', error);
+            setPoseNames(current => ({ ...current, [id]: pose.name }));
         }
     };
 
@@ -273,7 +299,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                 isVisible={visible}
                 onClose={() => setVisible(false)}
                 initialPosition={{ x: 120, y: 100 }}
-                initialSize={{ w: 720, h: 760 }}
+                initialSize={{ w: 720, h: 700 }}
                 header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}
                 footer={<Button onClick={() => setVisible(false)}>CLOSE</Button>}
             >
@@ -300,7 +326,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                                 SAVE POSE
                             </Button>
                         </Space.Compact>
-                        <Text type="secondary">{joints.length} joints will be stored with the pose.</Text>
+                        <Text type="secondary" style={{ display: 'block', marginTop: 6 }}>{joints.length} joints will be stored with the pose.</Text>
                     </section>
 
                     <Divider style={{ borderColor: UI_BORDER_MUTED, margin: 0 }} />
@@ -330,7 +356,18 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                                         ]}
                                     >
                                         <List.Item.Meta
-                                            title={<Text strong style={{ color: UI_ACCENT_GREEN }}>{pose.name}</Text>}
+                                            title={(
+                                                <Input
+                                                    value={poseNames[pose.id] ?? pose.name}
+                                                    maxLength={50}
+                                                    onChange={event => setPoseNames(current => ({ ...current, [pose.id]: event.target.value }))}
+                                                    onBlur={() => void handleRenamePose(pose.id)}
+                                                    onPressEnter={event => {
+                                                        event.currentTarget.blur();
+                                                    }}
+                                                    aria-label={`Rename pose ${pose.name}`}
+                                                />
+                                            )}
                                             description={<Text style={{ color: UI_TEXT_SUBTLE }}>{formatDate(pose.date ?? pose.timestamp)} - {Object.keys(pose.joints).length} joints</Text>}
                                         />
                                     </List.Item>
