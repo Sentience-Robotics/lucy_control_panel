@@ -763,13 +763,11 @@ export const RobotControlPanel: React.FC = () => {
             <Robot3DViewerModal
                 isVisible={isVisualizerVisible}
                 onClose={() => setIsVisualizerVisible(false)}
-                initialPosition={{ x: 100, y: 100 }}
             />
 
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
-                initialPosition={{ x: 650, y: 100 }}
             />
 
             {!isConnected ? (
