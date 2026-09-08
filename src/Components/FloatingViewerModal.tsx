@@ -10,7 +10,6 @@ interface FloatingViewerModalProps {
     headerExtra?: ReactNode;
     isVisible: boolean;
     onClose: () => void;
-    initialPosition?: { x: number; y: number };
     initialSize?: { w: number; h: number };
     children: ReactNode;
 }
@@ -25,7 +24,6 @@ export function FloatingViewerModal({
     headerExtra,
     isVisible,
     onClose,
-    initialPosition = { x: 100, y: 100 },
     initialSize = { w: 480, h: 320 },
     children,
 }: FloatingViewerModalProps) {
@@ -49,7 +47,6 @@ export function FloatingViewerModal({
             }
             isVisible={isVisible}
             onClose={onClose}
-            initialPosition={initialPosition}
             initialSize={initialSize}
             mobileFixedTop
             mobileTopOffset={headerHeight}
