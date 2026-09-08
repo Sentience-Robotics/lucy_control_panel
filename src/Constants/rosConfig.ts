@@ -48,20 +48,7 @@ export interface StreamSource {
     name: string;
     topic: string;
     messageType: string;
-    /** True for virtual sources that render a custom component instead of a ROS image topic. */
-    virtual?: boolean;
 }
-
-export const STREAM_SOURCE_3D_VIEW: StreamSource = {
-    id: '3d-view',
-    name: '3D View',
-    topic: '',
-    messageType: '',
-    virtual: true,
-};
-
-/** Initial placeholder until a camera from the active config is selected. */
-export const DEFAULT_STREAM_SOURCE = STREAM_SOURCE_3D_VIEW;
 
 /** Per-sensor stream entry derived from hardware YAML (pressure sensors on `sensors/<scope>` topics). */
 export interface SensorSource {
