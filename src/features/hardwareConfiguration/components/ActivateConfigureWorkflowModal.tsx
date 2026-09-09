@@ -132,9 +132,53 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
             modalName="ACTIVATE & CONFIGURE"
             isVisible={open}
             onClose={workflowRunning ? () => { } : onClose}
-            initialPosition={{ x: 100, y: 48 }}
-            initialSize={{ w: 720, h: 680 }}
+            centered
+            initialSize={{ w: 720, h: 600 }}
             header={<ThunderboltOutlined style={{ color: UI_ACCENT_GREEN }} />}
+            footer={
+                <>
+                    {workflowRunning ? (
+                        <Button danger onClick={onAbort} style={{ marginRight: 'auto' }}>
+                            ABORT
+                        </Button>
+                    ) : null}
+                    {!workflowRunning && workflowLastRunSucceeded ? (
+                        <>
+                            <Button
+                                icon={<ThunderboltOutlined />}
+                                onClick={() => void onRun()}
+                                disabled={!canRun}
+                            >
+                                RUN AGAIN
+                            </Button>
+                            <Button
+                                type="primary"
+                                onClick={onClose}
+                                style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                            >
+                                DONE
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button onClick={onClose} disabled={workflowRunning}>
+                                CANCEL
+                            </Button>
+                            {!workflowRunning ? (
+                                <Button
+                                    type="primary"
+                                    icon={<ThunderboltOutlined />}
+                                    onClick={() => void onRun()}
+                                    disabled={!canRun}
+                                    style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                                >
+                                    RUN
+                                </Button>
+                            ) : null}
+                        </>
+                    )}
+                </>
+            }
         >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 {serverActiveConfigName && serverActiveConfigName !== selectedTargetConfigName ? (
@@ -312,53 +356,6 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         }
                     />
                 ) : null}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                    {workflowRunning ? (
-                        <Button danger onClick={onAbort}>
-                            ABORT
-                        </Button>
-                    ) : (
-                        <span />
-                    )}
-                    <Space>
-                        {!workflowRunning && workflowLastRunSucceeded ? (
-                            <>
-                                <Button
-                                    icon={<ThunderboltOutlined />}
-                                    onClick={() => void onRun()}
-                                    disabled={!canRun}
-                                >
-                                    RUN AGAIN
-                                </Button>
-                                <Button
-                                    type="primary"
-                                    onClick={onClose}
-                                    style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                                >
-                                    DONE
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <Button onClick={onClose} disabled={workflowRunning}>
-                                    CANCEL
-                                </Button>
-                                {!workflowRunning ? (
-                                    <Button
-                                        type="primary"
-                                        icon={<ThunderboltOutlined />}
-                                        onClick={() => void onRun()}
-                                        disabled={!canRun}
-                                        style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                                    >
-                                        RUN
-                                    </Button>
-                                ) : null}
-                            </>
-                        )}
-                    </Space>
-                </div>
             </Space>
         </MovableModal>
     );

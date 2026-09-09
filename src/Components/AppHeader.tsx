@@ -135,7 +135,7 @@ export const AppHeader: React.FC = () => {
 
     return (
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%', gap: isMobile ? 8 : 12 }}>
-            <Tooltip title={`ROS BRIDGE: ${getConnectionStatusText()}${countState > 0 ? ` (${countState})` : ''}`}>
+            <Tooltip title={`Number of connected clients to the ROS Bridge.`}>
                 <div style={statusStyle}>
                     <span
                         style={{
@@ -155,7 +155,7 @@ export const AppHeader: React.FC = () => {
                     </Text>
                 </div>
             </Tooltip>
-            <Tooltip title={activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}>
+            <Tooltip title={activeControllerId !== '' ? 'A client is currently controlling the robot.' : 'No client is currently controlling the robot.'}>
                 <div style={statusStyle}>
                     <span
                         style={{

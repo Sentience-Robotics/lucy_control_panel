@@ -57,6 +57,7 @@ export const ConnectionControls: React.FC = () => {
                 />
                 <Button
                     size="small"
+                    type={isConnected ? 'default' : 'primary'}
                     onClick={() => void handleConnect()}
                     disabled={isConnecting}
                     style={{

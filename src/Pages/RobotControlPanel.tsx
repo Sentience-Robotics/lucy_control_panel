@@ -118,12 +118,13 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
         modalName={fighting ? 'STOP FIGHTING' : 'CONTROL TAKEN'}
         isVisible={isVisible}
         onClose={onClose}
-        initialPosition={{ x: 160, y: 200 }}
+        centered
         initialSize={{ w: 560, h: 280 }}
         header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
         footer={
             <>
                 <Button
+                    type="primary"
                     icon={<ThunderboltOutlined />}
                     onClick={onRetake}
                     style={{
@@ -207,6 +208,7 @@ export const RobotControlPanel: React.FC = () => {
     const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+    const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
 
     // Angle units (degrees/radians) are configured in the Settings modal and
     // persisted to localStorage; sync local state when they change.
@@ -983,11 +985,15 @@ export const RobotControlPanel: React.FC = () => {
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}
+                    initialSize={{ w: 480, h: 400 }}
+                    contentPadding={0}
+                    contentAspectRatio={webcamAspectRatio}
                 >
                     {isWebcamActive && (
                         <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
                             <MediapipeHandTracker
-                                moveRobotIndex={handleTeleopJoint} />
+                                moveRobotIndex={handleTeleopJoint}
+                                onAspectRatioChange={setWebcamAspectRatio} />
                         </Suspense>
                     )}
                 </MovableModal>
@@ -1009,19 +1015,16 @@ export const RobotControlPanel: React.FC = () => {
 
             {/* We are about to take control away from another client */}
             <MovableModal
-                modalName="TAKE CONTROL"
+                modalName="TAKE CONTROL FROM ANOTHER CLIENT?"
                 isVisible={showConfirmTakeControlModal}
                 onClose={() => setShowConfirmTakeControlModal(false)}
-                initialPosition={{ x: 100, y: 200 }}
+                centered
                 initialSize={{ w: 500, h: 300 }}
-                header={
-                    <Text style={{ color: UI_WARNING, fontFamily: 'monospace', fontSize: 12 }}>
-                        <ThunderboltOutlined /> TAKE CONTROL FROM ANOTHER CLIENT?
-                    </Text>
-                }
+                header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
                 footer={[
                     <Button
                         key="take"
+                        type="primary"
                         icon={<ThunderboltOutlined />}
                         onClick={() => applyControlToggle(true)}
                         style={{
