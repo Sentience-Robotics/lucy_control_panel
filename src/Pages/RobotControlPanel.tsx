@@ -18,6 +18,7 @@ import {
     VideoCameraOutlined,
     EyeOutlined,
     CodeSandboxOutlined,
+    ExperimentOutlined,
 } from '@ant-design/icons';
 import {
     DndContext,
@@ -511,6 +512,16 @@ export const RobotControlPanel: React.FC = () => {
         );
     }, []);
 
+    /** Scatter every slider to a random value inside its own limits. */
+    const handleRandomPose = useCallback(() => {
+        setJoints((prevJoints) =>
+            prevJoints.map((joint) => {
+                const value = joint.minValue + Math.random() * (joint.maxValue - joint.minValue);
+                return { ...joint, currentValue: value, targetValue: value };
+            })
+        );
+    }, []);
+
     const categorizedJoints = useMemo(() => {
         const categories: { [key: string]: JointControlState[] } = {};
         joints.forEach((joint) => {
@@ -675,6 +686,14 @@ export const RobotControlPanel: React.FC = () => {
             label: 'RESET ALL',
             icon: <ReloadOutlined />,
             onClick: handleResetAll,
+            disabled: !isSending,
+            style: { color: UI_TEXT_PRIMARY_ON_DARK }
+        },
+        {
+            key: 'random-pose',
+            label: 'RANDOM POSE',
+            icon: <ExperimentOutlined />,
+            onClick: handleRandomPose,
             disabled: !isSending,
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
@@ -850,6 +869,19 @@ export const RobotControlPanel: React.FC = () => {
                                         disabled={!isSending}
                                     >
                                         RESET ALL
+                                    </Button>
+
+                                    <Button
+                                        icon={<ExperimentOutlined />}
+                                        onClick={handleRandomPose}
+                                        style={{
+                                            backgroundColor: UI_COLOR_TRANSPARENT,
+                                            borderColor: UI_BORDER_SOFT,
+                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                        }}
+                                        disabled={!isSending}
+                                    >
+                                        RANDOM POSE
                                     </Button>
 
                                     <ManagePosesModal
