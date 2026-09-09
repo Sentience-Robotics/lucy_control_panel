@@ -2,6 +2,7 @@
 
 import ROSLIB from 'roslib';
 import { logger } from "../../Utils/logger.utils.ts";
+import { Diagnostics } from "../diagnostics.service.ts";
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
@@ -29,6 +30,13 @@ function describeRosBridgeFailure(error: unknown, url: string, opts?: { timeout?
     ].join('\n');
 }
 
+export function getOriginRosUrl(): string {
+    if (typeof window === 'undefined') {
+        throw new Error('Window is undefined');
+    }
+    return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/rosbridge`;
+}
+
 export function getDefaultRosUrl(): string {
     if (typeof window === 'undefined') {
         throw new Error('Window is undefined');
@@ -43,9 +51,7 @@ export function getDefaultRosUrl(): string {
         return stored;
     }
 
-    return (
-        `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:${window.location.port}/rosbridge`
-    );
+    return getOriginRosUrl();
 }
 
 class RosBridgeService {
@@ -77,18 +83,22 @@ class RosBridgeService {
 
         ros.on('connection', () => {
             logger('Connected to ROS bridge.');
+            Diagnostics.record('connection', 'socket', 'ok', `open to ${this.url}`);
             this.clearConnectionTimeout();
             this.setConnectionStatus('connected');
         });
 
         ros.on('error', (error: any) => {
             logger(`Error connecting to ROS bridge: ${error}`);
+            Diagnostics.record('connection', 'socket', 'error', describeRosBridgeFailure(error, this.url));
             this.clearConnectionTimeout();
             this.setConnectionStatus('disconnected');
         });
 
         ros.on('close', () => {
             logger('ROS bridge connection closed.');
+            Diagnostics.resetConnection();
+            Diagnostics.record('connection', 'socket', 'error', 'connection closed');
             this.clearConnectionTimeout();
             this.setConnectionStatus('disconnected');
         });
@@ -183,6 +193,30 @@ class RosBridgeService {
         });
     }
 
+    /** Node names currently in the graph, via `rosapi/nodes`. Bounded like getPublishers. */
+    async getNodes(timeoutMs = 5000): Promise<string[]> {
+        return new Promise((resolve, reject) => {
+            if (!this.ros || this._connectionStatus !== 'connected') {
+                reject(new Error('ROS bridge is not connected'));
+                return;
+            }
+            const service = new ROSLIB.Service({
+                ros: this.ros,
+                name: '/rosapi/nodes',
+                serviceType: 'rosapi/Nodes',
+            });
+            const timer = setTimeout(
+                () => reject(new Error('rosapi/nodes did not respond — is the rosapi node running?')),
+                timeoutMs,
+            );
+            service.callService(
+                new ROSLIB.ServiceRequest({}),
+                (result: { nodes: string[] }) => { clearTimeout(timer); resolve(result.nodes); },
+                (error: string) => { clearTimeout(timer); reject(new Error(error)); },
+            );
+        });
+    }
+
     async connect(url: string): Promise<void> {
         return new Promise((resolve, reject) => {
             logger(`Attempting to connect to ROS Bridge at ${url}...`);
@@ -197,6 +231,8 @@ class RosBridgeService {
 
             this.url = url;
             localStorage.setItem(ROS_URL_KEY, url);
+            Diagnostics.record('connection', 'url', 'ok', url);
+            Diagnostics.record('connection', 'socket', 'pending', 'dialling...');
 
             if (this.ros) {
                 this.ros.close();

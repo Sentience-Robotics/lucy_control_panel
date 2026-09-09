@@ -6,7 +6,7 @@ import {
     ThunderboltOutlined,
     WarningOutlined,
 } from '@ant-design/icons';
-import { Alert, Button, Card, Checkbox, Divider, Modal, Progress, Space, Switch, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Checkbox, Divider, Progress, Space, Switch, Tag, Typography } from 'antd';
 import type { HardwareConfigDiff } from '../model/hardwareConfigDiff.ts';
 import type { GeneratedFileNames } from '../../../Utils/generatedFiles.ts';
 import { HardwareConfigPresetHeaderTag } from '../../../Components/HardwareConfigPresetTag.tsx';
@@ -16,7 +16,6 @@ import {
     UI_BORDER_SOFT,
     UI_CARD_SURFACE_STYLE,
     UI_ERROR,
-    UI_MODAL_MASK_BG,
     UI_PRIMARY_GREEN_BUTTON_STYLE,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
@@ -25,12 +24,9 @@ import {
 } from '../../../Constants/uiTheme.ts';
 import type { WorkflowStepRuntimeStatus, WorkflowStepSlice } from '../activateWorkflowStepTypes.ts';
 import '../configuration.switch.css';
+import { MovableModal } from '../../../Components/MovableModal.tsx';
 
-const { Text, Title } = Typography;
-
-const modalStyles = {
-    mask: { backgroundColor: UI_MODAL_MASK_BG },
-};
+const { Text } = Typography;
 
 function stepIcon(status: WorkflowStepRuntimeStatus) {
     if (status === 'done') return <CheckCircleOutlined style={{ color: UI_ACCENT_GREEN }} />;
@@ -132,23 +128,57 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
         gazeboRunning === true;
 
     return (
-        <Modal
-            title={
-                <Title level={4} style={{ color: UI_ACCENT_GREEN, margin: 0 }}>
-                    <ThunderboltOutlined /> ACTIVATE &amp; CONFIGURE
-                </Title>
+        <MovableModal
+            modalName="ACTIVATE & CONFIGURE"
+            isVisible={open}
+            onClose={workflowRunning ? () => { } : onClose}
+            centered
+            initialSize={{ w: 720, h: 600 }}
+            header={<ThunderboltOutlined style={{ color: UI_ACCENT_GREEN }} />}
+            footer={
+                <>
+                    {workflowRunning ? (
+                        <Button danger onClick={onAbort} style={{ marginRight: 'auto' }}>
+                            ABORT
+                        </Button>
+                    ) : null}
+                    {!workflowRunning && workflowLastRunSucceeded ? (
+                        <>
+                            <Button
+                                icon={<ThunderboltOutlined />}
+                                onClick={() => void onRun()}
+                                disabled={!canRun}
+                            >
+                                RUN AGAIN
+                            </Button>
+                            <Button
+                                type="primary"
+                                onClick={onClose}
+                                style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                            >
+                                DONE
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button onClick={onClose} disabled={workflowRunning}>
+                                CANCEL
+                            </Button>
+                            {!workflowRunning ? (
+                                <Button
+                                    type="primary"
+                                    icon={<ThunderboltOutlined />}
+                                    onClick={() => void onRun()}
+                                    disabled={!canRun}
+                                    style={UI_PRIMARY_GREEN_BUTTON_STYLE}
+                                >
+                                    RUN
+                                </Button>
+                            ) : null}
+                        </>
+                    )}
+                </>
             }
-            open={open}
-            onCancel={workflowRunning ? () => { } : onClose}
-            footer={null}
-            keyboard={!workflowRunning}
-            width={720}
-            style={{ top: 48 }}
-            styles={modalStyles}
-            className="dark-modal"
-            maskClosable={!workflowRunning}
-            closable={!workflowRunning}
-            destroyOnClose={false}
         >
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 {serverActiveConfigName && serverActiveConfigName !== selectedTargetConfigName ? (
@@ -326,55 +356,8 @@ export function ActivateConfigureWorkflowModal(props: ActivateConfigureWorkflowM
                         }
                     />
                 ) : null}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                    {workflowRunning ? (
-                        <Button danger onClick={onAbort}>
-                            ABORT
-                        </Button>
-                    ) : (
-                        <span />
-                    )}
-                    <Space>
-                        {!workflowRunning && workflowLastRunSucceeded ? (
-                            <>
-                                <Button
-                                    icon={<ThunderboltOutlined />}
-                                    onClick={() => void onRun()}
-                                    disabled={!canRun}
-                                >
-                                    RUN AGAIN
-                                </Button>
-                                <Button
-                                    type="primary"
-                                    onClick={onClose}
-                                    style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                                >
-                                    DONE
-                                </Button>
-                            </>
-                        ) : (
-                            <>
-                                <Button onClick={onClose} disabled={workflowRunning}>
-                                    CANCEL
-                                </Button>
-                                {!workflowRunning ? (
-                                    <Button
-                                        type="primary"
-                                        icon={<ThunderboltOutlined />}
-                                        onClick={() => void onRun()}
-                                        disabled={!canRun}
-                                        style={UI_PRIMARY_GREEN_BUTTON_STYLE}
-                                    >
-                                        RUN
-                                    </Button>
-                                ) : null}
-                            </>
-                        )}
-                    </Space>
-                </div>
             </Space>
-        </Modal>
+        </MovableModal>
     );
 }
 

@@ -9,6 +9,7 @@ import React, {
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { HardwareConfigHandler } from '../Services/ros/handlers/HardwareConfig.handler';
+import { Diagnostics } from '../Services/diagnostics.service';
 import { parseHardwareConfigYaml } from '../Utils/hardwareConfigYaml';
 import { controllerJointConfigsFromHardwareYaml } from '../Utils/hardwareControllersFromYaml.ts';
 
@@ -80,6 +81,7 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             const res = await HardwareConfigHandler.getConfig('');
             if (!res.success) {
                 const msg = res.message || 'Failed to load active hardware config';
+                Diagnostics.record('connection', 'hardware', 'error', msg);
                 setActiveHardwareError(msg);
                 setActiveHardwareDoc(null);
                 setControllerConfigsFromActive(null);
@@ -93,6 +95,11 @@ export function ActiveHardwareRosProvider({ children }: { children: React.ReactN
             }
             const doc = parseHardwareConfigYaml(res.config_yaml || '');
             const ctrls = controllerJointConfigsFromHardwareYaml(doc);
+            Diagnostics.record(
+                'connection', 'hardware', 'ok',
+                `${res.config_name || 'active'}: ${ctrls.length} controllers, ` +
+                `${ctrls.reduce((n, c) => n + c.joints.length, 0)} joints`,
+            );
             setActiveHardwareDoc(doc);
             setActiveHardwareConfigName(res.config_name || '');
             setServerFlashedConfigName((res.flashed_config_name || '').trim());

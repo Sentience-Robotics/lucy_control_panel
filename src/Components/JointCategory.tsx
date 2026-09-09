@@ -19,6 +19,7 @@ interface JointCategoryProps {
     joints: JointControlState[];
     onJointValueChange: (name: string, value: number) => void;
     onResetCategory: (category: string) => void;
+    onResetJoint?: (name: string) => void;
     showDegrees: boolean;
     disabled?: boolean;
 }
@@ -28,6 +29,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     joints,
     onJointValueChange,
     onResetCategory,
+    onResetJoint,
     showDegrees,
     disabled = false,
 }) => {
@@ -132,6 +134,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                         key={joint.name}
                         joint={joint}
                         onValueChange={onJointValueChange}
+                        onReset={onResetJoint}
                         showDegrees={showDegrees}
                         disabled={disabled}
                     />

@@ -3,20 +3,22 @@ import React, {
     useRef,
     useEffect,
     useCallback,
+    useContext,
     useMemo,
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, Modal, message, Dropdown, Grid } from 'antd';
+import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, message, Dropdown, Grid } from 'antd';
 import type { MenuProps } from 'antd';
 import {
     ReloadOutlined,
     ThunderboltOutlined,
     StopOutlined,
-    InfoCircleOutlined,
     MenuOutlined,
     VideoCameraOutlined,
     EyeOutlined,
+    CodeSandboxOutlined,
+    ExperimentOutlined,
 } from '@ant-design/icons';
 import {
     DndContext,
@@ -43,6 +45,8 @@ import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
 /* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
+import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
+import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Types */
@@ -52,20 +56,20 @@ import {
     jointRadToActuatorDeg,
     type ActuatorMapping,
 } from '../Utils/actuatorJointMapping';
+import { describeClient } from '../Utils/clientIdentity';
 import {
     DEFAULT_JOINT_SLIDER_BOUNDS_DEG,
     DEFAULT_JOINT_SLIDER_VALUE_DEG,
 } from '../Constants/hardwareConfigDefaults';
 
 /* Components */
-import { Page } from '../Components/Page';
 import { LucyLoader } from '../Components/LucyLoader';
 import { JointCategory } from '../Components/JointCategory';
 import { DraggableCategory } from '../Components/DraggableCategory';
-import { PoseManager } from '../Components/PoseManager';
-import { AnimationManager } from '../Components/AnimationManager';
+import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
+import { Robot3DViewerModal } from "../Components/Robot3DViewerModal";
 import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
@@ -75,7 +79,6 @@ import {
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
     UI_ERROR,
-    UI_MODAL_MASK_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SUBTLE,
@@ -86,15 +89,82 @@ import {
     UI_GRADIENT_MODAL_HEADER,
     UI_MODAL_SURFACE,
     UI_SHADOW_ELEVATED,
+    UI_BG_BLACK,
+    PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
+import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
 const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
+
+interface ControlTakenModalProps {
+    isVisible: boolean;
+    fighting: boolean;
+    onClose: () => void;
+    onRetake: () => void;
+}
+
+const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
+    isVisible,
+    fighting,
+    onClose,
+    onRetake,
+}) => (
+    <MovableModal
+        modalName={fighting ? 'STOP FIGHTING' : 'CONTROL TAKEN'}
+        isVisible={isVisible}
+        onClose={onClose}
+        centered
+        initialSize={{ w: 560, h: 280 }}
+        header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
+        footer={
+            <>
+                <Button
+                    type="primary"
+                    icon={<ThunderboltOutlined />}
+                    onClick={onRetake}
+                    style={{
+                        backgroundColor: UI_ACCENT_GREEN,
+                        borderColor: UI_ACCENT_GREEN,
+                        color: UI_TEXT_ON_ACCENT,
+                    }}
+                >
+                    {fighting ? 'I WILL WIN THIS BATTLE' : 'Retake Control'}
+                </Button>
+                <Button
+                    onClick={onClose}
+                    style={{
+                        backgroundColor: UI_COLOR_TRANSPARENT,
+                        borderColor: UI_BORDER_SOFT,
+                        color: UI_TEXT_PRIMARY_ON_DARK,
+                    }}
+                >
+                    {fighting ? "Let's calm down" : 'Close'}
+                </Button>
+            </>
+        }
+    >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+                {fighting
+                    ? 'You and another client keep taking control from each other. Maybe… talk it out?'
+                    : <>Another connected client turned Control Robot <Text style={{ color: UI_ACCENT_GREEN }}>ON</Text> and now has exclusive control.</>
+                }
+            </Text>
+            <Text style={{ color: UI_TEXT_SUBTLE }}>
+                {fighting
+                    ? 'The robot is confused. You should be too.'
+                    : <>Your Control Robot was automatically turned <Text style={{ color: UI_ERROR }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.</>
+                }
+            </Text>
+        </Space>
+    </MovableModal>
+);
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
@@ -122,20 +192,24 @@ export const RobotControlPanel: React.FC = () => {
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [showControlTakenModal, setShowControlTakenModal] = useState(false);
     const retakeCountRef = useRef(0);
+    const [controllerToPreempt, setControllerToPreempt] = useState('');
+    const [showConfirmTakeControlModal, setShowConfirmTakeControlModal] = useState(false);
 
     const screens = useBreakpoint();
     const isMobile = !screens.md;
 
-    // Floating stream window state
-    const STREAM_VISIBLE_KEY = 'lucy_stream_visible';
+    // The page header is `position: sticky; top: 0`, so the control toolbar has to park below it.
+    const headerHeight = useContext(HeaderHeightContext);
 
-    const [isStreamVisible, setIsStreamVisible] = useState<boolean>(() => {
-        if (typeof window === 'undefined') { return false; }
-        const saved = localStorage.getItem(STREAM_VISIBLE_KEY);
-        return saved ? saved === 'true' : false;
-    });
+    // Floating window state, restored across reloads.
+    const [isStreamVisible, setIsStreamVisible] = usePersistentBoolean('lucy_stream_visible');
+    const [isVisualizerVisible, setIsVisualizerVisible] = usePersistentBoolean('lucy_visualizer_visible');
+
+    // A camera stream needs a publisher; the 3D view only needs joint states.
+    const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
+    const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
 
     // Angle units (degrees/radians) are configured in the Settings modal and
     // persisted to localStorage; sync local state when they change.
@@ -355,15 +429,29 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
-    const handleControlRobotToggle = useCallback((next: boolean) => {
-        setIsSending(next);
+    /** Function responsible of flipping control without asking. Callers own the decision to preempt another client. */
+    const applyControlToggle = useCallback((shouldControl: boolean) => {
+        setIsSending(shouldControl);
         setShowControlTakenModal(false);
-        if (next) {
+        setShowConfirmTakeControlModal(false);
+        if (shouldControl) {
             ControlModeHandler.getInstance().takeControl();
         } else {
             ControlModeHandler.getInstance().releaseControl();
         }
     }, []);
+
+    const handleControlRobotToggle = useCallback((shouldControl: boolean) => {
+        const handler = ControlModeHandler.getInstance();
+        const otherHasControl =
+            handler.currentControllerId !== '' && handler.currentControllerId !== handler.clientId;
+        if (shouldControl && otherHasControl) {
+            setControllerToPreempt(handler.currentControllerId);
+            setShowConfirmTakeControlModal(true);
+            return;
+        }
+        applyControlToggle(shouldControl);
+    }, [applyControlToggle]);
 
     const handleJointValueChange = useCallback((name: string, value: number) => {
         setJoints((prevJoints) =>
@@ -388,6 +476,19 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
+    const handleResetJoint = useCallback((name: string) => {
+        setJoints((prevJoints) =>
+            prevJoints.map((joint) => {
+                if (joint.name === name) {
+                    const rest = joint.restValue ?? 0;
+                    const clamped = Math.max(joint.minValue, Math.min(joint.maxValue, rest));
+                    return { ...joint, currentValue: clamped, targetValue: clamped };
+                }
+                return joint;
+            })
+        );
+    }, []);
+
     const handleResetCategory = useCallback((category: string) => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
@@ -407,6 +508,16 @@ export const RobotControlPanel: React.FC = () => {
                 const rest = joint.restValue ?? 0;
                 const clamped = Math.max(joint.minValue, Math.min(joint.maxValue, rest));
                 return { ...joint, currentValue: clamped, targetValue: clamped };
+            })
+        );
+    }, []);
+
+    /** Scatter every slider to a random value inside its own limits. */
+    const handleRandomPose = useCallback(() => {
+        setJoints((prevJoints) =>
+            prevJoints.map((joint) => {
+                const value = joint.minValue + Math.random() * (joint.maxValue - joint.minValue);
+                return { ...joint, currentValue: value, targetValue: value };
             })
         );
     }, []);
@@ -467,12 +578,16 @@ export const RobotControlPanel: React.FC = () => {
         }
 
         let currentIndex = 0;
+        let completedLoops = 0;
         const playNextFrame = () => {
             handleLoadPose(poses[currentIndex].joints);
             currentIndex++;
 
             if (currentIndex >= poses.length) {
-                if (animation.loop) {
+                completedLoops++;
+                const hasMoreLoops = animation.loop
+                    && (animation.loopCount === 0 || completedLoops < animation.loopCount);
+                if (hasMoreLoops) {
                     currentIndex = 0;
                 } else {
                     setIsAnimating(false);
@@ -510,18 +625,33 @@ export const RobotControlPanel: React.FC = () => {
 
     if (isConnected && loading) {
         return (
-            <Page contentStyle={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <Spin size="large" />
-                <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
-                    Loading robot configuration...
-                </Text>
-            </Page>
+            <>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <Spin size="large" />
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, marginLeft: 16 }}>
+                        Loading robot configuration...
+                    </Text>
+                </div>
+                <ControlTakenModal
+                    isVisible={showControlTakenModal}
+                    fighting={retakeCountRef.current >= 3}
+                    onClose={() => {
+                        retakeCountRef.current = 0;
+                        setShowControlTakenModal(false);
+                    }}
+                    onRetake={() => {
+                        retakeCountRef.current += 1;
+                        setShowControlTakenModal(false);
+                        applyControlToggle(true);
+                    }}
+                />
+            </>
         );
     }
 
     if (isConnected && error) {
         return (
-            <Page>
+            <>
                 <Alert
                     message="Error Loading Robot Configuration"
                     description={error}
@@ -533,7 +663,20 @@ export const RobotControlPanel: React.FC = () => {
                         </Button>
                     }
                 />
-            </Page>
+                <ControlTakenModal
+                    isVisible={showControlTakenModal}
+                    fighting={retakeCountRef.current >= 3}
+                    onClose={() => {
+                        retakeCountRef.current = 0;
+                        setShowControlTakenModal(false);
+                    }}
+                    onRetake={() => {
+                        retakeCountRef.current += 1;
+                        setShowControlTakenModal(false);
+                        applyControlToggle(true);
+                    }}
+                />
+            </>
         );
     }
 
@@ -543,16 +686,28 @@ export const RobotControlPanel: React.FC = () => {
             label: 'RESET ALL',
             icon: <ReloadOutlined />,
             onClick: handleResetAll,
+            disabled: !isSending,
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         {
-            key: 'pose',
-            label: <PoseManager joints={joints} onLoadPose={handleLoadPose} />,
+            key: 'random-pose',
+            label: 'RANDOM POSE',
+            icon: <ExperimentOutlined />,
+            onClick: handleRandomPose,
+            disabled: !isSending,
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         {
-            key: 'animation',
-            label: <AnimationManager onPlayAnimation={handlePlayAnimation} />,
+            key: 'poses',
+            label: (
+                <ManagePosesModal
+                    joints={joints}
+                    onLoadPose={handleLoadPose}
+                    onPlayAnimation={handlePlayAnimation}
+                    isAnimating={isAnimating}
+                    onStopAnimation={handleStopAnimation}
+                />
+            ),
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         ...(isAnimating ? [{
@@ -577,37 +732,69 @@ export const RobotControlPanel: React.FC = () => {
         borderRadius: 4,
     };
 
-    const switches = () => {
-        return(
-            <>
-                <div style={{ display: 'inline-flex', alignItems: 'flex-start', gap: 4 }}>
-                    <ToggleSwitch
-                        isOn={isSending}
-                        onToggle={handleControlRobotToggle}
-                        title="Control Robot"
-                        rightIcon={<ThunderboltOutlined />}
-                        width={180}
-                        height={32}
-                    />
-                    <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
-                        <InfoCircleOutlined style={{ color: '#888888', fontSize: 12, cursor: 'help', marginTop: 2 }} />
-                    </Tooltip>
-                </div>
-            </>
-        )
-    }
+    const toggleButtonStyle = (isActive: boolean): React.CSSProperties => ({
+        backgroundColor: isActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
+        color: isActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
+        borderColor: isActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
+        boxShadow: isActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
+    });
+
+    const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
+
+    const visualizerButton = (label: string, icon?: React.ReactNode) => (
+        <Button
+            icon={icon}
+            onClick={() => setIsVisualizerVisible(v => !v)}
+            style={toggleButtonStyle(isVisualizerVisible)}
+        >
+            {isVisualizerVisible ? `HIDE ${label}` : `SHOW ${label}`}
+        </Button>
+    );
+
+    const streamButton = (label: string, icon?: React.ReactNode) => (
+        <Tooltip
+            title={isStreamDisabled
+                ? 'No camera is publishing — start the simulation or connect a camera'
+                : ''}
+        >
+            <span style={{ display: 'inline-flex' }}>
+                <Button
+                    icon={icon}
+                    disabled={isStreamDisabled}
+                    onClick={() => setIsStreamVisible(v => !v)}
+                    style={isStreamDisabled ? undefined : toggleButtonStyle(isStreamVisible)}
+                >
+                    {isStreamVisible ? `HIDE ${label}` : `SHOW ${label}`}
+                </Button>
+            </span>
+        </Tooltip>
+    );
+
+    const switches = () => (
+        <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
+            <span style={{ display: 'inline-flex', cursor: 'help' }}>
+                <ToggleSwitch
+                    isOn={isSending}
+                    onToggle={handleControlRobotToggle}
+                    title="Control Robot"
+                    titlePlacement="inline"
+                    rightIcon={<ThunderboltOutlined />}
+                    width={180}
+                />
+            </span>
+        </Tooltip>
+    );
 
     return (
-        <Page
-            showHeader
-            title
-            contentStyle={{ padding: 12, position: 'relative' }}
-            removeScrollbars={false}
-        >
+        <>
+            <Robot3DViewerModal
+                isVisible={isVisualizerVisible}
+                onClose={() => setIsVisualizerVisible(false)}
+            />
+
             <StreamPlayerModal
                 isVisible={isStreamVisible}
                 onClose={() => setIsStreamVisible(false)}
-                initialPosition={{ x: 100, y: 100 }}
             />
 
             {!isConnected ? (
@@ -623,38 +810,53 @@ export const RobotControlPanel: React.FC = () => {
                 />
             ) : (
                 <div style={{ position: 'relative', isolation: 'isolate' }}>
-                    <Row gutter={[12, 12]} align="middle" justify="space-between" style={{ marginBottom: 12 }}>
-                        <Col xs={24} lg="auto" >
-                            {isMobile ? (
-                                <Space wrap>
-                                    <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
-                                        <div style={dropdownOverlayStyle}>{menu}</div>
-                                    )}>
-                                        <Button
-                                            icon={<MenuOutlined />}
-                                            style={{
-                                                backgroundColor: UI_COLOR_TRANSPARENT,
-                                                borderColor: UI_BORDER_SOFT,
-                                                color: UI_TEXT_PRIMARY_ON_DARK,
-                                            }}
-                                        >
-                                            Control Options
-                                        </Button>
-                                    </Dropdown>
-                                    <Button
-                                        icon={<VideoCameraOutlined />}
-                                        onClick={() => setIsStreamVisible(v => !v)}
-                                        style={{
-                                            backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                            color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                            borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                            boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                        }}
-                                    >
-                                        {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                                    </Button>
-                                </Space>
-                            ) : (
+                    <div
+                        style={{
+                            position: 'sticky',
+                            top: headerHeight,
+                            zIndex: 5,
+                            backgroundColor: UI_BG_BLACK,
+                            borderBottom: `1px solid ${UI_BORDER_MUTED}`,
+                            margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 12px`,
+                            padding: PAGE_CONTENT_STYLE.padding,
+                        }}
+                    >
+                        {isMobile ? (
+                            <Row gutter={[12, 12]} align="middle">
+                                <Col xs={24}>
+                                    <Space wrap>
+                                        <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
+                                            <div style={dropdownOverlayStyle}>{menu}</div>
+                                        )}>
+                                            <Button
+                                                icon={<MenuOutlined />}
+                                                style={{
+                                                    backgroundColor: UI_COLOR_TRANSPARENT,
+                                                    borderColor: UI_BORDER_SOFT,
+                                                    color: UI_TEXT_PRIMARY_ON_DARK,
+                                                }}
+                                            >
+                                                Control Options
+                                            </Button>
+                                        </Dropdown>
+                                        {visualizerButton('3D VIEW', <CodeSandboxOutlined />)}
+                                        {streamButton('STREAM', <VideoCameraOutlined />)}
+                                    </Space>
+                                </Col>
+                                <Col xs={24} style={{ display: 'flex', justifyContent: 'center' }}>
+                                    {switches()}
+                                </Col>
+                            </Row>
+                        ) : (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    gap: 12,
+                                }}
+                            >
                                 <Space wrap>
                                     <Button
                                         icon={<ReloadOutlined />}
@@ -664,15 +866,31 @@ export const RobotControlPanel: React.FC = () => {
                                             borderColor: UI_BORDER_SOFT,
                                             color: UI_TEXT_PRIMARY_ON_DARK,
                                         }}
+                                        disabled={!isSending}
                                     >
                                         RESET ALL
                                     </Button>
 
-                                    <PoseManager
+                                    <Button
+                                        icon={<ExperimentOutlined />}
+                                        onClick={handleRandomPose}
+                                        style={{
+                                            backgroundColor: UI_COLOR_TRANSPARENT,
+                                            borderColor: UI_BORDER_SOFT,
+                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                        }}
+                                        disabled={!isSending}
+                                    >
+                                        RANDOM POSE
+                                    </Button>
+
+                                    <ManagePosesModal
                                         joints={joints}
                                         onLoadPose={handleLoadPose}
+                                        onPlayAnimation={handlePlayAnimation}
+                                        isAnimating={isAnimating}
+                                        onStopAnimation={handleStopAnimation}
                                     />
-                                    <AnimationManager onPlayAnimation={handlePlayAnimation} />
                                     {isAnimating && (
                                         <Button
                                             danger
@@ -682,47 +900,19 @@ export const RobotControlPanel: React.FC = () => {
                                             STOP ANIMATION
                                         </Button>
                                     )}
-                                    <Button
-                                        onClick={() => setIsStreamVisible(v => !v)}
-                                        style={{
-                                            backgroundColor: isStreamVisible ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                            color: isStreamVisible ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                            borderColor: isStreamVisible ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                            boxShadow: isStreamVisible ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                        }}
-                                    >
-                                        {isStreamVisible ? 'HIDE STREAM' : 'SHOW STREAM'}
-                                    </Button>
+                                    {visualizerButton('3D VIEW')}
+                                    {streamButton('STREAM')}
                                     <Button
                                         onClick={() => setIsWebcamActive(v => !v)}
-                                        style={{
-                                            backgroundColor: isWebcamActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-                                            color: isWebcamActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-                                            borderColor: isWebcamActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-                                            boxShadow: isWebcamActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-                                        }}
+                                        style={toggleButtonStyle(isWebcamActive)}
                                     >
                                         {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
                                     </Button>
                                 </Space>
-                            )}
-                            { isMobile ? null : (
-                                <Row gutter={12} align="middle" justify="end" style={{ flex: 'none' }}>
-                                    <Col>
-                                        {switches()}
-                                    </Col>
-                                </Row>
-                            )}
-                        </Col>
-
-                        { isMobile ? (
-                            <Col xs={24} lg="auto" style={{ display: 'flex', justifyContent: 'center' }}>
-                                <Space wrap style={{ justifyContent: 'center', width: '100%' }}>
-                                    {switches()}
-                                </Space>
-                            </Col>
-                        ) : null }
-                    </Row>
+                                {switches()}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Mobile webcam sits inline under Control Robot and scrolls with the joint boxes. */}
                     {isMobile && isWebcamActive && (
@@ -793,6 +983,7 @@ export const RobotControlPanel: React.FC = () => {
                                                 joints={categorizedJoints[category]}
                                                 onJointValueChange={handleJointValueChange}
                                                 onResetCategory={handleResetCategory}
+                                                onResetJoint={handleResetJoint}
                                                 showDegrees={showDegrees}
                                                 disabled={!isSending}
                                             />
@@ -826,82 +1017,80 @@ export const RobotControlPanel: React.FC = () => {
                     isVisible={isWebcamActive}
                     onClose={() => setIsWebcamActive(false)}
                     initialPosition={{ x: 400, y: 150 }}
+                    initialSize={{ w: 480, h: 400 }}
+                    contentPadding={0}
+                    contentAspectRatio={webcamAspectRatio}
                 >
                     {isWebcamActive && (
                         <Suspense fallback={<Spin size="large" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }} />}>
                             <MediapipeHandTracker
-                                moveRobotIndex={handleTeleopJoint} />
+                                moveRobotIndex={handleTeleopJoint}
+                                onAspectRatioChange={setWebcamAspectRatio} />
                         </Suspense>
                     )}
                 </MovableModal>
             )}
 
-            {/* Another client took control */}
-            {(() => {
-                const fighting = retakeCountRef.current >= 3;
-                return (
-                    <Modal
-                        title={
-                            <Title level={4} style={{ color: UI_WARNING, margin: 0 }}>
-                                <ThunderboltOutlined /> {fighting ? 'Stop fighting!' : 'Someone else took control'}
-                            </Title>
-                        }
-                        open={showControlTakenModal}
-                        onCancel={() => { retakeCountRef.current = 0; setShowControlTakenModal(false); }}
-                        footer={[
-                            <Button
-                                key="retake"
-                                icon={<ThunderboltOutlined />}
-                                onClick={() => {
-                                    retakeCountRef.current += 1;
-                                    setShowControlTakenModal(false);
-                                    handleControlRobotToggle(true);
-                                }}
-                                style={{
-                                    backgroundColor: UI_ACCENT_GREEN,
-                                    borderColor: UI_ACCENT_GREEN,
-                                    color: UI_TEXT_ON_ACCENT,
-                                }}
-                            >
-                                {fighting ? 'I WILL WIN THIS BATTLE' : 'Retake Control'}
-                            </Button>,
-                            <Button
-                                key="close"
-                                onClick={() => {
-                                    retakeCountRef.current = 0;
-                                    setShowControlTakenModal(false);
-                                }}
-                                style={{
-                                    backgroundColor: UI_COLOR_TRANSPARENT,
-                                    borderColor: UI_BORDER_SOFT,
-                                    color: UI_TEXT_PRIMARY_ON_DARK,
-                                }}
-                            >
-                                {fighting ? "Let's calm down" : 'Close'}
-                            </Button>,
-                        ]}
-                        style={{ top: 200 }}
-                        styles={{ mask: { backgroundColor: UI_MODAL_MASK_BG } }}
-                        className="dark-modal"
-                    >
-                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                            <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
-                                {fighting
-                                    ? 'You and another client keep taking control from each other. Maybe… talk it out?'
-                                    : <>Another connected client turned Control Robot <Text style={{ color: UI_ACCENT_GREEN }}>ON</Text> and now has exclusive control.</>
-                                }
-                            </Text>
-                            <Text style={{ color: UI_TEXT_SUBTLE }}>
-                                {fighting
-                                    ? 'The robot is confused. You should be too.'
-                                    : <>Your Control Robot was automatically turned <Text style={{ color: UI_ERROR }}>OFF</Text>. Use <Text style={{ color: UI_ACCENT_GREEN }}>Retake Control</Text> to reclaim it.</>
-                                }
-                            </Text>
-                        </Space>
-                    </Modal>
-                );
-            })()}
+            <ControlTakenModal
+                isVisible={showControlTakenModal}
+                fighting={retakeCountRef.current >= 3}
+                onClose={() => {
+                    retakeCountRef.current = 0;
+                    setShowControlTakenModal(false);
+                }}
+                onRetake={() => {
+                    retakeCountRef.current += 1;
+                    setShowControlTakenModal(false);
+                    applyControlToggle(true);
+                }}
+            />
 
-        </Page>
+            {/* We are about to take control away from another client */}
+            <MovableModal
+                modalName="TAKE CONTROL FROM ANOTHER CLIENT?"
+                isVisible={showConfirmTakeControlModal}
+                onClose={() => setShowConfirmTakeControlModal(false)}
+                centered
+                initialSize={{ w: 500, h: 300 }}
+                header={<ThunderboltOutlined style={{ color: UI_WARNING }} />}
+                footer={[
+                    <Button
+                        key="take"
+                        type="primary"
+                        icon={<ThunderboltOutlined />}
+                        onClick={() => applyControlToggle(true)}
+                        style={{
+                            backgroundColor: UI_ACCENT_GREEN,
+                            borderColor: UI_ACCENT_GREEN,
+                            color: UI_TEXT_ON_ACCENT,
+                        }}
+                    >
+                        Take Control Anyway
+                    </Button>,
+                    <Button
+                        key="cancel"
+                        onClick={() => setShowConfirmTakeControlModal(false)}
+                        style={{
+                            backgroundColor: UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        Cancel
+                    </Button>,
+                ]}
+            >
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>
+                        The robot is currently controlled by {describeClient(controllerToPreempt)}.
+                    </Text>
+                    <Text style={{ color: UI_TEXT_SUBTLE }}>
+                        Control is exclusive: their Control Robot switches to <Text style={{ color: UI_ERROR }}>OFF</Text> immediately,
+                        and they are told you took over.
+                    </Text>
+                </Space>
+            </MovableModal>
+
+        </>
     );
 };

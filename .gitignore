@@ -8,6 +8,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.yarn/
+.pnp.cjs
+.pnp.loader.mjs
 dist
 dist-ssr
 *.local
@@ -32,7 +35,6 @@ dist-ssr
 .env.test.local
 .env.production.local
 
-yarn.lock
 package-lock.json
 
 todo.md

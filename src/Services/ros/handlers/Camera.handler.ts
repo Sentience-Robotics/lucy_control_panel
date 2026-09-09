@@ -1,6 +1,5 @@
 import ROSLIB from "roslib";
 import { RosBridgeService } from "../ros.service.ts";
-import { DEFAULT_STREAM_SOURCE } from "../../../Constants/rosConfig.ts";
 import type { StreamSource } from "../../../Constants/rosConfig.ts";
 
 export class CameraHandler {
@@ -14,7 +13,7 @@ export class CameraHandler {
     private frameCount = 0;
     private fpsStartTime = 0;
     private lastFrameTime = 0;
-    private currentStreamSource: StreamSource = DEFAULT_STREAM_SOURCE;
+    private currentStreamSource: StreamSource | null = null;
     private hasEmptyDataWarning = false;
     private emptyDataWarningCallback: ((hasWarning: boolean) => void) | null = null;
 
@@ -119,6 +118,9 @@ export class CameraHandler {
 
         // Use provided stream source or current one
         const source = streamSource || this.currentStreamSource;
+        if (!source) {
+            return;
+        }
         this.currentStreamSource = source;
 
         // Reset FPS counters when switching topics
@@ -159,7 +161,7 @@ export class CameraHandler {
     }
 
     switchStreamSource(streamSource: StreamSource) {
-        if (this.currentStreamSource.id === streamSource.id) {
+        if (this.currentStreamSource?.id === streamSource.id) {
             return; // Already using this source
         }
 
@@ -171,7 +173,7 @@ export class CameraHandler {
         }
     }
 
-    getCurrentStreamSource(): StreamSource {
+    getCurrentStreamSource(): StreamSource | null {
         return this.currentStreamSource;
     }
 
@@ -186,7 +188,7 @@ export class CameraHandler {
         this.subscribers.push(callback);
 
         // If a stream source is provided and it's different, switch to it
-        if (streamSource && streamSource.id !== this.currentStreamSource.id) {
+        if (streamSource && streamSource.id !== this.currentStreamSource?.id) {
             this.switchStreamSource(streamSource);
             return;
         }

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Space, Grid } from 'antd';
 import { ControlOutlined, SettingOutlined, FundProjectionScreenOutlined } from '@ant-design/icons';
+import { ROUTES } from '../Constants/routes.ts';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
@@ -15,9 +16,9 @@ import {
 const { useBreakpoint } = Grid;
 
 const navigationItems = [
-    { to: '/', label: 'CONTROL', icon: <ControlOutlined /> },
-    { to: '/sensors', label: 'SENSORS', icon: <FundProjectionScreenOutlined /> },
-    { to: '/configuration', label: 'CONFIGURATION', icon: <SettingOutlined /> },
+    { to: ROUTES.control, label: 'CONTROL', icon: <ControlOutlined /> },
+    { to: ROUTES.sensors, label: 'SENSORS', icon: <FundProjectionScreenOutlined /> },
+    { to: ROUTES.robotConfiguration, label: 'ROBOT CONFIGURATION', icon: <SettingOutlined /> },
 ];
 
 export const Navigation: React.FC = () => {

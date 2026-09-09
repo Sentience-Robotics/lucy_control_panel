@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { JointStateHandler } from '../Services/ros/handlers/JointState.handler';
+import { Diagnostics } from '../Services/diagnostics.service';
 
 export function useThrottledJointAngles(isConnected: boolean, hz = 10): Map<string, number> {
     const [jointAngles, setJointAngles] = useState<Map<string, number>>(new Map());
@@ -48,6 +49,7 @@ export function useThrottledJointAngles(isConnected: boolean, hz = 10): Map<stri
             if (!dirtyRef.current) return;
             dirtyRef.current = false;
             setJointAngles(new Map(latestRef.current));
+            Diagnostics.record('command', 'rendered', 'ok', `${latestRef.current.size} joints at ${hz} Hz`, true);
         }, 1000 / hz);
         return () => clearInterval(interval);
     }, [isConnected, hz]);

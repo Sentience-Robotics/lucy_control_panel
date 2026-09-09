@@ -11,12 +11,14 @@ interface MediapipeHandTrackerProps {
     width?: number;
     height?: number;
     moveRobotIndex: (x: number, jointName: string) => void;
+    onAspectRatioChange?: (ratio: number) => void;
 }
 
 const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     width,
     height,
-    moveRobotIndex
+    moveRobotIndex,
+    onAspectRatioChange
 }) => {
     type Point3D = { x: number; y: number; z: number };
     type Finger3D = {tip: Point3D, dip: Point3D, pip: Point3D, mcp: Point3D, wrist: Point3D, jointName: string};
@@ -70,6 +72,9 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     const webcamRef = useRef<Webcam>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const lastProcessTimeRef = useRef<number>(0);
+    const reportedRatioRef = useRef<number | null>(null);
+    const aspectRatioCallbackRef = useRef(onAspectRatioChange);
+    aspectRatioCallbackRef.current = onAspectRatioChange;
 
     const onResults = (results: Results) => {
         if (!webcamRef.current?.video || !canvasRef.current) return;
@@ -78,6 +83,14 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const videoHeight = webcamRef.current.video.videoHeight;
         canvasRef.current.width = videoWidth;
         canvasRef.current.height = videoHeight;
+
+        if (videoWidth && videoHeight) {
+            const ratio = videoWidth / videoHeight;
+            if (reportedRatioRef.current !== ratio) {
+                reportedRatioRef.current = ratio;
+                aspectRatioCallbackRef.current?.(ratio);
+            }
+        }
 
         const ctx = canvasRef.current.getContext("2d");
         if (!ctx) return;
@@ -225,7 +238,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     }, []);
 
     return (
-        <div>
+        <div style={{ position: "relative", width: "100%", height: "100%" }}>
             <Webcam
                 ref={webcamRef}
                 mirrored={true}
@@ -233,12 +246,12 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                 onUserMediaError={(e) => { console.error(e) }}
                 style={{
                     position: "absolute",
-                    left: 0,
-                    right: 0,
+                    inset: 0,
                     textAlign: "center",
                     zIndex: -1,
-                    width,
-                    height,
+                    width: width ?? "100%",
+                    height: height ?? "100%",
+                    objectFit: "contain",
                 }}
             />
 
@@ -246,12 +259,12 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                 ref={canvasRef}
                 style={{
                     position: "absolute",
-                    left: 0,
-                    right: 0,
+                    inset: 0,
                     textAlign: "center",
                     zIndex: 0,
-                    width,
-                    height,
+                    width: width ?? "100%",
+                    height: height ?? "100%",
+                    objectFit: "contain",
                 }}
             />
         </div>
