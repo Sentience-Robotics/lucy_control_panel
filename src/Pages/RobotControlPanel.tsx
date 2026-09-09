@@ -21,20 +21,13 @@ import {
     ExperimentOutlined,
 } from '@ant-design/icons';
 import {
-    DndContext,
-    rectIntersection,
     KeyboardSensor,
     PointerSensor,
     useSensor,
     useSensors,
-    DragOverlay,
 } from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    rectSortingStrategy,
+    sortableKeyboardCoordinates
 } from '@dnd-kit/sortable';
 
 /* Services */
@@ -65,8 +58,6 @@ import {
 
 /* Components */
 import { LucyLoader } from '../Components/LucyLoader';
-import { JointCategory } from '../Components/JointCategory';
-import { DraggableCategory } from '../Components/DraggableCategory';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
@@ -94,6 +85,9 @@ import {
     PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
+import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
+import Robot3DViewer from './Robot3DViewer.tsx';
+import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -186,7 +180,6 @@ export const RobotControlPanel: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
-    const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
     const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
@@ -621,24 +614,6 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
-    const handleDragStart = useCallback((event: DragStartEvent) => {
-        setActiveId(event.active.id as string);
-    }, []);
-
-    const handleDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event;
-
-        if (active.id !== over?.id) {
-            setCategoryOrder((items) => {
-                const oldIndex = items.indexOf(active.id as string);
-                const newIndex = items.indexOf(over?.id as string);
-                return arrayMove(items, oldIndex, newIndex);
-            });
-        }
-
-        setActiveId(null);
-    }, []);
-
     if (isConnected && loading) {
         return (
             <>
@@ -969,60 +944,18 @@ export const RobotControlPanel: React.FC = () => {
                         </div>
                     )}
 
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={rectIntersection}
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                                    gridAutoRows: '1fr',
-                                    gap: '12px',
-                                    width: '100%',
-                                    alignItems: 'stretch',
-                                }}
-                            >
-                                {categoryOrder.map((category) => {
-                                    if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
-                                        return null;
-                                    }
-
-                                    return (
-                                        <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                            <DraggableCategory
-                                                id={category}
-                                                category={category}
-                                                joints={categorizedJoints[category]}
-                                                onJointValueChange={handleJointValueChange}
-                                                onResetCategory={handleResetCategory}
-                                                onResetJoint={handleResetJoint}
-                                                showDegrees={showDegrees}
-                                                disabled={!isSending}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </SortableContext>
-
-                        <DragOverlay>
-                            {activeId ? (
-                                <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
-                                    <JointCategory
-                                        category={activeId}
-                                        joints={categorizedJoints[activeId] || []}
-                                        onJointValueChange={() => { }}
-                                        onResetCategory={() => { }}
-                                        showDegrees={showDegrees}
-                                    />
-                                </div>
-                            ) : null}
-                        </DragOverlay>
-                    </DndContext>
+                    <ResizablePanels direction="horizontal" proportions={[30, 70]} minSize={20} gap={20}>
+                        <PaginatedJointCategories
+                            categoryOrder={categoryOrder}
+                            categorizedJoints={categorizedJoints}
+                            onJointValueChange={handleJointValueChange}
+                            onResetCategory={handleResetCategory}
+                            onResetJoint={handleResetJoint}
+                            showDegrees={showDegrees}
+                            disabled={!isSending}
+                        />
+                        <Robot3DViewer />
+                    </ResizablePanels>
                 </div>
             )}
 

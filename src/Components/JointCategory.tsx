@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { Card, Typography, Space, Button, Badge } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import type { JointControlState } from '../Constants/robotTypes';
 import { JointControl } from './JointControl';
 import {
+    UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
@@ -33,10 +34,6 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     showDegrees,
     disabled = false,
 }) => {
-    const categoryColor = useMemo(() => {
-        return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    }, []);
-
     const handleResetCategory = useCallback(() => {
         onResetCategory(category);
     }, [onResetCategory, category]);
@@ -51,7 +48,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 marginBottom: 16,
                 backgroundColor: UI_PANEL_BG,
                 borderColor: UI_BORDER_MUTED,
-                borderLeft: `2px solid ${categoryColor}`,
+                borderLeft: `2px solid ${UI_ACCENT_GREEN}`,
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -65,7 +62,6 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 position: 'relative'
             }}
         >
-            {/* ASCII Fill background for all categories - always visible */}
             <div
                 style={{
                     display: 'flex',
@@ -81,7 +77,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     level={5}
                     style={{
                         margin: 0,
-                        color: categoryColor,
+                        color: UI_ACCENT_GREEN,
                         textTransform: 'uppercase',
                         letterSpacing: '1px',
                         fontSize: '14px',
@@ -93,7 +89,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 <Badge
                     count={joints.length}
                     style={{
-                        backgroundColor: categoryColor,
+                        backgroundColor: UI_ACCENT_GREEN,
                         color: UI_TEXT_ON_ACCENT,
                         fontWeight: 'bold'
                     }}
