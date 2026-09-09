@@ -1,5 +1,5 @@
 /**
- * Loads the robot model via urdf-loader (full FK, DAE loading, visual origins
+ * Loads the robot model via urdf-loader (full FK, DAE/STL loading, visual origins
  * and joint transforms).
  *
  * Both the model and its meshes come over ROS, so the viewer needs no
@@ -13,27 +13,23 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { isWebGLAvailable, ColladaLoader } from 'three-stdlib';
+import * as THREE from 'three';
+import { isWebGLAvailable, ColladaLoader, STLLoader } from 'three-stdlib';
 import URDFLoader from 'urdf-loader';
 import type { URDFRobot } from 'urdf-loader';
 import { RobotDescriptionHandler } from '../Services/ros/handlers/RobotDescription.handler';
 import { MeshHandler } from '../Services/ros/handlers/Mesh.handler';
+import type { MeshPayload } from '../Services/ros/handlers/Mesh.handler';
+import { runWithConcurrency } from '../Utils/concurrency.utils';
+import { formatCaughtError } from '../Utils/error.utils';
+import { decodeStlPayload } from '../Utils/mesh.utils';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
-/** Concurrent mesh service calls — enough to be quick without flooding rosbridge. */
-const MESH_FETCH_CONCURRENCY = 8;
-
-/** Run async thunks with a fixed worker pool, resolving once all have settled. */
-async function runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {
-    let next = 0;
-    const worker = async () => {
-        while (next < tasks.length) {
-            await tasks[next++]();
-        }
-    };
-    await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
-}
+/** Concurrent mesh fetches for STL — keep low; multi-MB responses share one websocket. */
+const MESH_FETCH_CONCURRENCY_STL = 2;
+/** Concurrent mesh fetches for DAE — small payloads; allow more parallelism than STL. */
+const MESH_FETCH_CONCURRENCY_DAE = 8;
 
 // ---------------------------------------------------------------------------
 // Module-level cache — shared across all component instances in a session.
@@ -92,26 +88,46 @@ export function useRobotModel(): UseRobotModelReturn {
             // each mesh over the ROS service, so the fetches are queued here and run
             // pooled after parse() returns.
             const colladaLoader = new ColladaLoader();
-            const meshText = new Map<string, Promise<string>>(); // dedupe shared meshes
+            const stlLoader = new STLLoader();
+            const meshCache = new Map<string, Promise<MeshPayload>>(); // dedupe shared meshes
             const tasks: Array<() => Promise<void>> = [];
             let total = 0;
             let completed = 0;
             let failed = 0;
             let lastError = '';
+            let stlCount = 0;
 
             const loader = new URDFLoader();
             loader.loadMeshCb = (path, _manager, done) => {
                 tasks.push(async () => {
                     try {
-                        if (!path.toLowerCase().endsWith('.dae')) {
+                        const lower = path.toLowerCase();
+                        let cached = meshCache.get(path);
+                        if (!cached) {
+                            cached = MeshHandler.getMesh(path);
+                            meshCache.set(path, cached);
+                        }
+                        const payload = await cached;
+                        if (lower.endsWith('.dae')) {
+                            if (payload.encoding !== 'utf8') {
+                                throw new Error(
+                                    `expected utf8 DAE payload, got '${payload.encoding}' for ${path}`,
+                                );
+                            }
+                            done(colladaLoader.parse(payload.data, '').scene);
+                        } else if (lower.endsWith('.stl')) {
+                            const geometry = stlLoader.parse(await decodeStlPayload(payload));
+                            const stlMesh = new THREE.Mesh(
+                                geometry,
+                                new THREE.MeshPhongMaterial({ color: 0xb0b0b0 }),
+                            );
+                            done(stlMesh);
+                        } else {
                             throw new Error(`unsupported mesh type: ${path}`);
                         }
-                        let text = meshText.get(path);
-                        if (!text) { text = MeshHandler.getMesh(path); meshText.set(path, text); }
-                        done(colladaLoader.parse(await text, '').scene);
                     } catch (e) {
                         failed++;
-                        lastError = e instanceof Error ? e.message : String(e);
+                        lastError = formatCaughtError(e);
                         // urdf-loader skips the mesh when an error is passed; the
                         // typings require an Object3D, so cast the unused null.
                         done(null as unknown as Parameters<typeof done>[0], e instanceof Error ? e : new Error(lastError));
@@ -121,6 +137,7 @@ export function useRobotModel(): UseRobotModelReturn {
                         setLoadingStatus(`Loading meshes (${completed}/${total})…`);
                     }
                 });
+                if (path.toLowerCase().endsWith('.stl')) stlCount++;
             };
             const loadedRobot = loader.parse(urdf);
             total = tasks.length;
@@ -133,13 +150,16 @@ export function useRobotModel(): UseRobotModelReturn {
             setRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
-            await runWithConcurrency(tasks, MESH_FETCH_CONCURRENCY);
+            const concurrency = stlCount > 0
+                ? MESH_FETCH_CONCURRENCY_STL
+                : MESH_FETCH_CONCURRENCY_DAE;
+            await runWithConcurrency(tasks, concurrency);
 
             if (total > 0 && failed === total) {
                 throw new Error(
                     `Could not load any meshes (${lastError}).\n` +
-                    'Is the mesh/get service running? Rebuild lucy_msgs + lucy_config_pipeline\n' +
-                    'and restart the stack.',
+                    'Is the mesh/get service running? Rebuild lucy_msgs + lucy_config_pipeline,\n' +
+                    'restart the stack, and refresh the control panel.',
                 );
             }
 
