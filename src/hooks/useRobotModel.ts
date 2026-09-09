@@ -20,88 +20,16 @@ import type { URDFRobot } from 'urdf-loader';
 import { RobotDescriptionHandler } from '../Services/ros/handlers/RobotDescription.handler';
 import { MeshHandler } from '../Services/ros/handlers/Mesh.handler';
 import type { MeshPayload } from '../Services/ros/handlers/Mesh.handler';
+import { runWithConcurrency } from '../Utils/concurrency.utils';
+import { formatCaughtError } from '../Utils/error.utils';
+import { decodeStlPayload } from '../Utils/mesh.utils';
 
 /** How long to wait for `/robot_description` before surfacing a hint to the user. */
 const ROBOT_DESCRIPTION_TIMEOUT_MS = 20000;
-/** Concurrent mesh fetches — keep low; multi-MB STL responses share one websocket. */
-const MESH_FETCH_CONCURRENCY = 2;
-/** DAE meshes are small; allow more parallel fetches than STL. */
+/** Concurrent mesh fetches for STL — keep low; multi-MB responses share one websocket. */
+const MESH_FETCH_CONCURRENCY_STL = 2;
+/** Concurrent mesh fetches for DAE — small payloads; allow more parallelism than STL. */
 const MESH_FETCH_CONCURRENCY_DAE = 8;
-
-/** Run async thunks with a fixed worker pool, resolving once all have settled. */
-async function runWithConcurrency(tasks: Array<() => Promise<void>>, limit: number): Promise<void> {
-    let next = 0;
-    const worker = async () => {
-        while (next < tasks.length) {
-            await tasks[next++]();
-        }
-    };
-    await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
-}
-
-function formatCaughtError(e: unknown): string {
-    if (e instanceof Error) return e.message;
-    if (typeof e === 'string') return e;
-    try {
-        return JSON.stringify(e);
-    } catch {
-        return String(e);
-    }
-}
-
-function base64ToUint8Array(b64: string): Uint8Array {
-    const binary = atob(b64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-}
-
-/** True if buffer looks like binary or ASCII STL (not random zlib garbage). */
-function looksLikeStl(buf: ArrayBuffer): boolean {
-    if (buf.byteLength < 84) return false;
-    const bytes = new Uint8Array(buf);
-    // ASCII STL often starts with "solid"
-    const head = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3], bytes[4]);
-    if (head.toLowerCase() === 'solid') return true;
-    // Binary STL: 80-byte header + uint32 triangle count; size = 84 + n*50
-    const view = new DataView(buf);
-    const n = view.getUint32(80, true);
-    return n > 0 && n < 50_000_000 && buf.byteLength === 84 + n * 50;
-}
-
-/**
- * Decode an STL payload from `mesh/get` using the declared encoding.
- * `zlib_base64` is required for current servers; raw base64 only accepted if
- * the bytes already look like an STL (legacy / mislabeled payloads).
- */
-async function decodeStlPayload(payload: MeshPayload): Promise<ArrayBuffer> {
-    const bytes = base64ToUint8Array(payload.data);
-    const copy = bytes.slice().buffer;
-
-    if (payload.encoding === 'zlib_base64' || payload.encoding === 'zlib+base64') {
-        if (typeof DecompressionStream === 'undefined') {
-            throw new Error('DecompressionStream is required to decode zlib_base64 STL meshes');
-        }
-        try {
-            const stream = new Blob([copy]).stream().pipeThrough(new DecompressionStream('deflate'));
-            const inflated = await new Response(stream).arrayBuffer();
-            if (!looksLikeStl(inflated)) {
-                throw new Error('inflated STL payload failed format check');
-            }
-            return inflated;
-        } catch (e) {
-            throw new Error(
-                `failed to inflate zlib_base64 STL: ${formatCaughtError(e)}`,
-            );
-        }
-    }
-
-    // Legacy: uncompressed base64 STL (or encoding omitted and inferred wrongly).
-    if (looksLikeStl(copy)) return copy;
-    throw new Error(`unsupported STL encoding '${payload.encoding}' (expected zlib_base64)`);
-}
 
 // ---------------------------------------------------------------------------
 // Module-level cache — shared across all component instances in a session.
@@ -222,7 +150,9 @@ export function useRobotModel(): UseRobotModelReturn {
             setRobot(loadedRobot);
 
             setLoadingStatus(`Loading meshes (0/${total})…`);
-            const concurrency = stlCount > 0 ? MESH_FETCH_CONCURRENCY : MESH_FETCH_CONCURRENCY_DAE;
+            const concurrency = stlCount > 0
+                ? MESH_FETCH_CONCURRENCY_STL
+                : MESH_FETCH_CONCURRENCY_DAE;
             await runWithConcurrency(tasks, concurrency);
 
             if (total > 0 && failed === total) {
