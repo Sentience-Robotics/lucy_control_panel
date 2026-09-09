@@ -92,6 +92,7 @@ import {
     PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
+import { RANDOM_POSE_EVENT } from '../Constants/events.ts';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -510,6 +511,24 @@ export const RobotControlPanel: React.FC = () => {
             })
         );
     }, []);
+
+    /** Scatter every slider to a random value inside its own limits. */
+    const handleRandomPose = useCallback(() => {
+        // Only the controlling client may move the robot.
+        if (!isSendingRef.current) return;
+        setJoints((prevJoints) =>
+            prevJoints.map((joint) => {
+                const value = joint.minValue + Math.random() * (joint.maxValue - joint.minValue);
+                return { ...joint, currentValue: value, targetValue: value };
+            })
+        );
+    }, []);
+
+    // The random pose button lives in the app header, outside this page's tree.
+    useEffect(() => {
+        window.addEventListener(RANDOM_POSE_EVENT, handleRandomPose);
+        return () => window.removeEventListener(RANDOM_POSE_EVENT, handleRandomPose);
+    }, [handleRandomPose]);
 
     const categorizedJoints = useMemo(() => {
         const categories: { [key: string]: JointControlState[] } = {};

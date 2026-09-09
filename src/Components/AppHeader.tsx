@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Button, Tooltip, Typography, Grid } from 'antd';
-import { SettingOutlined, ReadOutlined, BugOutlined, NodeIndexOutlined } from '@ant-design/icons';
+import { SettingOutlined, ReadOutlined, BugOutlined, NodeIndexOutlined, ExperimentOutlined } from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { ConnectedClientsHandler } from '../Services/ros/handlers/ConnectedClients.handler';
 import { ControlModeHandler } from '../Services/ros/handlers/ControlMode.handler';
@@ -14,6 +14,7 @@ import {
 } from '../Constants/uiTheme';
 import { SettingsModal, isAutoConnectEnabled } from './SettingsModal';
 import { ConnectionDebugModal, CommandDebugModal } from './PipelineDebugModal';
+import { RANDOM_POSE_EVENT } from '../Constants/events';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -114,6 +115,8 @@ export const AppHeader: React.FC = () => {
         return UI_TEXT_SECONDARY_MUTED;
     };
 
+    const isControllingRobot = activeControllerId === ControlModeHandler.getInstance().clientId;
+
     const bridgeColor = getConnectionStatusColor();
     const controllerColor = getControllerColor();
 
@@ -174,6 +177,22 @@ export const AppHeader: React.FC = () => {
                         {activeControllerId !== '' ? 'CONTROLLED' : 'UNCONTROLLED'}
                     </Text>
                 </div>
+            </Tooltip>
+            <Tooltip
+                title={isControllingRobot
+                    ? 'Move every slider to a random position'
+                    : 'Take control of the robot to use a random pose'}
+            >
+                {/* Wrapped: a disabled antd Button swallows the hover events the tooltip needs. */}
+                <span>
+                    <Button
+                        icon={<ExperimentOutlined />}
+                        disabled={!isControllingRobot}
+                        onClick={() => window.dispatchEvent(new Event(RANDOM_POSE_EVENT))}
+                    >
+                        {!isMobile && 'Random pose'}
+                    </Button>
+                </span>
             </Tooltip>
             <Tooltip title="Documentation">
                 <Button
