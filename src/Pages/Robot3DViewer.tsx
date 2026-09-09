@@ -133,7 +133,7 @@ const Robot3DViewer: React.FC = () => {
     const isGreenMode = !useOriginalTexture;
 
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative', border: `1px solid ${UI_BORDER_MUTED}` }}>
             {loading && <LoadingBar progress={progress} />}
             <Canvas
                 camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
