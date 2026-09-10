@@ -37,6 +37,9 @@ export interface StorageService {
   loadAnimations(): Promise<SavedAnimation[]>;
   deleteAnimation(id: string): Promise<void>;
   loadAnimation(id: string): Promise<SavedAnimation | null>;
+
+  saveCurrentCanva(canva: string): Promise<void>;
+  loadCurrentCanva(): Promise<string | null>;
 }
 
 // localStorage-based implementation
@@ -44,6 +47,7 @@ class LocalStorageService implements StorageService {
   private readonly POSES_KEY = 'lucy_poses';
   private readonly ANIMATIONS_KEY = 'lucy_animations';
   private readonly CONFIGS_KEY = 'lucy_joint_configs';
+  private readonly CANVA_KEY = 'lucy_current_canva';
 
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -275,6 +279,24 @@ class LocalStorageService implements StorageService {
     async loadAnimation(id: string): Promise<SavedAnimation | null> {
         const animations = this.loadAnimationsFromStorage();
         return animations.find(animation => animation.id === id) || null;
+    }
+
+    async saveCurrentCanva(canva: string): Promise<void> {
+      try {
+        localStorage.setItem(this.CANVA_KEY, canva);
+      } catch (error) {
+        console.error('Failed to save current canva to localStorage:', error);
+        throw error;
+      }
+    }
+
+    async loadCurrentCanva(): Promise<string | null> {
+      try {
+        return localStorage.getItem(this.CANVA_KEY);
+      } catch (error) {
+        console.warn('Failed to load current canva from localStorage:', error);
+        return null;
+      }
     }
 }
 

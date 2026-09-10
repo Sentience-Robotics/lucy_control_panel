@@ -19,6 +19,7 @@ import {
 } from '../Constants/uiTheme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
+import CanvaContext, { CanvaProvider } from '../contexts/CanvaContext.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -394,58 +395,60 @@ export const Page: React.FC<PageProps> = ({
 
   return (
     <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
-      {showHeader && (
-        <Header
-          ref={headerRef}
-          className="lucy-page-header"
-          style={{
-            backgroundColor: UI_PANEL_BG,
-            borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
-            padding: isMobile ? '8px 12px' : '8px 24px',
-            height: 'auto',
-            lineHeight: 'normal',
-            minHeight: isMobile ? 80 : 48,
-            boxSizing: 'border-box',
-            flexShrink: 0,
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: isMobile ? 8 : 12,
-            width: '100%',
-            minHeight: isMobile ? 64 : 32,
-          }}>
-            {title && (
-              <Title
-                level={2}
-                style={{
-                  margin: 0,
-                  color: UI_ACCENT_GREEN,
-                  fontFamily: 'monospace',
-                  textShadow: UI_ACCENT_TEXT_SHADOW,
-                  fontSize: isMobile ? '16px' : '18px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ▲ LUCY CONTROL PANEL
-              </Title>
-            )}
-            <div style={{ width: '100%' }}><AppHeader /></div>
-          </div>
-        </Header>
-      )}
+      <CanvaProvider>
+        {showHeader && (
+          <Header
+            ref={headerRef}
+            className="lucy-page-header"
+            style={{
+              backgroundColor: UI_PANEL_BG,
+              borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
+              padding: isMobile ? '8px 12px' : '8px 24px',
+              height: 'auto',
+              lineHeight: 'normal',
+              minHeight: isMobile ? 80 : 48,
+              boxSizing: 'border-box',
+              flexShrink: 0,
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: isMobile ? 8 : 12,
+              width: '100%',
+              minHeight: isMobile ? 64 : 32,
+            }}>
+              {title && (
+                <Title
+                  level={2}
+                  style={{
+                    margin: 0,
+                    color: UI_ACCENT_GREEN,
+                    fontFamily: 'monospace',
+                    textShadow: UI_ACCENT_TEXT_SHADOW,
+                    fontSize: isMobile ? '16px' : '18px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ▲ LUCY CONTROL PANEL
+                </Title>
+              )}
+              <div style={{ width: '100%' }}><AppHeader /></div>
+            </div>
+          </Header>
+        )}
 
-      <Content style={defaultContentStyle}>
-        <HeaderHeightContext.Provider value={headerHeight}>
-          {children}
-        </HeaderHeightContext.Provider>
-      </Content>
+        <Content style={defaultContentStyle}>
+          <HeaderHeightContext.Provider value={headerHeight}>
+            {children}
+          </HeaderHeightContext.Provider>
+        </Content>
+      </CanvaProvider>
 
       <style>{tuiGlobalCss}</style>
     </Layout>

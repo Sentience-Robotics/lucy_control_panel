@@ -137,7 +137,7 @@ const Robot3DViewer: React.FC = () => {
             {loading && <LoadingBar progress={progress} />}
             <Canvas
                 camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
-                style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
+                style={{ width: '100%', height: '100%', background: UI_BG_BLACK, flex: 1 }}
             >
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
