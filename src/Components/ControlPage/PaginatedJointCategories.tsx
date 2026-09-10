@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Space, Pagination } from 'antd';
-import { JointCategory } from '../JointCategory';
+import { Pagination } from 'antd'; import { JointCategory } from '../JointCategory';
 import type { JointControlState } from '../../Constants/robotTypes';
 import { UI_BORDER_MUTED, UI_NAV_BAR_BG } from '../../Constants/uiTheme';
 
@@ -53,9 +52,11 @@ const PaginatedJointCategories = ({
     }, [validCategories, categoryPage, categoriesPerPage]);
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             <div
                 style={{
+                    flex: 1,
+                    minHeight: 0,
                     display: 'grid',
                     gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
                     gridAutoRows: '1fr',
@@ -65,7 +66,7 @@ const PaginatedJointCategories = ({
                 }}
             >
                 {paginatedCategories.map(category => (
-                    <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                    <div key={category} style={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                         <JointCategory
                             category={category}
                             joints={categorizedJoints[category]}
@@ -107,7 +108,7 @@ const PaginatedJointCategories = ({
                     />
                 </div>
             )}
-        </Space>
+        </div>
     );
 }
 
