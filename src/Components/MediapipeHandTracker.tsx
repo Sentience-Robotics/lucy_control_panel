@@ -1,11 +1,18 @@
 import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
-import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import { ControlMode, controlModeForRobotPackage, HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import { useActiveHardwareRos } from "../contexts/ActiveHardwareRosContext";
 
 const UPDATE_HZ_S = 5;
+
+/** Claw control reads a single pinch; finger control tracks both hands. */
+function maxNumHandsFor(mode: ControlMode): number {
+    return mode === ControlMode.Claw ? 1 : 2;
+}
+
 
 interface MediapipeHandTrackerProps {
     width?: number;
@@ -25,7 +32,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     type Finger3DSample = {point1: Point3D, point2: Point3D, point3: Point3D};
     type Finger3DIndex = {TIP: number, DIP: number, PIP: number, MCP: number}
     type FingerIndex = { name: string, idx: Finger3DIndex }
-
+    
     const Fingers: Array<FingerIndex> = [
         {
             name: "i01.side.thumb_link_joint", idx: {
@@ -75,6 +82,15 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     const reportedRatioRef = useRef<number | null>(null);
     const aspectRatioCallbackRef = useRef(onAspectRatioChange);
     aspectRatioCallbackRef.current = onAspectRatioChange;
+    const handsRef = useRef<Hands | null>(null);
+
+    const { serverRobotPackage } = useActiveHardwareRos();
+    const controlMode = useMemo(
+        () => controlModeForRobotPackage(serverRobotPackage),
+        [serverRobotPackage],
+    );
+    const controlModeRef = useRef<ControlMode>(controlMode);
+    controlModeRef.current = controlMode;
 
     const onResults = (results: Results) => {
         if (!webcamRef.current?.video || !canvasRef.current) return;
@@ -118,14 +134,20 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         ctx.restore();
     };
 
+    
     function processHands(hands: NormalizedLandmark[][], handedness: Handedness[]) {
         hands.forEach((hand, handIndex) => {
             for (let i = 0; i < 5; i++) {
-
+                
                 const label: string =
                 handedness[handIndex].label === "Left"
-                    ? "leftHand"
-                    : "rightHand";
+                ? "leftHand"
+                : "rightHand";
+                
+                if (controlModeRef.current === ControlMode.Claw) {
+                    processClaw(hand, label);
+                    return;
+                }
 
                 processFinger({
                     tip: hand[Fingers[i].idx.TIP],
@@ -138,6 +160,44 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         });
     };
+    
+    function processClaw(hand: NormalizedLandmark[], handLabel: string) {
+        const thumbTip = hand[4];
+        const fingerTips = [hand[8], hand[12], hand[16], hand[20]]; // index, middle, ring, pinky
+
+        const avgTip: Point3D = {
+            x: fingerTips.reduce((sum, p) => sum + p.x, 0) / fingerTips.length,
+            y: fingerTips.reduce((sum, p) => sum + p.y, 0) / fingerTips.length,
+            z: fingerTips.reduce((sum, p) => sum + p.z, 0) / fingerTips.length,
+        };
+
+        const pinchDistance = distance3D(thumbTip, avgTip);
+
+        // Normalize by hand size (wrist to middle-finger MCP) so pinch detection
+        // doesn't depend on how close the hand is to the camera
+        const handScale = distance3D(hand[0], hand[9]);
+        const normalizedDistance = handScale > 0 ? pinchDistance / handScale : 0;
+
+        const clawOpenness = clawPercentage(normalizedDistance);
+
+        moveRobotIndex(clawOpenness, `Jaw`);
+    }
+
+    function distance3D(a: Point3D, b: Point3D): number {
+        return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    }
+
+    // Returns 0 (pinched/closed) to 1 (fully open) from a normalized thumb-to-fingers distance
+    function clawPercentage(normalizedDistance: number): number {
+        const pinchedLowerLimit = 0.15; // calibrate: value when thumb touches fingers
+        const openHigherLimit = 0.9;    // calibrate: value when hand is fully spread
+
+        const clamp = (value: number, min: number, max: number): number =>
+            Math.min(Math.max(value, min), max);
+
+        const clamped = clamp(normalizedDistance, pinchedLowerLimit, openHigherLimit);
+        return (clamped - pinchedLowerLimit) / (openHigherLimit - pinchedLowerLimit);
+    }
 
     function processFinger(finger: Finger3D) {
         const sample1: Finger3DSample = {point1: finger.tip, point2: finger.dip, point3: finger.pip};
@@ -210,7 +270,11 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const hands = new Hands({
             locateFile: (file) => `${MEDIAPIPE_HANDS_URL}${file}`,
         });
-        hands.setOptions(HANDS_MODEL_CONFIG);
+        handsRef.current = hands;
+        hands.setOptions({
+            ...HANDS_MODEL_CONFIG,
+            maxNumHands: maxNumHandsFor(controlModeRef.current),
+        });
         hands.onResults(onResults);
 
         const initCamera = () => {
@@ -233,9 +297,20 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         }, 100);
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            handsRef.current = null;
+        };
 
     }, []);
+
+    // A robot package swap changes how many hands the tracker needs.
+    useEffect(() => {
+        handsRef.current?.setOptions({
+            ...HANDS_MODEL_CONFIG,
+            maxNumHands: maxNumHandsFor(controlMode),
+        });
+    }, [controlMode]);
 
     return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
