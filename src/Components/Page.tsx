@@ -19,7 +19,7 @@ import {
 } from '../Constants/uiTheme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
-import CanvaContext, { CanvaProvider } from '../contexts/CanvaContext.tsx';
+import { CanvaProvider } from '../contexts/CanvaContext.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
