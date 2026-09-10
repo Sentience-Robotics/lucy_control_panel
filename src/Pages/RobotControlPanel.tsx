@@ -47,6 +47,7 @@ import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
+import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Types */
@@ -210,6 +211,21 @@ export const RobotControlPanel: React.FC = () => {
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
+
+    // These windows render outside the `!isConnected` branch below, so a dropped
+    // bridge would otherwise leave them floating with frozen data on top of the
+    // "waiting for ROS bridge" screen.
+    useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
+    useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
+    useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
+    useCloseOnRosDisconnect(showControlTakenModal, () => {
+        retakeCountRef.current = 0;
+        setShowControlTakenModal(false);
+    });
+    useCloseOnRosDisconnect(showConfirmTakeControlModal, () => {
+        setControllerToPreempt('');
+        setShowConfirmTakeControlModal(false);
+    });
 
     // Angle units (degrees/radians) are configured in the Settings modal and
     // persisted to localStorage; sync local state when they change.
