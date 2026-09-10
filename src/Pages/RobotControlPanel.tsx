@@ -20,15 +20,6 @@ import {
     CodeSandboxOutlined,
     ExperimentOutlined,
 } from '@ant-design/icons';
-import {
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from '@dnd-kit/core';
-import {
-    sortableKeyboardCoordinates
-} from '@dnd-kit/sortable';
 
 /* Services */
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
@@ -42,6 +33,9 @@ import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+
+/* Contexts */
+import { useCanva } from '../contexts/CanvaContext.tsx';
 
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
@@ -88,6 +82,8 @@ import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
 import Robot3DViewer from './Robot3DViewer.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
+import { Canva } from '../Components/ControlPage/Canva.tsx';
+import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -163,6 +159,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
+    const { currentCanva } = useCanva();
 
     const {
         controllerConfigsFromActive,
@@ -227,15 +224,6 @@ export const RobotControlPanel: React.FC = () => {
         window.addEventListener('showDegreesChanged', handleShowDegreesChange);
         return () => window.removeEventListener('showDegreesChanged', handleShowDegreesChange);
     }, []);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { distance: 8 },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
 
     /** Build initial joint list from controller config (slider values in actuator degrees). */
     const buildJointsFromControllerConfig = useCallback((
@@ -714,7 +702,7 @@ export const RobotControlPanel: React.FC = () => {
             icon: <EyeOutlined />,
             onClick: () => setIsWebcamActive(v => !v),
             style: { color: isWebcamActive ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
-        },
+        }
     ];
 
     const dropdownOverlayStyle = {
@@ -944,8 +932,21 @@ export const RobotControlPanel: React.FC = () => {
                         </div>
                     )}
 
-                    <ResizablePanels direction="horizontal" proportions={[30, 70]} minSize={20} gap={20}>
-                        <PaginatedJointCategories
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            height: "100%",
+                            minHeight: 0,
+                        }}
+                        >
+                        <ResizablePanels
+                            direction="horizontal"
+                            proportions={currentCanva === "NONE" ? [100] : [30, 70]}
+                            minSize={20}
+                            gap={20}
+                        >
+                            <PaginatedJointCategories
                             categoryOrder={categoryOrder}
                             categorizedJoints={categorizedJoints}
                             onJointValueChange={handleJointValueChange}
@@ -953,9 +954,20 @@ export const RobotControlPanel: React.FC = () => {
                             onResetJoint={handleResetJoint}
                             showDegrees={showDegrees}
                             disabled={!isSending}
-                        />
-                        <Robot3DViewer />
-                    </ResizablePanels>
+                            />
+
+                            {currentCanva !== "NONE" && (
+                                <Canva
+                                    childrens={{
+                                        "3D_VIEW": <Robot3DViewer />,
+                                        "STREAM": <StreamPlayer />,
+                                        "NONE": null,
+                                    }}
+                                    current={currentCanva}
+                                />
+                            )}
+                        </ResizablePanels>
+                    </div>
                 </div>
             )}
 
