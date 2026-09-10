@@ -45,7 +45,6 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     return (
         <Card
             style={{
-                marginBottom: 16,
                 backgroundColor: UI_PANEL_BG,
                 borderColor: UI_BORDER_MUTED,
                 borderLeft: `2px solid ${UI_ACCENT_GREEN}`,
@@ -57,6 +56,8 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             bodyStyle={{
                 padding: 16,
                 flex: 1,
+                minHeight: 0,
+                overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative'
@@ -117,11 +118,10 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
 
             <div style={{
                 flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
+                minHeight: 0,
+                overflowY: 'auto',
+                overflowX: 'hidden',
                 position: 'relative',
-                minHeight: '200px',
                 zIndex: 2
             }}>
                 <Space direction="vertical" style={{ width: '100%', position: 'relative' }} size="small">
