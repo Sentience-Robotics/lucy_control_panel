@@ -934,12 +934,11 @@ export const RobotControlPanel: React.FC = () => {
 
                     <div
                         style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            height: "100%",
-                            minHeight: 0,
+                            width: "100%",
+                            height: "85vh",
+                            overflow: "hidden",
                         }}
-                        >
+                    >
                         <ResizablePanels
                             direction="horizontal"
                             proportions={currentCanva === "NONE" ? [100] : [30, 70]}
@@ -947,13 +946,13 @@ export const RobotControlPanel: React.FC = () => {
                             gap={20}
                         >
                             <PaginatedJointCategories
-                            categoryOrder={categoryOrder}
-                            categorizedJoints={categorizedJoints}
-                            onJointValueChange={handleJointValueChange}
-                            onResetCategory={handleResetCategory}
-                            onResetJoint={handleResetJoint}
-                            showDegrees={showDegrees}
-                            disabled={!isSending}
+                                categoryOrder={categoryOrder}
+                                categorizedJoints={categorizedJoints}
+                                onJointValueChange={handleJointValueChange}
+                                onResetCategory={handleResetCategory}
+                                onResetJoint={handleResetJoint}
+                                showDegrees={showDegrees}
+                                disabled={!isSending}
                             />
 
                             {currentCanva !== "NONE" && (
@@ -967,7 +966,7 @@ export const RobotControlPanel: React.FC = () => {
                                 />
                             )}
                         </ResizablePanels>
-                    </div>
+                    </div>    
                 </div>
             )}
 
