@@ -214,7 +214,7 @@ export const RobotControlPanel: React.FC = () => {
 
     // These windows render outside the `!isConnected` branch below, so a dropped
     // bridge would otherwise leave them floating with frozen data on top of the
-    // "waiting for ROS bridge" screen. Dismiss them along with the connection.
+    // "waiting for ROS bridge" screen.
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
