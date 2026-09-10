@@ -168,7 +168,7 @@ const ResizablePanels = ({
           <div
             style={{
               [sizeKey]: `${sizes[i] ?? 0}%`,
-              flexShrink: 0,
+              flexShrink: 1,
               flexGrow: 0,
               overflow: 'auto',
               minWidth: 0,
