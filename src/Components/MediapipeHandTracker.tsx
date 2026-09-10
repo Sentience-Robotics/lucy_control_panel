@@ -172,7 +172,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
 
         const clawOpenness = clawPercentage(normalizedDistance);
 
-        moveRobotIndex(clawOpenness, `jaw`);
+        moveRobotIndex(clawOpenness, `Jaw`);
     }
 
     function distance3D(a: Point3D, b: Point3D): number {
