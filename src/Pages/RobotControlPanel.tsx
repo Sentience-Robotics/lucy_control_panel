@@ -217,7 +217,6 @@ export const RobotControlPanel: React.FC = () => {
     // "waiting for ROS bridge" screen. Dismiss them along with the connection.
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
-    // Hand tracking drives the robot: never leave it armed across a reconnect.
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;

@@ -3,11 +3,6 @@ import { useRosConnection } from './useRosConnection.hook.ts';
 
 /**
  * Dismisses a ROS-backed overlay when the bridge link drops.
- *
- * Only the connected -> disconnected transition closes. The status starts at
- * 'disconnected' on a cold load, so reacting to "is disconnected" instead would
- * wipe the floating windows restored from localStorage before auto-connect ever
- * had a chance to dial.
  */
 export function useCloseOnRosDisconnect(isOpen: boolean, close: () => void): void {
     const { isConnected } = useRosConnection();
