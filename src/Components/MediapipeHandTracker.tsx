@@ -172,11 +172,23 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
 
         const clawOpenness = clawPercentage(normalizedDistance);
 
-        moveRobotIndex(clawOpenness, `${handLabel}.claw_joint`);
+        moveRobotIndex(clawOpenness, `jaw`);
     }
 
     function distance3D(a: Point3D, b: Point3D): number {
         return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    }
+
+    // Returns 0 (pinched/closed) to 1 (fully open) from a normalized thumb-to-fingers distance
+    function clawPercentage(normalizedDistance: number): number {
+        const pinchedLowerLimit = 0.15; // calibrate: value when thumb touches fingers
+        const openHigherLimit = 0.9;    // calibrate: value when hand is fully spread
+
+        const clamp = (value: number, min: number, max: number): number =>
+            Math.min(Math.max(value, min), max);
+
+        const clamped = clamp(normalizedDistance, pinchedLowerLimit, openHigherLimit);
+        return (clamped - pinchedLowerLimit) / (openHigherLimit - pinchedLowerLimit);
     }
 
     function processFinger(finger: Finger3D) {
