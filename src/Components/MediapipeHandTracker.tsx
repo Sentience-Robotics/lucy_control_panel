@@ -1,18 +1,17 @@
 import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import Webcam from "react-webcam";
 import { Camera } from "@mediapipe/camera_utils";
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils";
-import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import { ControlMode, controlModeForRobotPackage, HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe";
+import { useActiveHardwareRos } from "../contexts/ActiveHardwareRosContext";
 
 const UPDATE_HZ_S = 5;
 
-enum ControlMode {
-    Fingers = "fingers",
-    Claw = "claw",
+/** Claw control reads a single pinch; finger control tracks both hands. */
+function maxNumHandsFor(mode: ControlMode): number {
+    return mode === ControlMode.Claw ? 1 : 2;
 }
-
-const CONTROL_MODE: ControlMode = ControlMode.Claw;
 
 
 interface MediapipeHandTrackerProps {
@@ -83,6 +82,15 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     const reportedRatioRef = useRef<number | null>(null);
     const aspectRatioCallbackRef = useRef(onAspectRatioChange);
     aspectRatioCallbackRef.current = onAspectRatioChange;
+    const handsRef = useRef<Hands | null>(null);
+
+    const { serverRobotPackage } = useActiveHardwareRos();
+    const controlMode = useMemo(
+        () => controlModeForRobotPackage(serverRobotPackage),
+        [serverRobotPackage],
+    );
+    const controlModeRef = useRef<ControlMode>(controlMode);
+    controlModeRef.current = controlMode;
 
     const onResults = (results: Results) => {
         if (!webcamRef.current?.video || !canvasRef.current) return;
@@ -136,7 +144,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
                 ? "leftHand"
                 : "rightHand";
                 
-                if (CONTROL_MODE === "claw") {
+                if (controlModeRef.current === ControlMode.Claw) {
                     processClaw(hand, label);
                     return;
                 }
@@ -262,10 +270,10 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         const hands = new Hands({
             locateFile: (file) => `${MEDIAPIPE_HANDS_URL}${file}`,
         });
-        hands.setOptions(HANDS_MODEL_CONFIG);
+        handsRef.current = hands;
         hands.setOptions({
             ...HANDS_MODEL_CONFIG,
-            maxNumHands: CONTROL_MODE === ControlMode.Claw ? 1 : 2,
+            maxNumHands: maxNumHandsFor(controlModeRef.current),
         });
         hands.onResults(onResults);
 
@@ -289,9 +297,20 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         }, 100);
 
-        return () => clearInterval(interval);
+        return () => {
+            clearInterval(interval);
+            handsRef.current = null;
+        };
 
     }, []);
+
+    // A robot package swap changes how many hands the tracker needs.
+    useEffect(() => {
+        handsRef.current?.setOptions({
+            ...HANDS_MODEL_CONFIG,
+            maxNumHands: maxNumHandsFor(controlMode),
+        });
+    }, [controlMode]);
 
     return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>

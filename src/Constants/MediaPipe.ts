@@ -9,3 +9,20 @@ export const HANDS_MODEL_CONFIG: Options = {
     minDetectionConfidence: 0.5,
     minTrackingConfidence: 0.5,
 }
+
+export enum ControlMode {
+    Fingers = "fingers",
+    Claw = "claw",
+}
+
+/** Robot packages driven by a single gripper joint; every other package uses per-finger tracking. */
+const CLAW_ROBOT_PACKAGES: ReadonlySet<string> = new Set(["so_arm101_urdf"]);
+
+export const DEFAULT_CONTROL_MODE: ControlMode = ControlMode.Fingers;
+
+/** Control mode for the robot package loaded on the pipeline; falls back while none is known. */
+export function controlModeForRobotPackage(robotPackage: string): ControlMode {
+    const pkg = robotPackage.trim();
+    if (!pkg) return DEFAULT_CONTROL_MODE;
+    return CLAW_ROBOT_PACKAGES.has(pkg) ? ControlMode.Claw : ControlMode.Fingers;
+}
