@@ -7,6 +7,14 @@ import { HANDS_MODEL_CONFIG, MEDIAPIPE_HANDS_URL } from "../Constants/MediaPipe"
 
 const UPDATE_HZ_S = 5;
 
+enum ControlMode {
+    Fingers = "fingers",
+    Claw = "claw",
+}
+
+const CONTROL_MODE: ControlMode = ControlMode.Claw;
+
+
 interface MediapipeHandTrackerProps {
     width?: number;
     height?: number;
@@ -25,7 +33,7 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
     type Finger3DSample = {point1: Point3D, point2: Point3D, point3: Point3D};
     type Finger3DIndex = {TIP: number, DIP: number, PIP: number, MCP: number}
     type FingerIndex = { name: string, idx: Finger3DIndex }
-
+    
     const Fingers: Array<FingerIndex> = [
         {
             name: "i01.side.thumb_link_joint", idx: {
@@ -118,14 +126,20 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         ctx.restore();
     };
 
+    
     function processHands(hands: NormalizedLandmark[][], handedness: Handedness[]) {
         hands.forEach((hand, handIndex) => {
             for (let i = 0; i < 5; i++) {
-
+                
                 const label: string =
                 handedness[handIndex].label === "Left"
-                    ? "leftHand"
-                    : "rightHand";
+                ? "leftHand"
+                : "rightHand";
+                
+                if (CONTROL_MODE === "claw") {
+                    processClaw(hand, label);
+                    return;
+                }
 
                 processFinger({
                     tip: hand[Fingers[i].idx.TIP],
@@ -138,6 +152,32 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         });
     };
+    
+    function processClaw(hand: NormalizedLandmark[], handLabel: string) {
+        const thumbTip = hand[4];
+        const fingerTips = [hand[8], hand[12], hand[16], hand[20]]; // index, middle, ring, pinky
+
+        const avgTip: Point3D = {
+            x: fingerTips.reduce((sum, p) => sum + p.x, 0) / fingerTips.length,
+            y: fingerTips.reduce((sum, p) => sum + p.y, 0) / fingerTips.length,
+            z: fingerTips.reduce((sum, p) => sum + p.z, 0) / fingerTips.length,
+        };
+
+        const pinchDistance = distance3D(thumbTip, avgTip);
+
+        // Normalize by hand size (wrist to middle-finger MCP) so pinch detection
+        // doesn't depend on how close the hand is to the camera
+        const handScale = distance3D(hand[0], hand[9]);
+        const normalizedDistance = handScale > 0 ? pinchDistance / handScale : 0;
+
+        const clawOpenness = clawPercentage(normalizedDistance);
+
+        moveRobotIndex(clawOpenness, `${handLabel}.claw_joint`);
+    }
+
+    function distance3D(a: Point3D, b: Point3D): number {
+        return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    }
 
     function processFinger(finger: Finger3D) {
         const sample1: Finger3DSample = {point1: finger.tip, point2: finger.dip, point3: finger.pip};
@@ -211,6 +251,10 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             locateFile: (file) => `${MEDIAPIPE_HANDS_URL}${file}`,
         });
         hands.setOptions(HANDS_MODEL_CONFIG);
+        hands.setOptions({
+            ...HANDS_MODEL_CONFIG,
+            maxNumHands: CONTROL_MODE === ControlMode.Claw ? 1 : 2,
+        });
         hands.onResults(onResults);
 
         const initCamera = () => {
