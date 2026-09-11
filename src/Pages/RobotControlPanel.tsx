@@ -159,7 +159,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
-    const { currentCanva } = useCanva();
+    const { currentCanva, isCanvaLoaded } = useCanva();
 
     const {
         controllerConfigsFromActive,
@@ -208,6 +208,19 @@ export const RobotControlPanel: React.FC = () => {
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
+
+    // A viewer docked in the canva can't float at the same time: close its window
+    // (switching the dock away must not bring it back) and lock its toolbar toggle.
+    const isVisualizerDocked = currentCanva === '3D_VIEW';
+    const isStreamDocked = currentCanva === 'STREAM';
+
+    useEffect(() => {
+        // Before the persisted dock is restored, `currentCanva` is just the default
+        // and would wrongly close a window the user left open.
+        if (!isCanvaLoaded) { return; }
+        if (isVisualizerDocked) { setIsVisualizerVisible(false); }
+        if (isStreamDocked) { setIsStreamVisible(false); }
+    }, [isCanvaLoaded, isVisualizerDocked, isStreamDocked, setIsVisualizerVisible, setIsStreamVisible]);
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -718,32 +731,44 @@ export const RobotControlPanel: React.FC = () => {
         boxShadow: isActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
     });
 
-    const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
+    const dockedTooltip = 'Already displayed in the dock — change the dock in Settings';
+
+    const showVisualizerWindow = isVisualizerVisible && !isVisualizerDocked;
+    const showStreamWindow = isStreamVisible && !isStreamDocked;
+
+    const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
 
     const visualizerButton = (label: string, icon?: React.ReactNode) => (
-        <Button
-            icon={icon}
-            onClick={() => setIsVisualizerVisible(v => !v)}
-            style={toggleButtonStyle(isVisualizerVisible)}
-        >
-            {isVisualizerVisible ? `HIDE ${label}` : `SHOW ${label}`}
-        </Button>
+        <Tooltip title={isVisualizerDocked ? dockedTooltip : ''}>
+            <span style={{ display: 'inline-flex' }}>
+                <Button
+                    icon={icon}
+                    disabled={isVisualizerDocked}
+                    onClick={() => setIsVisualizerVisible(v => !v)}
+                    style={isVisualizerDocked ? undefined : toggleButtonStyle(showVisualizerWindow)}
+                >
+                    {showVisualizerWindow ? `HIDE ${label}` : `SHOW ${label}`}
+                </Button>
+            </span>
+        </Tooltip>
     );
 
     const streamButton = (label: string, icon?: React.ReactNode) => (
         <Tooltip
-            title={isStreamDisabled
-                ? 'No camera is publishing — start the simulation or connect a camera'
-                : ''}
+            title={isStreamDocked
+                ? dockedTooltip
+                : isStreamDisabled
+                    ? 'No camera is publishing — start the simulation or connect a camera'
+                    : ''}
         >
             <span style={{ display: 'inline-flex' }}>
                 <Button
                     icon={icon}
                     disabled={isStreamDisabled}
                     onClick={() => setIsStreamVisible(v => !v)}
-                    style={isStreamDisabled ? undefined : toggleButtonStyle(isStreamVisible)}
+                    style={isStreamDisabled ? undefined : toggleButtonStyle(showStreamWindow)}
                 >
-                    {isStreamVisible ? `HIDE ${label}` : `SHOW ${label}`}
+                    {showStreamWindow ? `HIDE ${label}` : `SHOW ${label}`}
                 </Button>
             </span>
         </Tooltip>
@@ -767,12 +792,12 @@ export const RobotControlPanel: React.FC = () => {
     return (
         <>
             <Robot3DViewerModal
-                isVisible={isVisualizerVisible}
+                isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
             />
 
             <StreamPlayerModal
-                isVisible={isStreamVisible}
+                isVisible={showStreamWindow}
                 onClose={() => setIsStreamVisible(false)}
             />
 
