@@ -209,14 +209,10 @@ export const RobotControlPanel: React.FC = () => {
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
 
-    // A viewer docked in the canva can't float at the same time: close its window
-    // (switching the dock away must not bring it back) and lock its toolbar toggle.
     const isVisualizerDocked = currentCanva === '3D_VIEW';
     const isStreamDocked = currentCanva === 'STREAM';
 
     useEffect(() => {
-        // Before the persisted dock is restored, `currentCanva` is just the default
-        // and would wrongly close a window the user left open.
         if (!isCanvaLoaded) { return; }
         if (isVisualizerDocked) { setIsVisualizerVisible(false); }
         if (isStreamDocked) { setIsStreamVisible(false); }
