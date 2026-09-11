@@ -21,7 +21,6 @@ export type Canva = (typeof availableCanva)[number];
 interface CanvaContextValue {
     currentCanva: Canva;
     setCurrentCanva: Dispatch<SetStateAction<Canva>>;
-    /** False until the persisted canva has been restored; `currentCanva` is only the default before that. */
     isCanvaLoaded: boolean;
 }
 
