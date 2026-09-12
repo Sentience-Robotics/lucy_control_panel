@@ -1,9 +1,10 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Tag, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import type { JointControlState } from '../Constants/robotTypes';
+import type { JointControlState } from '../../Constants/robotTypes.ts';
+import { storageService } from '../../Services/storage.service.ts';
 
-import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
+import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
     UI_ACCENT_BLUE,
     UI_ACCENT_GREEN,
@@ -14,7 +15,7 @@ import {
     UI_LIST_ROW_BG,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
-} from '../Constants/uiTheme.ts';
+} from '../../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
@@ -38,6 +39,7 @@ interface TrackMarkerProps {
 }
 
 const MARKER_HIT_SIZE = 12;
+const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
@@ -94,6 +96,74 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
+  const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
+  const currentValueRef = useRef(joint.currentValue);
+  const loadedPositionKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    currentValueRef.current = joint.currentValue;
+  }, [joint.currentValue]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
+    loadedPositionKeyRef.current = null;
+    setPositionStorageLoaded(false);
+
+    const loadStoredPosition = async () => {
+      try {
+        const storedValue = await storageService.loadData(
+          storageKey,
+          'session'
+        );
+        const parsedValue = storedValue === null ? NaN : Number(storedValue);
+
+        if (!cancelled && Number.isFinite(parsedValue)) {
+          const clampedValue = Math.max(
+            joint.minValue,
+            Math.min(joint.maxValue, parsedValue)
+          );
+          if (clampedValue !== currentValueRef.current) {
+            onValueChange(joint.name, clampedValue);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to load position for joint ${joint.name}:`, error);
+      } finally {
+        if (!cancelled) {
+          loadedPositionKeyRef.current = storageKey;
+          setPositionStorageLoaded(true);
+        }
+      }
+    };
+
+    void loadStoredPosition();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [joint.name, joint.minValue, joint.maxValue, onValueChange]);
+
+  useEffect(() => {
+    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
+    if (
+      !positionStorageLoaded ||
+      loadedPositionKeyRef.current !== storageKey ||
+      !Number.isFinite(joint.currentValue)
+    ) {
+      return;
+    }
+
+    void storageService
+      .saveData(
+        String(joint.currentValue),
+        storageKey,
+        'session'
+      )
+      .catch((error) => {
+        console.warn(`Failed to save position for joint ${joint.name}:`, error);
+      });
+  }, [joint.name, joint.currentValue, positionStorageLoaded]);
 
   useEffect(() => {
     setLocalValue(joint.currentValue);

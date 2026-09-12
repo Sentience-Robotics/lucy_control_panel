@@ -19,7 +19,7 @@ import {
 } from '../Constants/uiTheme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
-import { CanvaProvider } from '../contexts/CanvaContext.tsx';
+import { DockProvider } from '../contexts/DockContext.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -395,7 +395,7 @@ export const Page: React.FC<PageProps> = ({
 
   return (
     <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
-      <CanvaProvider>
+      <DockProvider>
         {showHeader && (
           <Header
             ref={headerRef}
@@ -448,7 +448,7 @@ export const Page: React.FC<PageProps> = ({
             {children}
           </HeaderHeightContext.Provider>
         </Content>
-      </CanvaProvider>
+      </DockProvider>
 
       <style>{tuiGlobalCss}</style>
     </Layout>
