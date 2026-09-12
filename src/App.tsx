@@ -1,18 +1,29 @@
+/* Layout */
 import { ConfigProvider, theme, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
 import { useState, useEffect, lazy, Suspense } from 'react';
-import type { CSSProperties, FC } from 'react';
+import type { ComponentType } from 'react';
+
 /* Pages */
 import { RobotControlPanel } from './Pages/RobotControlPanel';
+const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
+const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
 import { Navigation } from './Components/Navigation';
 import { NotFound } from './Pages/NotFound';
+
+/* Contexts */
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
-import { GettingStartedModal } from './Components/GettingStartedModal';
+
 /* Components */
 import { AuthForm } from './Components/AuthForm';
 import { LucyLoader } from './Components/LucyLoader';
 import { Page } from './Components/Page';
+import { GettingStartedModal } from './Components/GettingStartedModal';
+
+/* Constants */
 import { ROUTES } from './Constants/routes.ts';
+
+/* Theme */
 import {
     PAGE_CONTENT_STYLE,
     UI_ACCENT_GREEN,
@@ -26,72 +37,64 @@ import {
 
 const { useBreakpoint } = Grid;
 
-const Configuration = lazy(() => import('./Pages/Configuration').then(module => ({ default: module.default })));
-const SensorDisplay = lazy(() => import('./Pages/SensorDisplay').then(module => ({ default: module.default })));
+const PAGE_CONFIG: Record<string, {
+    component: ComponentType;
+    removeScrollbars: boolean;
+    loadingLabel: string;
+    loadingDetail: string;
+}> = {
+    [ROUTES.control]: {
+        component: RobotControlPanel,
+        removeScrollbars: true,
+        loadingLabel: 'LOADING CONTROL PANEL',
+        loadingDetail: 'Preparing the robot control panel.',
+    },
+    [ROUTES.robotConfiguration]: {
+        component: Configuration,
+        removeScrollbars: false,
+        loadingLabel: 'LOADING ROBOT CONFIGURATION',
+        loadingDetail: 'Preparing the robot configuration page.',
+    },
+    [ROUTES.sensors]: {
+        component: SensorDisplay,
+        removeScrollbars: false,
+        loadingLabel: 'LOADING SENSORS',
+        loadingDetail: 'Preparing the sensor display.',
+    },
+};
 
-const KNOWN_PATHS = new Set<string>([
-    ROUTES.control,
-    ROUTES.robotConfiguration,
-    ROUTES.sensors,
-]);
-
-/**
- * Render all main pages once and toggle visibility with `display: none`.
- * Keeps page-local state (sliders, edits, expanded panels) alive when the
- * user switches between CONTROL / ROBOT CONFIGURATION. Lazy pages are only mounted
- * after their first visit so the initial chunk stays small.
- */
-const PersistentPages: FC = () => {
+const RoutedPage = () => {
     const { pathname } = useLocation();
-    const [configVisited, setConfigVisited] = useState(false);
-    const [sensorsVisited, setSensorsVisited] = useState(false);
-
-    useEffect(() => {
-        if (pathname === ROUTES.robotConfiguration) setConfigVisited(true);
-        if (pathname === ROUTES.sensors) setSensorsVisited(true);
-    }, [pathname]);
-
-    const isKnown = KNOWN_PATHS.has(pathname);
-
-    const pageStyle = (active: boolean): CSSProperties => ({
-        display: active ? 'block' : 'none',
-    });
+    const screens = useBreakpoint();
+    const page = PAGE_CONFIG[pathname];
+    const PageComponent = page?.component ?? NotFound;
+    const removeScrollbars = page?.removeScrollbars ?? false;
 
     return (
-        <>
-            <div style={pageStyle(pathname === ROUTES.control)}>
-                <RobotControlPanel />
-            </div>
-            {configVisited ? (
-                <div style={pageStyle(pathname === ROUTES.robotConfiguration)}>
-                    <Suspense
-                        fallback={
-                            <LucyLoader
-                                label="LOADING ROBOT CONFIGURATION"
-                                detail="Preparing the robot configuration page."
-                            />
-                        }
-                    >
-                        <Configuration />
-                    </Suspense>
-                </div>
-            ) : null}
-            {sensorsVisited ? (
-                <div style={pageStyle(pathname === ROUTES.sensors)}>
-                    <Suspense
-                        fallback={
-                            <LucyLoader
-                                label="LOADING SENSORS"
-                                detail="Preparing the sensor display."
-                            />
-                        }
-                    >
-                        <SensorDisplay />
-                    </Suspense>
-                </div>
-            ) : null}
-            {!isKnown ? <NotFound /> : null}
-        </>
+        <Page
+            showHeader
+            title
+            removeScrollbars={removeScrollbars}
+            contentStyle={{
+                ...PAGE_CONTENT_STYLE,
+                paddingBottom: !screens.md ? 72 : PAGE_CONTENT_STYLE.padding,
+            }}
+        >
+            {page ? (
+                <Suspense
+                    fallback={
+                        <LucyLoader
+                            label={page.loadingLabel}
+                            detail={page.loadingDetail}
+                        />
+                    }
+                >
+                    <PageComponent />
+                </Suspense>
+            ) : (
+                <PageComponent />
+            )}
+        </Page>
     );
 };
 
@@ -100,8 +103,6 @@ function App() {
     const localUsername: string | undefined = import.meta.env.VITE_LOCAL_USERNAME;
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [authError, setAuthError] = useState<string>('');
-    const screens = useBreakpoint();
-    const isMobile = !screens.md;
 
     useEffect(() => {
         const savedAuth = localStorage.getItem('lucy_auth');
@@ -183,17 +184,7 @@ function App() {
             <Router>
                 <ActiveHardwareRosProvider>
                     <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
-                        <Page
-                            showHeader
-                            title
-                            removeScrollbars={false}
-                            contentStyle={{
-                                ...PAGE_CONTENT_STYLE,
-                                paddingBottom: isMobile ? 72 : PAGE_CONTENT_STYLE.padding,
-                            }}
-                        >
-                            <PersistentPages />
-                        </Page>
+                        <RoutedPage />
                         <Navigation />
                         <GettingStartedModal />
                     </Layout>

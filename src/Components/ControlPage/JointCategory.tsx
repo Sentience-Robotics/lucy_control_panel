@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
 import { Card, Typography, Space, Button, Badge } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import type { JointControlState } from '../Constants/robotTypes';
-import { JointControl } from './JointControl';
+import type { JointControlState } from '../../Constants/robotTypes.ts';
+import { JointControl } from './JointControl.tsx';
 import {
     UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
@@ -11,7 +11,7 @@ import {
     UI_PANEL_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
-} from '../Constants/uiTheme.ts';
+} from '../../Constants/uiTheme.ts';
 
 const { Title } = Typography;
 

@@ -14,7 +14,7 @@ import {
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { getOriginRosUrl } from '../Services/ros/ros.service';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
-import { useCanva, availableCanva } from '../contexts/CanvaContext';
+import { useDock, availableDock } from '../contexts/DockContext';
 import {
     UI_ACCENT_BLUE,
     UI_ACCENT_GREEN,
@@ -68,9 +68,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     } = useActiveHardwareRos();
 
     const {
-        currentCanva,
-        setCurrentCanva
-    } = useCanva();
+        currentDock,
+        setCurrentDock
+    } = useDock();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
     const [autoConnect, setAutoConnect] = useState(
@@ -127,9 +127,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )
         : 0;
 
-    const canvaOptions = availableCanva.map((canva) => ({
-        label: canva,
-        value: canva,
+    const dockOptions = availableDock.map((dock) => ({
+        label: dock,
+        value: dock,
     }));
 
     return (
@@ -288,12 +288,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     }}
                 >
                     <Select
-                        value={currentCanva}
+                        value={currentDock}
                         onChange={(value) => {
-                            setCurrentCanva(value);
+                            setCurrentDock(value);
                             onClose();
                         }}
-                        options={canvaOptions}
+                        options={dockOptions}
                         style={{ width: '100%' }}
                         placeholder="Select a dock"
                         getPopupContainer={() => document.body}

@@ -2,15 +2,15 @@ import {
   type ReactNode,
 } from 'react';
 
-interface CanvaProps {
+interface DockProps {
   childrens: Record<string, ReactNode>;
   current: string;
 }
 
-export const Canva = ({
+export const Dock = ({
   childrens,
   current,
-}: CanvaProps) => {
+}: DockProps) => {
   const currentChild = childrens[current];
 
   if (!currentChild) {

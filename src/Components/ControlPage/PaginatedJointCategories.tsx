@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Pagination } from 'antd';
-import { JointCategory } from '../JointCategory';
+import { JointCategory } from './JointCategory';
 import type { JointControlState } from '../../Constants/robotTypes';
 import { UI_BORDER_MUTED, UI_NAV_BAR_BG } from '../../Constants/uiTheme';
 

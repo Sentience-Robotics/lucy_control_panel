@@ -35,7 +35,7 @@ import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
 /* Contexts */
-import { useCanva } from '../contexts/CanvaContext.tsx';
+import { useDock } from '../contexts/DockContext.tsx';
 
 /* Types */
 import type { JointControlState } from '../Constants/robotTypes';
@@ -82,7 +82,7 @@ import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
 import Robot3DViewer from './Robot3DViewer.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
-import { Canva } from '../Components/ControlPage/Canva.tsx';
+import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
@@ -159,7 +159,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
-    const { currentCanva, isCanvaLoaded } = useCanva();
+    const { currentDock, isDockLoaded } = useDock();
 
     const {
         controllerConfigsFromActive,
@@ -209,14 +209,14 @@ export const RobotControlPanel: React.FC = () => {
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
 
-    const isVisualizerDocked = currentCanva === '3D_VIEW';
-    const isStreamDocked = currentCanva === 'STREAM';
+    const isVisualizerDocked = currentDock === '3D_VIEW';
+    const isStreamDocked = currentDock === 'STREAM';
 
     useEffect(() => {
-        if (!isCanvaLoaded) { return; }
+        if (!isDockLoaded) { return; }
         if (isVisualizerDocked) { setIsVisualizerVisible(false); }
         if (isStreamDocked) { setIsStreamVisible(false); }
-    }, [isCanvaLoaded, isVisualizerDocked, isStreamDocked, setIsVisualizerVisible, setIsStreamVisible]);
+    }, [isDockLoaded, isVisualizerDocked, isStreamDocked, setIsVisualizerVisible, setIsStreamVisible]);
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -962,7 +962,7 @@ export const RobotControlPanel: React.FC = () => {
                     >
                         <ResizablePanels
                             direction="horizontal"
-                            proportions={currentCanva === "NONE" ? [100] : [30, 70]}
+                            proportions={currentDock === "NONE" ? [100] : [30, 70]}
                             minSize={20}
                             gap={20}
                         >
@@ -976,14 +976,14 @@ export const RobotControlPanel: React.FC = () => {
                                 disabled={!isSending}
                             />
 
-                            {currentCanva !== "NONE" && (
-                                <Canva
+                            {currentDock !== "NONE" && (
+                                <Dock
                                     childrens={{
                                         "3D_VIEW": <Robot3DViewer />,
                                         "STREAM": <StreamPlayer />,
                                         "NONE": null,
                                     }}
-                                    current={currentCanva}
+                                    current={currentDock}
                                 />
                             )}
                         </ResizablePanels>
