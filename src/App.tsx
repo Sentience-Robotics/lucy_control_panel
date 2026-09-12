@@ -68,7 +68,11 @@ const RoutedPage = () => {
     const screens = useBreakpoint();
     const page = PAGE_CONFIG[pathname];
     const PageComponent = page?.component ?? NotFound;
-    const removeScrollbars = page?.removeScrollbars ?? false;
+    let removeScrollbars = page?.removeScrollbars ?? false;
+
+    if (!page?.component) {
+        removeScrollbars = true;
+    }
 
     return (
         <Page
