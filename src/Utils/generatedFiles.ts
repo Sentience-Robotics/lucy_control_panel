@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * Generated-artifact filenames, mirroring `generated_files` in the hardware
  * mapping YAML (see lucy_config_generator/schema.py `resolve_generated_files`).

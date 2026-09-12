@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button, Space, Grid } from 'antd';

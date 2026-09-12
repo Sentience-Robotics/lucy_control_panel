@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /* Layout */
 import { ConfigProvider, theme, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';
@@ -68,7 +73,11 @@ const RoutedPage = () => {
     const screens = useBreakpoint();
     const page = PAGE_CONFIG[pathname];
     const PageComponent = page?.component ?? NotFound;
-    const removeScrollbars = page?.removeScrollbars ?? false;
+    let removeScrollbars = page?.removeScrollbars ?? false;
+
+    if (!page?.component) {
+        removeScrollbars = true;
+    }
 
     return (
         <Page

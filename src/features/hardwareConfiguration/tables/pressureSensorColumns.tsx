@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { DeleteOutlined } from '@ant-design/icons';
 import { Button, InputNumber, Popconfirm, Select, Switch, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';

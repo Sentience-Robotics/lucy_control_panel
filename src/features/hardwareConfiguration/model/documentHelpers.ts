@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import type { CellErrorOpts } from '../../../Utils/hardwareConfigServerErrors.ts';
 import {
     DEFAULT_ACTUATOR_TYPE_FALLBACK,

@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, {
     useState,
     useRef,
@@ -21,23 +26,19 @@ import {
     ExperimentOutlined,
 } from '@ant-design/icons';
 
-/* Services */
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
-/* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
-/* Contexts */
 import { useDock } from '../contexts/DockContext.tsx';
 
-/* Types */
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     DEFAULT_ACTUATOR_MAPPING,
@@ -50,7 +51,6 @@ import {
     DEFAULT_JOINT_SLIDER_VALUE_DEG,
 } from '../Constants/hardwareConfigDefaults';
 
-/* Components */
 import { LucyLoader } from '../Components/LucyLoader';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
@@ -91,7 +91,7 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
-const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
+const BASE_ANIMATION_INTERVAL = 1000;
 
 interface ControlTakenModalProps {
     isVisible: boolean;
@@ -189,22 +189,16 @@ export const RobotControlPanel: React.FC = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.md;
 
-    // The page header is `position: sticky; top: 0`, so the control toolbar has to park below it.
     const headerHeight = useContext(HeaderHeightContext);
 
-    // Floating window state, restored across reloads.
     const [isStreamVisible, setIsStreamVisible] = usePersistentBoolean('lucy_stream_visible');
     const [isVisualizerVisible, setIsVisualizerVisible] = usePersistentBoolean('lucy_visualizer_visible');
 
-    // A camera stream needs a publisher; the 3D view only needs joint states.
     const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
 
-    // These windows render outside the `!isConnected` branch below, so a dropped
-    // bridge would otherwise leave them floating with frozen data on top of the
-    // "waiting for ROS bridge" screen.
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
@@ -226,15 +220,12 @@ export const RobotControlPanel: React.FC = () => {
         setShowConfirmTakeControlModal(false);
     });
 
-    // Angle units (degrees/radians) are configured in the Settings modal and
-    // persisted to localStorage; sync local state when they change.
     useEffect(() => {
         const handleShowDegreesChange = () => setShowDegrees(isShowDegreesEnabled());
         window.addEventListener('showDegreesChanged', handleShowDegreesChange);
         return () => window.removeEventListener('showDegreesChanged', handleShowDegreesChange);
     }, []);
 
-    /** Build initial joint list from controller config (slider values in actuator degrees). */
     const buildJointsFromControllerConfig = useCallback((
         configs: ControllerJointConfig[],
     ): JointControlState[] => {
@@ -274,8 +265,6 @@ export const RobotControlPanel: React.FC = () => {
             JointStateHandler.getInstance([]);
             setJoints([]);
             setCategoryOrder([]);
-            // Ensure control mode is always OFF when the connection drops so that
-            // reconnecting never starts with control already active.
             setIsSending(false);
             return;
         }
@@ -345,13 +334,9 @@ export const RobotControlPanel: React.FC = () => {
     useEffect(() => {
         if (!isConnected) return;
         const handler = ControlModeHandler.getInstance();
-        // The toggle must track the authoritative controller, not local intent.
-        // If we aren't the active controller (someone else took it, or the registry released/expired it), force the toggle OFF so the UI can never show "Control Robot ON" while we don't actually have control.
         const unsubscribe = handler.onControllerChanged((controllerId) => {
             if (controllerId === handler.clientId) return;
             if (isSendingRef.current) {
-                // A non-empty id means another client grabbed it — surface the modal.
-                // An empty id is a plain release/expiry: just flip OFF.
                 if (controllerId !== '') {
                     setShowControlTakenModal(true);
                 }
@@ -361,8 +346,6 @@ export const RobotControlPanel: React.FC = () => {
         return unsubscribe;
     }, [isConnected]);
 
-    // Mirror joint positions published by the controlling client.
-    // Trajectory payloads are URDF rad — convert to actuator deg for the slider.
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
         const unsubscribe = JointStateHandler.getInstance().subscribeToPositions((updates) => {
@@ -379,8 +362,6 @@ export const RobotControlPanel: React.FC = () => {
         return unsubscribe;
     }, [isSending, isConnected, joints.length]);
 
-    // Subscribe to /joint_states (URDF rad) — convert to actuator deg per joint
-    // before storing in the ref so the slider's actualValue is in slider-native units.
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
@@ -395,8 +376,6 @@ export const RobotControlPanel: React.FC = () => {
         return () => { unsubscribe(); actualPositionsRef.current.clear(); };
     }, [isConnected, joints.length]);
 
-    // Drain actual positions into state at 10 Hz — controls the render budget.
-    // Slider aligns to actual once on first feedback; after that only the blue dot updates.
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const interval = setInterval(() => {
@@ -413,7 +392,6 @@ export const RobotControlPanel: React.FC = () => {
                     return {
                         ...j,
                         actualValue: actual,
-                        // First feedback only — align slider once.
                         ...(isFirstFeedback && notSending && { currentValue: actual, targetValue: actual }),
                     };
                 });
@@ -435,7 +413,6 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
-    /** Function responsible of flipping control without asking. Callers own the decision to preempt another client. */
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setIsSending(shouldControl);
         setShowControlTakenModal(false);
@@ -518,7 +495,6 @@ export const RobotControlPanel: React.FC = () => {
         );
     }, []);
 
-    /** Scatter every slider to a random value inside its own limits. */
     const handleRandomPose = useCallback(() => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
@@ -809,7 +785,16 @@ export const RobotControlPanel: React.FC = () => {
                     showSpinner={isConnecting}
                 />
             ) : (
-                <div style={{ position: 'relative', isolation: 'isolate' }}>
+                <div
+                    style={{
+                        position: 'relative',
+                        isolation: 'isolate',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
+                        minHeight: 0,
+                    }}
+                >
                     <div
                         style={{
                             position: 'sticky',
@@ -819,6 +804,7 @@ export const RobotControlPanel: React.FC = () => {
                             borderBottom: `1px solid ${UI_BORDER_MUTED}`,
                             margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 12px`,
                             padding: PAGE_CONTENT_STYLE.padding,
+                            flexShrink: 0,
                         }}
                     >
                         {isMobile ? (
@@ -914,7 +900,6 @@ export const RobotControlPanel: React.FC = () => {
                         )}
                     </div>
 
-                    {/* Mobile webcam sits inline under Control Robot and scrolls with the joint boxes. */}
                     {isMobile && isWebcamActive && (
                         <div
                             style={{
@@ -927,6 +912,7 @@ export const RobotControlPanel: React.FC = () => {
                                 borderRadius: 8,
                                 boxShadow: UI_SHADOW_ELEVATED,
                                 overflow: 'hidden',
+                                flexShrink: 0,
                             }}
                         >
                             <div
@@ -956,7 +942,8 @@ export const RobotControlPanel: React.FC = () => {
                     <div
                         style={{
                             width: "100%",
-                            height: "85vh",
+                            flex: 1,
+                            minHeight: 0,
                             overflow: "hidden",
                         }}
                     >
@@ -991,7 +978,6 @@ export const RobotControlPanel: React.FC = () => {
                 </div>
             )}
 
-            {/* Desktop keeps the floating, draggable webcam window. */}
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
@@ -1026,7 +1012,6 @@ export const RobotControlPanel: React.FC = () => {
                 }}
             />
 
-            {/* We are about to take control away from another client */}
             <MovableModal
                 modalName="TAKE CONTROL FROM ANOTHER CLIENT?"
                 isVisible={showConfirmTakeControlModal}
