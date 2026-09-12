@@ -1,6 +1,21 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useEffect, useState } from 'react';
-import { Input, Button, Form, Typography, Space } from 'antd';
-import { InfoCircleOutlined, SettingOutlined } from '@ant-design/icons';
+import {
+    Input,
+    InputNumber,
+    Button,
+    Form,
+    Typography,
+    Space,
+} from 'antd';
+import {
+    InfoCircleOutlined,
+    SettingOutlined,
+} from '@ant-design/icons';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { getOriginRosUrl } from '../Services/ros/ros.service';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
@@ -13,8 +28,12 @@ import {
     UI_TEXT_PRIMARY_ON_DARK,
 } from '../Constants/uiTheme';
 import { ToggleSwitch } from './ToggleSwitch';
-import { GETTING_STARTED_COMPLETED_KEY, REDO_GETTING_STARTED_EVENT } from './GettingStartedModal';
+import {
+    GETTING_STARTED_COMPLETED_KEY,
+    REDO_GETTING_STARTED_EVENT,
+} from './GettingStartedModal';
 import { MovableModal } from './MovableModal';
+import { usePaginatedCategories } from '../contexts/PaginatedCategoriesContext';
 
 const { Text } = Typography;
 
@@ -25,58 +44,79 @@ interface SettingsModalProps {
 
 export const AUTO_CONNECT_KEY = 'autoConnectEnabled';
 
-export const isAutoConnectEnabled = () => localStorage.getItem(AUTO_CONNECT_KEY) !== 'false';
+export const isAutoConnectEnabled = () =>
+    localStorage.getItem(AUTO_CONNECT_KEY) !== 'false';
 
 export const SHOW_DEGREES_KEY = 'showDegreesEnabled';
 
-export const isShowDegreesEnabled = () => localStorage.getItem(SHOW_DEGREES_KEY) !== 'false';
+export const isShowDegreesEnabled = () =>
+    localStorage.getItem(SHOW_DEGREES_KEY) !== 'false';
 
 /** Fixed hint for the URL field: the bridge served alongside this page. */
 const originRosUrl = getOriginRosUrl();
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
-    const { connect, disconnect, isConnected, currentUrl, connectionStatus } = useRosConnection();
-    const { activeHardwareConfigName, controllerConfigsFromActive } = useActiveHardwareRos();
+export const SettingsModal: React.FC<SettingsModalProps> = ({
+    visible,
+    onClose,
+}) => {
+    const {
+        connect,
+        disconnect,
+        isConnected,
+        currentUrl,
+        connectionStatus,
+    } = useRosConnection();
+
+    const {
+        activeHardwareConfigName,
+        controllerConfigsFromActive,
+    } = useActiveHardwareRos();
 
     const [rosUrl, setRosUrl] = useState(currentUrl);
-    const [autoConnect, setAutoConnect] = useState(isAutoConnectEnabled);
-    const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
+    const [autoConnect, setAutoConnect] = useState(
+        isAutoConnectEnabled
+    );
+    const [showDegrees, setShowDegrees] = useState(
+        isShowDegreesEnabled
+    );
+    const { categoriesPerPage, setCategoriesPerPage } = usePaginatedCategories();
 
     useEffect(() => {
         setRosUrl(currentUrl);
     }, [currentUrl]);
 
     useEffect(() => {
-        localStorage.setItem(AUTO_CONNECT_KEY, String(autoConnect));
+        localStorage.setItem(
+            AUTO_CONNECT_KEY,
+            String(autoConnect)
+        );
         window.dispatchEvent(new Event('autoConnectChanged'));
     }, [autoConnect]);
 
     useEffect(() => {
-        localStorage.setItem(SHOW_DEGREES_KEY, String(showDegrees));
+        localStorage.setItem(
+            SHOW_DEGREES_KEY,
+            String(showDegrees)
+        );
         window.dispatchEvent(new Event('showDegreesChanged'));
     }, [showDegrees]);
 
-    const handleSave = async () => {
-        try {
-            await connect(rosUrl);
-            onClose();
-        } catch {
-            // Error is already logged in the hook
-        }
-    };
-
     const handleConnectionChange = () => {
         if (isConnected) {
-            // Disconnecting manually disables auto-connect so it doesn't immediately reconnect.
+            // Disconnecting manually disables auto-connect
+            // so it doesn't immediately reconnect.
             setAutoConnect(false);
             disconnect();
         } else {
-            connect(rosUrl).catch(() => { });
+            connect(rosUrl).catch(() => {});
         }
     };
 
     const jointsLoaded = controllerConfigsFromActive
-        ? controllerConfigsFromActive.reduce((acc, config) => acc + config.joints.length, 0)
+        ? controllerConfigsFromActive.reduce(
+              (acc, config) => acc + config.joints.length,
+              0
+          )
         : 0;
 
     return (
@@ -88,104 +128,204 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }
             initialSize={{ w: 480, h: 550 }}
             minWidth={480}
             footerWrap={false}
-            header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}
+            header={
+                <SettingOutlined
+                    style={{ color: UI_ACCENT_GREEN }}
+                />
+            }
             footer={
                 <>
-                <Button
-                    onClick={handleConnectionChange}
-                    loading={connectionStatus === 'connecting'}
-                    style={{
-                        backgroundColor: UI_COLOR_TRANSPARENT,
-                        borderColor: UI_BORDER_SOFT,
-                        color: UI_TEXT_PRIMARY_ON_DARK,
-                    }}
-                >
-                    {connectionStatus === 'connecting'
-                        ? 'Connecting...'
-                        : isConnected
-                            ? 'Disconnect'
-                            : 'Connect'}
-                </Button>
-                <Button
-                    key="back"
-                    onClick={onClose}
-                    style={{
-                        backgroundColor: UI_COLOR_TRANSPARENT,
-                        borderColor: UI_BORDER_SOFT,
-                        color: UI_TEXT_PRIMARY_ON_DARK,
-                    }}
-                >
-                    Cancel
-                </Button>
-                <Button
-                    key="submit"
-                    type="primary"
-                    onClick={handleSave}
-                    loading={connectionStatus === 'connecting'}
-                    style={{
-                        backgroundColor: UI_ACCENT_GREEN,
-                        borderColor: UI_ACCENT_GREEN,
-                        color: UI_TEXT_ON_ACCENT,
-                    }}
-                >
-                    Save & Connect
-                </Button>
+                    <Button
+                        onClick={handleConnectionChange}
+                        loading={
+                            connectionStatus === 'connecting'
+                        }
+                        style={{
+                            backgroundColor:
+                                UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        {connectionStatus === 'connecting'
+                            ? 'Connecting...'
+                            : isConnected
+                              ? 'Disconnect'
+                              : 'Connect'}
+                    </Button>
+
+                    <Button
+                        key="back"
+                        onClick={onClose}
+                        style={{
+                            backgroundColor:
+                                UI_COLOR_TRANSPARENT,
+                            borderColor: UI_BORDER_SOFT,
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                        }}
+                    >
+                        Cancel
+                    </Button>
+
+                    <Button
+                        key="submit"
+                        type="primary"
+                        onClick={() => {onClose();}}
+                        loading={
+                            connectionStatus === 'connecting'
+                        }
+                        style={{
+                            backgroundColor: UI_ACCENT_GREEN,
+                            borderColor: UI_ACCENT_GREEN,
+                            color: UI_TEXT_ON_ACCENT,
+                        }}
+                    >
+                        Close
+                    </Button>
                 </>
             }
         >
             <Form layout="vertical">
                 <Form.Item
-                    label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>ROS Bridge URL</Text>}
+                    label={
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                            }}
+                        >
+                            ROS Bridge URL
+                        </Text>
+                    }
                     tooltip={{
                         title: 'WebSocket address of the rosbridge server (e.g. ws://host:port/rosbridge). Saved locally and reused on next launch.',
-                        icon: <InfoCircleOutlined style={{ color: UI_ACCENT_BLUE }} />,
+                        icon: (
+                            <InfoCircleOutlined
+                                style={{
+                                    color: UI_ACCENT_BLUE,
+                                }}
+                            />
+                        ),
+                        zIndex: 1100,
                     }}
                 >
                     <Input
                         value={rosUrl}
-                        onChange={(e) => setRosUrl(e.target.value)}
+                        onChange={(e) =>
+                            setRosUrl(e.target.value)
+                        }
                         placeholder={originRosUrl}
                     />
                 </Form.Item>
+
                 <Form.Item
-                    tooltip={{ title: 'When enabled, the application will attempt to connect to the ROS bridge automatically on startup and periodically when disconnected.', icon: <InfoCircleOutlined /> }}
+                    tooltip={{
+                        title: 'When enabled, the application will attempt to connect to the ROS bridge automatically on startup and periodically when disconnected.',
+                        icon: <InfoCircleOutlined />,
+                        zIndex: 1100,
+                    }}
                 >
                     <Space align="center" wrap>
                         <ToggleSwitch
                             isOn={autoConnect}
                             onToggle={setAutoConnect}
                             title="Auto-connect"
-                            width={120}
+                            width={180}
+                            centerTitle={false}
+                        />
+
+                        <ToggleSwitch
+                            isOn={showDegrees}
+                            onToggle={setShowDegrees}
+                            title="Angle units"
+                            textOn="DEGREES"
+                            textOff="RADIANS"
+                            width={180}
+                            isOffRed={false}
+                            centerTitle={false}
                         />
                     </Space>
                 </Form.Item>
+
                 <Form.Item
-                    tooltip={{ title: 'Choose whether joint angles are displayed and entered in degrees or radians.', icon: <InfoCircleOutlined /> }}
+                    label={
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                fontWeight: 'bold',
+                            }}
+                        >
+                            Categories per page
+                        </Text>
+                    }
+                    tooltip={{
+                        title: 'Choose how many joint categories are displayed on each page of the control panel.',
+                        icon: <InfoCircleOutlined />,
+                        zIndex: 1100,
+                    }}
                 >
-                    <ToggleSwitch
-                        isOn={showDegrees}
-                        onToggle={setShowDegrees}
-                        title="Angle units"
-                        textOn="DEGREES"
-                        textOff="RADIANS"
-                        width={180}
+                    <InputNumber
+                        min={1}
+                        precision={0}
+                        value={categoriesPerPage}
+                        onChange={(value) => {
+                            if (value !== null) {
+                                setCategoriesPerPage(value);
+                            }
+                        }}
+                        style={{ width: '100%' }}
                     />
                 </Form.Item>
-                <Form.Item label={<Text style={{ color: UI_TEXT_PRIMARY_ON_DARK, fontWeight: 'bold' }}>Connection Info</Text>}>
+
+                <Form.Item
+                    label={
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                fontWeight: 'bold',
+                            }}
+                        >
+                            Connection Info
+                        </Text>
+                    }
+                >
                     <Space direction="vertical">
-                        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Joints Loaded: {jointsLoaded}</Text>
-                        <Text style={{ color: UI_TEXT_PRIMARY_ON_DARK }}>Active Configuration: {activeHardwareConfigName || 'N/A'}</Text>
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                            }}
+                        >
+                            Joints Loaded: {jointsLoaded}
+                        </Text>
+
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                            }}
+                        >
+                            Active Configuration:{' '}
+                            {activeHardwareConfigName || 'N/A'}
+                        </Text>
                     </Space>
                 </Form.Item>
+
                 <Form.Item>
                     <Button
                         onClick={() => {
-                            localStorage.removeItem(GETTING_STARTED_COMPLETED_KEY);
-                            window.dispatchEvent(new Event(REDO_GETTING_STARTED_EVENT));
+                            localStorage.removeItem(
+                                GETTING_STARTED_COMPLETED_KEY
+                            );
+
+                            window.dispatchEvent(
+                                new Event(
+                                    REDO_GETTING_STARTED_EVENT
+                                )
+                            );
+
                             onClose();
                         }}
                         style={{
-                            backgroundColor: UI_COLOR_TRANSPARENT,
+                            backgroundColor:
+                                UI_COLOR_TRANSPARENT,
                             borderColor: UI_BORDER_SOFT,
                             color: UI_TEXT_PRIMARY_ON_DARK,
                         }}

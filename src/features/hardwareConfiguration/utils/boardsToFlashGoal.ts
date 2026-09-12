@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /** Maps modal selection to ConfigurePipeline.boards_to_flash ([] = all boards on the system). */
 export function boardsToFlashGoal(selected: readonly string[], allBoardIds: readonly string[]): string[] {
     const allSorted = [...allBoardIds].sort();

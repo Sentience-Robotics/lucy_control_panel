@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { useContext, type ReactNode } from 'react';
 import { Button } from 'antd';
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
@@ -11,6 +16,7 @@ interface FloatingViewerModalProps {
     isVisible: boolean;
     onClose: () => void;
     initialSize?: { w: number; h: number };
+    initialPosition?: { x: number; y: number };
     contentAspectRatio?: number | null;
     children: ReactNode;
 }
@@ -26,6 +32,7 @@ export function FloatingViewerModal({
     isVisible,
     onClose,
     initialSize = { w: 480, h: 320 },
+    initialPosition = { x: 100, y: 100 },
     contentAspectRatio = null,
     children,
 }: FloatingViewerModalProps) {
@@ -54,6 +61,7 @@ export function FloatingViewerModal({
             contentAspectRatio={contentAspectRatio}
             mobileFixedTop
             mobileTopOffset={headerHeight}
+            initialPosition={initialPosition}
         >
             <div ref={ref} style={{ width: '100%', height: '100%', backgroundColor: 'black' }}>
                 {children}

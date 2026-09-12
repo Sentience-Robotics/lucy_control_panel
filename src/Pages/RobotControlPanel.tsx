@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, {
     useState,
     useRef,
@@ -8,7 +13,7 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, message, Dropdown, Grid } from 'antd';
+import { Typography, Space, Button, Alert, Spin, Tooltip, message, Dropdown, Select, Grid } from 'antd';
 import type { MenuProps } from 'antd';
 import {
     ReloadOutlined,
@@ -19,38 +24,22 @@ import {
     EyeOutlined,
     CodeSandboxOutlined,
     ExperimentOutlined,
+    SettingOutlined,
 } from '@ant-design/icons';
-import {
-    DndContext,
-    rectIntersection,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-    DragOverlay,
-} from '@dnd-kit/core';
-import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    rectSortingStrategy,
-} from '@dnd-kit/sortable';
 
-/* Services */
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
 import { ControlModeHandler } from "../Services/ros/handlers/ControlMode.handler";
 import { storageService } from '../Services/storage.service';
 import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
-/* Hooks */
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
-/* Types */
+import { availableDock, useDock } from '../contexts/DockContext.tsx';
+
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     DEFAULT_ACTUATOR_MAPPING,
@@ -63,10 +52,7 @@ import {
     DEFAULT_JOINT_SLIDER_VALUE_DEG,
 } from '../Constants/hardwareConfigDefaults';
 
-/* Components */
 import { LucyLoader } from '../Components/LucyLoader';
-import { JointCategory } from '../Components/JointCategory';
-import { DraggableCategory } from '../Components/DraggableCategory';
 import { ManagePosesModal } from '../Components/ManagePosesModal';
 import { ToggleSwitch } from "../Components/ToggleSwitch";
 import { StreamPlayerModal } from "../Components/StreamPlayerModal";
@@ -75,7 +61,6 @@ import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
-    UI_ACCENT_BOX_SHADOW_STRONG,
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
@@ -94,6 +79,12 @@ import {
     PAGE_CONTENT_STYLE,
 } from '../Constants/uiTheme.ts';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
+import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
+import Robot3DViewer from './Robot3DViewer.tsx';
+import SensorDisplay from './SensorDisplay.tsx';
+import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
+import { Dock } from '../Components/ControlPage/Dock.tsx';
+import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
 const MediapipeHandTracker = lazy(() => import('../Components/MediapipeHandTracker').then(module => ({ default: module.default })));
 
@@ -101,7 +92,7 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const REFRESH_RATE = 300;
-const BASE_ANIMATION_INTERVAL = 1000; // ms per keyframe at 1x speed
+const BASE_ANIMATION_INTERVAL = 1000;
 
 interface ControlTakenModalProps {
     isVisible: boolean;
@@ -169,6 +160,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
+    const { currentDock, setCurrentDock, isDockLoaded } = useDock();
 
     const {
         controllerConfigsFromActive,
@@ -186,7 +178,6 @@ export const RobotControlPanel: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [showDegrees, setShowDegrees] = useState(isShowDegreesEnabled);
     const [categoryOrder, setCategoryOrder] = useState<string[]>([]);
-    const [activeId, setActiveId] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
     const isSendingRef = useRef(false);
     const [isAnimating, setIsAnimating] = useState(false);
@@ -199,25 +190,38 @@ export const RobotControlPanel: React.FC = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.md;
 
-    // The page header is `position: sticky; top: 0`, so the control toolbar has to park below it.
     const headerHeight = useContext(HeaderHeightContext);
 
-    // Floating window state, restored across reloads.
     const [isStreamVisible, setIsStreamVisible] = usePersistentBoolean('lucy_stream_visible');
     const [isVisualizerVisible, setIsVisualizerVisible] = usePersistentBoolean('lucy_visualizer_visible');
 
-    // A camera stream needs a publisher; the 3D view only needs joint states.
     const { hasLiveCamera } = useLiveCameraSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
+    const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
 
-    // These windows render outside the `!isConnected` branch below, so a dropped
-    // bridge would otherwise leave them floating with frozen data on top of the
-    // "waiting for ROS bridge" screen.
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
     useCloseOnRosDisconnect(isWebcamActive, () => setIsWebcamActive(false));
+
+    const isVisualizerDocked = currentDock === '3D_VIEW';
+    const isStreamDocked = currentDock === 'STREAM';
+    const isTeleoperationDocked = currentDock === 'TELEOPERATION';
+
+    useEffect(() => {
+        if (!isDockLoaded) { return; }
+        if (isVisualizerDocked) { setIsVisualizerVisible(false); }
+        if (isStreamDocked) { setIsStreamVisible(false); }
+        if (isTeleoperationDocked) { setIsWebcamActive(false); }
+    }, [
+        isDockLoaded,
+        isVisualizerDocked,
+        isStreamDocked,
+        isTeleoperationDocked,
+        setIsVisualizerVisible,
+        setIsStreamVisible,
+    ]);
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -227,24 +231,12 @@ export const RobotControlPanel: React.FC = () => {
         setShowConfirmTakeControlModal(false);
     });
 
-    // Angle units (degrees/radians) are configured in the Settings modal and
-    // persisted to localStorage; sync local state when they change.
     useEffect(() => {
         const handleShowDegreesChange = () => setShowDegrees(isShowDegreesEnabled());
         window.addEventListener('showDegreesChanged', handleShowDegreesChange);
         return () => window.removeEventListener('showDegreesChanged', handleShowDegreesChange);
     }, []);
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: { distance: 8 },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
-    /** Build initial joint list from controller config (slider values in actuator degrees). */
     const buildJointsFromControllerConfig = useCallback((
         configs: ControllerJointConfig[],
     ): JointControlState[] => {
@@ -284,8 +276,6 @@ export const RobotControlPanel: React.FC = () => {
             JointStateHandler.getInstance([]);
             setJoints([]);
             setCategoryOrder([]);
-            // Ensure control mode is always OFF when the connection drops so that
-            // reconnecting never starts with control already active.
             setIsSending(false);
             return;
         }
@@ -355,13 +345,9 @@ export const RobotControlPanel: React.FC = () => {
     useEffect(() => {
         if (!isConnected) return;
         const handler = ControlModeHandler.getInstance();
-        // The toggle must track the authoritative controller, not local intent.
-        // If we aren't the active controller (someone else took it, or the registry released/expired it), force the toggle OFF so the UI can never show "Control Robot ON" while we don't actually have control.
         const unsubscribe = handler.onControllerChanged((controllerId) => {
             if (controllerId === handler.clientId) return;
             if (isSendingRef.current) {
-                // A non-empty id means another client grabbed it — surface the modal.
-                // An empty id is a plain release/expiry: just flip OFF.
                 if (controllerId !== '') {
                     setShowControlTakenModal(true);
                 }
@@ -371,8 +357,6 @@ export const RobotControlPanel: React.FC = () => {
         return unsubscribe;
     }, [isConnected]);
 
-    // Mirror joint positions published by the controlling client.
-    // Trajectory payloads are URDF rad — convert to actuator deg for the slider.
     useEffect(() => {
         if (isSending || !isConnected || joints.length === 0) return;
         const unsubscribe = JointStateHandler.getInstance().subscribeToPositions((updates) => {
@@ -389,8 +373,6 @@ export const RobotControlPanel: React.FC = () => {
         return unsubscribe;
     }, [isSending, isConnected, joints.length]);
 
-    // Subscribe to /joint_states (URDF rad) — convert to actuator deg per joint
-    // before storing in the ref so the slider's actualValue is in slider-native units.
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const unsubscribe = JointStateHandler.getInstance().subscribeToJointStates((positions) => {
@@ -405,8 +387,6 @@ export const RobotControlPanel: React.FC = () => {
         return () => { unsubscribe(); actualPositionsRef.current.clear(); };
     }, [isConnected, joints.length]);
 
-    // Drain actual positions into state at 10 Hz — controls the render budget.
-    // Slider aligns to actual once on first feedback; after that only the blue dot updates.
     useEffect(() => {
         if (!isConnected || joints.length === 0) return;
         const interval = setInterval(() => {
@@ -423,7 +403,6 @@ export const RobotControlPanel: React.FC = () => {
                     return {
                         ...j,
                         actualValue: actual,
-                        // First feedback only — align slider once.
                         ...(isFirstFeedback && notSending && { currentValue: actual, targetValue: actual }),
                     };
                 });
@@ -445,7 +424,6 @@ export const RobotControlPanel: React.FC = () => {
         return () => clearInterval(interval);
     }, [isSending]);
 
-    /** Function responsible of flipping control without asking. Callers own the decision to preempt another client. */
     const applyControlToggle = useCallback((shouldControl: boolean) => {
         setIsSending(shouldControl);
         setShowControlTakenModal(false);
@@ -528,7 +506,6 @@ export const RobotControlPanel: React.FC = () => {
         );
     }, []);
 
-    /** Scatter every slider to a random value inside its own limits. */
     const handleRandomPose = useCallback(() => {
         setJoints((prevJoints) =>
             prevJoints.map((joint) => {
@@ -621,24 +598,6 @@ export const RobotControlPanel: React.FC = () => {
         playNextFrame();
     }, [isAnimating, handleLoadPose, handleStopAnimation]);
 
-    const handleDragStart = useCallback((event: DragStartEvent) => {
-        setActiveId(event.active.id as string);
-    }, []);
-
-    const handleDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event;
-
-        if (active.id !== over?.id) {
-            setCategoryOrder((items) => {
-                const oldIndex = items.indexOf(active.id as string);
-                const newIndex = items.indexOf(over?.id as string);
-                return arrayMove(items, oldIndex, newIndex);
-            });
-        }
-
-        setActiveId(null);
-    }, []);
-
     if (isConnected && loading) {
         return (
             <>
@@ -696,6 +655,42 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
+    const showVisualizerWindow = isVisualizerVisible && !isVisualizerDocked;
+    const showStreamWindow = isStreamVisible && !isStreamDocked;
+    const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
+
+    const dockContent = (
+        <Dock
+            childrens={{
+                '3D_VIEW': <Robot3DViewer />,
+                'STREAM': <StreamPlayer />,
+                'TELEOPERATION': (
+                    <Suspense fallback={<Spin size="large" />}>
+                        <MediapipeHandTracker moveRobotIndex={handleTeleopJoint} />
+                    </Suspense>
+                ),
+                'SENSOR_DISPLAY': <SensorDisplay />,
+                'NONE': null,
+            }}
+            current={currentDock}
+        />
+    );
+
+    const switches = () => (
+        <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
+            <span style={{ display: 'inline-flex', cursor: 'help' }}>
+                <ToggleSwitch
+                    isOn={isSending}
+                    onToggle={handleControlRobotToggle}
+                    title="Control Robot"
+                    titlePlacement="inline"
+                    rightIcon={<ThunderboltOutlined />}
+                    width={180}
+                />
+            </span>
+        </Tooltip>
+    );
+
     const items: MenuProps['items'] = [
         {
             key: 'reset',
@@ -715,15 +710,9 @@ export const RobotControlPanel: React.FC = () => {
         },
         {
             key: 'poses',
-            label: (
-                <ManagePosesModal
-                    joints={joints}
-                    onLoadPose={handleLoadPose}
-                    onPlayAnimation={handlePlayAnimation}
-                    isAnimating={isAnimating}
-                    onStopAnimation={handleStopAnimation}
-                />
-            ),
+            label: 'MANAGE POSES',
+            icon: <SettingOutlined />,
+            onClick: () => setIsManagePosesVisible(true),
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         ...(isAnimating ? [{
@@ -734,12 +723,48 @@ export const RobotControlPanel: React.FC = () => {
             onClick: handleStopAnimation,
         }] : []),
         {
+            type: 'divider' as const,
+        },
+        {
+            key: '3d-view',
+            label: showVisualizerWindow ? 'HIDE 3D VIEW' : 'SHOW 3D VIEW',
+            icon: <CodeSandboxOutlined />,
+            onClick: () => setIsVisualizerVisible(v => !v),
+            disabled: isVisualizerDocked,
+            title: isVisualizerDocked ? '3D view is currently displayed in the dock' : undefined,
+        },
+        {
+            key: 'stream',
+            label: showStreamWindow ? 'HIDE STREAM' : 'SHOW STREAM',
+            icon: <VideoCameraOutlined />,
+            onClick: () => setIsStreamVisible(v => !v),
+            disabled: isStreamDisabled,
+            title: isStreamDocked
+                ? 'Stream is currently displayed in the dock'
+                : 'No camera is publishing',
+        },
+        {
             key: 'webcam',
             label: isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER',
             icon: <EyeOutlined />,
             onClick: () => setIsWebcamActive(v => !v),
             style: { color: isWebcamActive ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
         },
+        ...(isMobile ? [
+            {
+                key: 'dock',
+                label: `DOCK: ${currentDock === 'NONE' ? 'NONE' : currentDock.replace('_', ' ')}`,
+                children: availableDock.map(dock => ({
+                    key: `dock-${dock}`,
+                    label: dock === 'NONE' ? 'NO DOCK' : dock.replace('_', ' '),
+                    onClick: () => setCurrentDock(dock),
+                })),
+            },
+            {
+                key: 'control-robot',
+                label: switches(),
+            },
+        ] : []),
     ];
 
     const dropdownOverlayStyle = {
@@ -748,69 +773,27 @@ export const RobotControlPanel: React.FC = () => {
         borderRadius: 4,
     };
 
-    const toggleButtonStyle = (isActive: boolean): React.CSSProperties => ({
-        backgroundColor: isActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-        color: isActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-        borderColor: isActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-        boxShadow: isActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-    });
-
-    const isStreamDisabled = !hasLiveCamera && !isStreamVisible;
-
-    const visualizerButton = (label: string, icon?: React.ReactNode) => (
-        <Button
-            icon={icon}
-            onClick={() => setIsVisualizerVisible(v => !v)}
-            style={toggleButtonStyle(isVisualizerVisible)}
-        >
-            {isVisualizerVisible ? `HIDE ${label}` : `SHOW ${label}`}
-        </Button>
-    );
-
-    const streamButton = (label: string, icon?: React.ReactNode) => (
-        <Tooltip
-            title={isStreamDisabled
-                ? 'No camera is publishing — start the simulation or connect a camera'
-                : ''}
-        >
-            <span style={{ display: 'inline-flex' }}>
-                <Button
-                    icon={icon}
-                    disabled={isStreamDisabled}
-                    onClick={() => setIsStreamVisible(v => !v)}
-                    style={isStreamDisabled ? undefined : toggleButtonStyle(isStreamVisible)}
-                >
-                    {isStreamVisible ? `HIDE ${label}` : `SHOW ${label}`}
-                </Button>
-            </span>
-        </Tooltip>
-    );
-
-    const switches = () => (
-        <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
-            <span style={{ display: 'inline-flex', cursor: 'help' }}>
-                <ToggleSwitch
-                    isOn={isSending}
-                    onToggle={handleControlRobotToggle}
-                    title="Control Robot"
-                    titlePlacement="inline"
-                    rightIcon={<ThunderboltOutlined />}
-                    width={180}
-                />
-            </span>
-        </Tooltip>
-    );
-
     return (
         <>
             <Robot3DViewerModal
-                isVisible={isVisualizerVisible}
+                isVisible={showVisualizerWindow}
                 onClose={() => setIsVisualizerVisible(false)}
             />
 
             <StreamPlayerModal
-                isVisible={isStreamVisible}
+                isVisible={showStreamWindow}
                 onClose={() => setIsStreamVisible(false)}
+            />
+
+            <ManagePosesModal
+                joints={joints}
+                onLoadPose={handleLoadPose}
+                onPlayAnimation={handlePlayAnimation}
+                isAnimating={isAnimating}
+                onStopAnimation={handleStopAnimation}
+                isVisible={isManagePosesVisible}
+                onVisibleChange={setIsManagePosesVisible}
+                showTrigger={false}
             />
 
             {!isConnected ? (
@@ -825,7 +808,20 @@ export const RobotControlPanel: React.FC = () => {
                     showSpinner={isConnecting}
                 />
             ) : (
-                <div style={{ position: 'relative', isolation: 'isolate' }}>
+                <div
+                    style={{
+                        position: 'relative',
+                        isolation: 'isolate',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        height: isMobile
+                            ? 'auto'
+                            : `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
+                        minHeight: isMobile
+                            ? `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`
+                            : 0,
+                    }}
+                >
                     <div
                         style={{
                             position: 'sticky',
@@ -835,102 +831,65 @@ export const RobotControlPanel: React.FC = () => {
                             borderBottom: `1px solid ${UI_BORDER_MUTED}`,
                             margin: `-${PAGE_CONTENT_STYLE.padding}px -${PAGE_CONTENT_STYLE.padding}px 12px`,
                             padding: PAGE_CONTENT_STYLE.padding,
+                            flexShrink: 0,
                         }}
                     >
-                        {isMobile ? (
-                            <Row gutter={[12, 12]} align="middle">
-                                <Col xs={24}>
-                                    <Space wrap>
-                                        <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
-                                            <div style={dropdownOverlayStyle}>{menu}</div>
-                                        )}>
-                                            <Button
-                                                icon={<MenuOutlined />}
-                                                style={{
-                                                    backgroundColor: UI_COLOR_TRANSPARENT,
-                                                    borderColor: UI_BORDER_SOFT,
-                                                    color: UI_TEXT_PRIMARY_ON_DARK,
-                                                }}
-                                            >
-                                                Control Options
-                                            </Button>
-                                        </Dropdown>
-                                        {visualizerButton('3D VIEW', <CodeSandboxOutlined />)}
-                                        {streamButton('STREAM', <VideoCameraOutlined />)}
-                                    </Space>
-                                </Col>
-                                <Col xs={24} style={{ display: 'flex', justifyContent: 'center' }}>
-                                    {switches()}
-                                </Col>
-                            </Row>
-                        ) : (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: 12,
-                                }}
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                            }}
+                        >
+                            <Dropdown
+                                menu={{ items }}
+                                trigger={['click']}
+                                dropdownRender={menu => (
+                                    <div style={dropdownOverlayStyle}>{menu}</div>
+                                )}
                             >
-                                <Space wrap>
-                                    <Button
-                                        icon={<ReloadOutlined />}
-                                        onClick={handleResetAll}
-                                        style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
-                                        }}
-                                        disabled={!isSending}
-                                    >
-                                        RESET ALL
-                                    </Button>
+                                <Button
+                                    icon={<MenuOutlined />}
+                                    style={{
+                                        backgroundColor: UI_COLOR_TRANSPARENT,
+                                        borderColor: UI_BORDER_SOFT,
+                                        color: UI_TEXT_PRIMARY_ON_DARK,
+                                    }}
+                                >
+                                    Actions
+                                </Button>
+                            </Dropdown>
 
-                                    <Button
-                                        icon={<ExperimentOutlined />}
-                                        onClick={handleRandomPose}
-                                        style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
-                                        }}
-                                        disabled={!isSending}
-                                    >
-                                        RANDOM POSE
-                                    </Button>
-
-                                    <ManagePosesModal
-                                        joints={joints}
-                                        onLoadPose={handleLoadPose}
-                                        onPlayAnimation={handlePlayAnimation}
-                                        isAnimating={isAnimating}
-                                        onStopAnimation={handleStopAnimation}
-                                    />
-                                    {isAnimating && (
-                                        <Button
-                                            danger
-                                            icon={<StopOutlined />}
-                                            onClick={handleStopAnimation}
-                                        >
-                                            STOP ANIMATION
-                                        </Button>
-                                    )}
-                                    {visualizerButton('3D VIEW')}
-                                    {streamButton('STREAM')}
-                                    <Button
-                                        onClick={() => setIsWebcamActive(v => !v)}
-                                        style={toggleButtonStyle(isWebcamActive)}
-                                    >
-                                        {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
-                                    </Button>
-                                </Space>
+                            {!isMobile && <Space wrap>
+                                Dock: 
+                                <Select
+                                    value={currentDock}
+                                    onChange={setCurrentDock}
+                                    options={availableDock.map((dock) => ({
+                                        label: dock === 'NONE'
+                                            ? 'No dock'
+                                            : dock.replace('_', ' '),
+                                        value: dock,
+                                    }))}
+                                    aria-label="Select dock"
+                                    style={{ minWidth: isMobile ? 150 : 180 }}
+                                    popupMatchSelectWidth={false}
+                                    getPopupContainer={() => document.body}
+                                    styles={{
+                                        popup: {
+                                            root: {
+                                                zIndex: 1100,
+                                            },
+                                        },
+                                    }}
+                                />
                                 {switches()}
-                            </div>
-                        )}
+                            </Space>}
+                        </div>
                     </div>
 
-                    {/* Mobile webcam sits inline under Control Robot and scrolls with the joint boxes. */}
                     {isMobile && isWebcamActive && (
                         <div
                             style={{
@@ -943,6 +902,7 @@ export const RobotControlPanel: React.FC = () => {
                                 borderRadius: 8,
                                 boxShadow: UI_SHADOW_ELEVATED,
                                 overflow: 'hidden',
+                                flexShrink: 0,
                             }}
                         >
                             <div
@@ -969,64 +929,66 @@ export const RobotControlPanel: React.FC = () => {
                         </div>
                     )}
 
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={rectIntersection}
-                        onDragStart={handleDragStart}
-                        onDragEnd={handleDragEnd}
-                    >
-                        <SortableContext items={categoryOrder} strategy={rectSortingStrategy}>
-                            <div
-                                style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                                    gridAutoRows: '1fr',
-                                    gap: '12px',
-                                    width: '100%',
-                                    alignItems: 'stretch',
-                                }}
-                            >
-                                {categoryOrder.map((category) => {
-                                    if (!categorizedJoints[category] || categorizedJoints[category].length === 0) {
-                                        return null;
-                                    }
-
-                                    return (
-                                        <div key={category} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                            <DraggableCategory
-                                                id={category}
-                                                category={category}
-                                                joints={categorizedJoints[category]}
-                                                onJointValueChange={handleJointValueChange}
-                                                onResetCategory={handleResetCategory}
-                                                onResetJoint={handleResetJoint}
-                                                showDegrees={showDegrees}
-                                                disabled={!isSending}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </SortableContext>
-
-                        <DragOverlay>
-                            {activeId ? (
-                                <div style={{ opacity: 0.8, transform: 'rotate(5deg)' }}>
-                                    <JointCategory
-                                        category={activeId}
-                                        joints={categorizedJoints[activeId] || []}
-                                        onJointValueChange={() => { }}
-                                        onResetCategory={() => { }}
-                                        showDegrees={showDegrees}
-                                    />
+                    {isMobile ? (
+                        <>
+                            {currentDock !== 'NONE' && (
+                                <div
+                                    style={{
+                                        width: '100%',
+                                        height: '40vh',
+                                        minHeight: 240,
+                                        marginBottom: 12,
+                                        flexShrink: 0,
+                                        overflow: 'hidden',
+                                    }}
+                                >
+                                    {dockContent}
                                 </div>
-                            ) : null}
-                        </DragOverlay>
-                    </DndContext>
+                            )}
+                            <div style={{ width: '100%', minHeight: 0 }}>
+                                <PaginatedJointCategories
+                                    categoryOrder={categoryOrder}
+                                    categorizedJoints={categorizedJoints}
+                                    onJointValueChange={handleJointValueChange}
+                                    onResetCategory={handleResetCategory}
+                                    onResetJoint={handleResetJoint}
+                                    showDegrees={showDegrees}
+                                    disabled={!isSending}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div
+                            style={{
+                                width: '100%',
+                                flex: 1,
+                                minHeight: 0,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <ResizablePanels
+                                direction="horizontal"
+                                proportions={currentDock === "NONE" ? [100] : [30, 70]}
+                                minSize={25}
+                                gap={20}
+                            >
+                                <PaginatedJointCategories
+                                    categoryOrder={categoryOrder}
+                                    categorizedJoints={categorizedJoints}
+                                    onJointValueChange={handleJointValueChange}
+                                    onResetCategory={handleResetCategory}
+                                    onResetJoint={handleResetJoint}
+                                    showDegrees={showDegrees}
+                                    disabled={!isSending}
+                                />
+
+                                {currentDock !== "NONE" && dockContent}
+                            </ResizablePanels>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* Desktop keeps the floating, draggable webcam window. */}
             {!isMobile && (
                 <MovableModal
                     modalName="WEBCAM"
@@ -1061,7 +1023,6 @@ export const RobotControlPanel: React.FC = () => {
                 }}
             />
 
-            {/* We are about to take control away from another client */}
             <MovableModal
                 modalName="TAKE CONTROL FROM ANOTHER CLIENT?"
                 isVisible={showConfirmTakeControlModal}

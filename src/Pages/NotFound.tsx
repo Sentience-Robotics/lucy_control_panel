@@ -1,297 +1,140 @@
-import React, { useState, useEffect } from 'react';
-import { Typography, Button, Space } from 'antd';
-import { HomeOutlined, ReloadOutlined } from '@ant-design/icons';
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import React, { useContext } from 'react';
+import { Button, Card, Space, Typography } from 'antd';
+import { ArrowLeftOutlined, HomeOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import {
     UI_ACCENT_GREEN,
+    UI_ACCENT_TEXT_SHADOW,
+    UI_BG_BLACK,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
-    UI_DECORATIVE_CORAL,
     UI_ERROR,
     UI_INPUT_SURFACE,
     UI_PANEL_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
-    UI_TEXT_SECONDARY_MUTED,
+    UI_TEXT_SUBTLE,
 } from '../Constants/uiTheme.ts';
+import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export const NotFound: React.FC = () => {
-  const navigate = useNavigate();
-  const [blinkState, setBlinkState] = useState(true);
-  const [typingText, setTypingText] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
+    const navigate = useNavigate();
+    const headerHeight = useContext(HeaderHeightContext);
 
-  const errorMessage = "ERROR: PAGE NOT FOUND IN SYSTEM DATABASE";
-
-    const asciiRobot = `
-╔══════════════════════════════════════════════════════╗
-║                     404 ERROR                        ║
-║                 SYSTEM MALFUNCTION                   ║
-╚══════════════════════════════════════════════════════╝
-
-██╗  ██╗ ██████╗ ██╗  ██╗    ███████╗██████╗ ██████╗
- ██║  ██║██╔═████╗██║  ██║    ██╔════╝██╔══██╗██╔══██╗
- ███████║██║██╔██║███████║    █████╗  ██████╔╝██████╔╝
- ╚════██║████╔╝██║╚════██║    ██╔══╝  ██╔══██╗██╔══██╗
-      ██║╚██████╔╝     ██║    ███████╗██║  ██║██║  ██║
-      ╚═╝ ╚═════╝      ╚═╝    ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
-
-┌─────────────────────────────────┐
-│  ⚠  ROBOT LUCY IS CONFUSED  ⚠   │
-│                                 │
-│  "I searched through all my     │
-│   circuits and databases,       │
-│   but I can't find this page.   │
-│   Maybe it's hiding behind      │
-│   my backup memory banks?"      │
-└─────────────────────────────────┘
-  `;
-
-  const glitchTexts = [
-    "PAGE_NOT_FOUND.exe has stopped working",
-    "Segmentation fault (core dumped)",
-    "LUCY.exe is not responding",
-    "Critical system error detected",
-    "Memory allocation failed",
-    "404: File not found in quantum database"
-  ];
-
-  const [currentGlitch, setCurrentGlitch] = useState(0);
-
-  useEffect(() => {
-    const blinkTimer = setInterval(() => {
-      setBlinkState(prev => !prev);
-    }, 500);
-
-    return () => clearInterval(blinkTimer);
-  }, []);
-
-  useEffect(() => {
-    if (currentIndex < errorMessage.length) {
-      const typingTimer = setTimeout(() => {
-        setTypingText(errorMessage.slice(0, currentIndex + 1));
-        setCurrentIndex(currentIndex + 1);
-      }, 100);
-
-      return () => clearTimeout(typingTimer);
-    }
-  }, [currentIndex, errorMessage]);
-
-  useEffect(() => {
-    const glitchTimer = setInterval(() => {
-      setCurrentGlitch(prev => (prev + 1) % glitchTexts.length);
-    }, 2000);
-
-    return () => clearInterval(glitchTimer);
-  }, [glitchTexts.length]);
-
-  const handleGoHome = () => {
-    navigate('/');
-  };
-
-  const handleReload = () => {
-    window.location.reload();
-  };
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        textAlign: 'center',
-      }}
-    >
-        {/* Header */}
-        <div style={{ marginBottom: '20px' }}>
-          <Text
+    return (
+        <main
             style={{
-              color: UI_ERROR,
-              fontFamily: 'monospace',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              textShadow: `0 0 15px ${UI_ERROR}`,
-              display: 'block',
-              marginBottom: '10px'
+                minHeight: `calc(100dvh - ${headerHeight}px - 24px)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px 0',
+                boxSizing: 'border-box',
             }}
-          >
-            ► SYSTEM ALERT ◄
-          </Text>
-
-          <Text
-            style={{
-              color: UI_ACCENT_GREEN,
-              fontFamily: 'monospace',
-              fontSize: '14px',
-              display: 'block'
-            }}
-          >
-            {typingText}
-            <span style={{
-              opacity: blinkState ? 1 : 0,
-              transition: 'opacity 0.1s'
-            }}>
-              █
-            </span>
-          </Text>
-        </div>
-
-        {/* ASCII Art */}
-        <div
-          style={{
-            backgroundColor: UI_PANEL_BG,
-            border: `2px solid ${UI_BORDER_MUTED}`,
-            padding: '20px',
-            marginBottom: '20px',
-            maxWidth: '600px',
-            width: '100%'
-          }}
         >
-          <pre
-            style={{
-              color: UI_ACCENT_GREEN,
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              lineHeight: '1.2',
-              margin: 0,
-              textAlign: 'center',
-              whiteSpace: 'pre-wrap'
-            }}
-          >
-            {asciiRobot}
-          </pre>
-        </div>
+            <Card
+                bordered
+                style={{
+                    width: 'min(100%, 560px)',
+                    background: UI_PANEL_BG,
+                    borderColor: UI_BORDER_MUTED,
+                    boxShadow: `0 0 0 1px ${UI_BG_BLACK}, 0 12px 40px rgba(0, 0, 0, 0.45)`,
+                }}
+                styles={{ body: { padding: 0 } }}
+            >
+                <div
+                    style={{
+                        padding: '10px 16px',
+                        borderBottom: `1px solid ${UI_BORDER_MUTED}`,
+                        background: UI_INPUT_SURFACE,
+                        color: UI_TEXT_SUBTLE,
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                        letterSpacing: '0.08em',
+                    }}
+                >
+                    <span style={{ color: UI_ACCENT_GREEN }}>LUCY</span>
+                    {' / NAVIGATION'}
+                    <span style={{ float: 'right', color: UI_ERROR }}>404</span>
+                </div>
 
-        {/* Glitch Effect Error Messages */}
-        <div
-          style={{
-            backgroundColor: UI_INPUT_SURFACE,
-            border: `1px solid ${UI_BORDER_SOFT}`,
-            padding: '16px',
-            marginBottom: '20px',
-            minHeight: '50px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            maxWidth: '500px',
-            width: '100%'
-          }}
-        >
-          <Text
-            style={{
-              color: UI_DECORATIVE_CORAL,
-              fontFamily: 'monospace',
-              fontSize: '13px',
-              fontStyle: 'italic',
-              opacity: 0.8
-            }}
-          >
-            {glitchTexts[currentGlitch]}
-          </Text>
-        </div>
+                <div style={{ padding: 'clamp(28px, 7vw, 52px)' }}>
+                    <Text
+                        style={{
+                            display: 'block',
+                            color: UI_ACCENT_GREEN,
+                            fontFamily: 'monospace',
+                            fontSize: 'clamp(72px, 18vw, 132px)',
+                            fontWeight: 700,
+                            lineHeight: 0.9,
+                            letterSpacing: '-0.08em',
+                            textShadow: UI_ACCENT_TEXT_SHADOW,
+                        }}
+                    >
+                        404
+                    </Text>
 
-        {/* Status Grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-            gap: '8px',
-            marginBottom: '30px',
-            maxWidth: '400px',
-            width: '100%'
-          }}
-        >
-          <div style={{
-            backgroundColor: UI_INPUT_SURFACE,
-            border: `1px solid ${UI_BORDER_SOFT}`,
-            padding: '12px',
-            textAlign: 'center'
-          }}>
-            <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>STATUS</Text>
-            <Text style={{ color: UI_ERROR, fontFamily: 'monospace', fontSize: '14px' }}>LOST</Text>
-          </div>
-          <div style={{
-            backgroundColor: UI_INPUT_SURFACE,
-            border: `1px solid ${UI_BORDER_SOFT}`,
-            padding: '12px',
-            textAlign: 'center'
-          }}>
-            <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>CODE</Text>
-            <Text style={{ color: UI_ERROR, fontFamily: 'monospace', fontSize: '14px' }}>404</Text>
-          </div>
-          <div style={{
-            backgroundColor: UI_INPUT_SURFACE,
-            border: `1px solid ${UI_BORDER_SOFT}`,
-            padding: '12px',
-            textAlign: 'center'
-          }}>
-            <Text style={{ color: UI_TEXT_SECONDARY_MUTED, fontSize: '10px', display: 'block' }}>HOPE</Text>
-            <Text style={{ color: UI_ACCENT_GREEN, fontFamily: 'monospace', fontSize: '14px' }}>HIGH</Text>
-          </div>
-        </div>
+                    <Title
+                        level={2}
+                        style={{
+                            margin: '28px 0 8px',
+                            color: UI_TEXT_PRIMARY_ON_DARK,
+                            fontFamily: 'monospace',
+                            fontSize: 'clamp(20px, 4vw, 28px)',
+                        }}
+                    >
+                        Route not found
+                    </Title>
+                    <Text style={{ color: UI_TEXT_SUBTLE, fontSize: 14 }}>
+                        Lucy could not locate the requested control panel route.
+                    </Text>
 
-        {/* Action Buttons */}
-        <Space size="large">
-          <Button
-            type="primary"
-            icon={<HomeOutlined />}
-            onClick={handleGoHome}
-            size="large"
-            style={{
-              backgroundColor: UI_ACCENT_GREEN,
-              borderColor: UI_ACCENT_GREEN,
-              color: UI_TEXT_ON_ACCENT,
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
-              padding: '8px 24px',
-              height: 'auto'
-            }}
-          >
-            RETURN HOME
-          </Button>
-
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={handleReload}
-            size="large"
-            style={{
-              backgroundColor: UI_COLOR_TRANSPARENT,
-              borderColor: UI_BORDER_SOFT,
-              color: UI_TEXT_PRIMARY_ON_DARK,
-              fontFamily: 'monospace',
-              padding: '8px 24px',
-              height: 'auto'
-            }}
-          >
-            RETRY
-          </Button>
-        </Space>
-
-        {/* Footer message */}
-        <div style={{ marginTop: '30px', maxWidth: '500px' }}>
-          <Text
-            style={{
-              color: UI_TEXT_SECONDARY_MUTED,
-              fontFamily: 'monospace',
-              fontSize: '11px',
-              lineHeight: '1.5',
-              display: 'block'
-            }}
-          >
-            Don't worry, even the most advanced robots get lost sometimes.
-            <br />
-            Lucy is probably just recalibrating its navigation systems.
-            <br />
-            <span style={{ color: UI_ACCENT_GREEN }}>
-              ► Press RETURN HOME to get back on track ◄
-            </span>
-          </Text>
-        </div>
-
-      </div>
-  );
+                    <Space wrap size="middle" style={{ marginTop: 30 }}>
+                        <Button
+                            type="primary"
+                            icon={<HomeOutlined />}
+                            onClick={() => navigate('/')}
+                            style={{
+                                background: UI_ACCENT_GREEN,
+                                borderColor: UI_ACCENT_GREEN,
+                                color: UI_TEXT_ON_ACCENT,
+                            }}
+                        >
+                            Return home
+                        </Button>
+                        <Button
+                            icon={<ArrowLeftOutlined />}
+                            onClick={() => navigate(-1)}
+                            style={{
+                                background: UI_COLOR_TRANSPARENT,
+                                borderColor: UI_BORDER_SOFT,
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                            }}
+                        >
+                            Go back
+                        </Button>
+                        <Button
+                            icon={<ReloadOutlined />}
+                            onClick={() => window.location.reload()}
+                            style={{
+                                background: UI_COLOR_TRANSPARENT,
+                                borderColor: UI_BORDER_SOFT,
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                            }}
+                        >
+                            Retry
+                        </Button>
+                    </Space>
+                </div>
+            </Card>
+        </main>
+    );
 };

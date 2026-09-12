@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /** Run async thunks with a fixed worker pool, resolving once all have settled. */
 export async function runWithConcurrency(
     tasks: Array<() => Promise<void>>,

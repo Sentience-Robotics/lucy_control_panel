@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Button,
@@ -58,6 +63,9 @@ interface ManagePosesModalProps {
     onPlayAnimation: (animation: SavedAnimation) => void;
     isAnimating: boolean;
     onStopAnimation: () => void;
+    isVisible?: boolean;
+    onVisibleChange?: (visible: boolean) => void;
+    showTrigger?: boolean;
 }
 
 const formatDate = (value: number | string) => new Date(value).toLocaleString();
@@ -68,8 +76,16 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
     onPlayAnimation,
     isAnimating,
     onStopAnimation,
+    isVisible: controlledVisible,
+    onVisibleChange,
+    showTrigger = true,
 }) => {
-    const [visible, setVisible] = useState(false);
+    const [internalVisible, setInternalVisible] = useState(false);
+    const visible = controlledVisible ?? internalVisible;
+    const setVisible = (nextVisible: boolean) => {
+        setInternalVisible(nextVisible);
+        onVisibleChange?.(nextVisible);
+    };
     const [poseName, setPoseName] = useState('');
     const [poses, setPoses] = useState<SavedPose[]>([]);
     const [poseSearch, setPoseSearch] = useState('');
@@ -301,23 +317,25 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
 
     return (
         <>
-            <Button
-                icon={<SettingOutlined />}
-                onClick={() => setVisible(true)}
-                style={{
-                    backgroundColor: UI_COLOR_TRANSPARENT,
-                    borderColor: UI_BORDER_SOFT,
-                    color: UI_TEXT_PRIMARY_ON_DARK,
-                }}
-            >
-                MANAGE POSES {poses.length > 0 && <span style={{ color: UI_ACCENT_GREEN }}>({poses.length})</span>}
-            </Button>
+            {showTrigger && (
+                <Button
+                    icon={<SettingOutlined />}
+                    onClick={() => setVisible(true)}
+                    style={{
+                        backgroundColor: UI_COLOR_TRANSPARENT,
+                        borderColor: UI_BORDER_SOFT,
+                        color: UI_TEXT_PRIMARY_ON_DARK,
+                    }}
+                >
+                    MANAGE POSES {poses.length > 0 && <span style={{ color: UI_ACCENT_GREEN }}>({poses.length})</span>}
+                </Button>
+            )}
             <MovableModal
                 modalName="MANAGE POSES"
                 isVisible={visible}
                 onClose={() => setVisible(false)}
                 initialPosition={{ x: 120, y: 100 }}
-                initialSize={{ w: 720, h: 700 }}
+                initialSize={{ w: 720, h: 500 }}
                 header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}
                 footer={<Button onClick={() => setVisible(false)}>CLOSE</Button>}
             >

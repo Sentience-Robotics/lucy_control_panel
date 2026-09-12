@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { degreeToRadian, radianToDegree } from './math.utils.ts';
 
 /** Per-actuator calibration between actuator degrees and URDF joint commands. */

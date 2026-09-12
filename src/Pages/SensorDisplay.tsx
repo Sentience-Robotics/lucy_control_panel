@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useMemo, useState } from 'react';
 import { Alert, Col, Row, Select } from 'antd';
 import { FloatGraph } from '../Components/Sensors';
@@ -22,7 +27,16 @@ const SensorDisplay: React.FC = () => {
     );
 
     return (
-        <>
+        <div
+            style={{
+                width: '100%',
+                height: '100%',
+                minWidth: 0,
+                minHeight: 0,
+                overflow: 'auto',
+                boxSizing: 'border-box',
+            }}
+        >
             {!isConnected ? (
                 <Alert
                     type="warning"
@@ -64,19 +78,25 @@ const SensorDisplay: React.FC = () => {
                 style={{
                     marginBottom: '20px',
                     display: 'flex',
-                    alignItems: 'center',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
                     gap: '12px',
                 }}
             >
                 <span
                     className="tui-text-muted"
-                    style={{ fontSize: '12px', flexShrink: 0, whiteSpace: 'nowrap' }}
+                    style={{
+                        fontSize: '12px',
+                        flexShrink: 0,
+                        whiteSpace: 'normal',
+                        overflowWrap: 'anywhere',
+                    }}
                 >
                     SELECT PRESSURE SENSORS TO MONITOR:
                 </span>
                 <Select
                     mode="multiple"
-                    style={{ flex: 1, minWidth: 0 }}
+                    style={{ width: '100%', minWidth: 0 }}
                     placeholder="Select pressure sensors..."
                     value={selectedSensorIds}
                     onChange={setSelectedSensorIds}
@@ -101,7 +121,7 @@ const SensorDisplay: React.FC = () => {
                     </Col>
                 ))}
             </Row>
-        </>
+        </div>
     );
 };
 

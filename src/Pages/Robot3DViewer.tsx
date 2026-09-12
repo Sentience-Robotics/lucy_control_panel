@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
@@ -19,10 +24,7 @@ import {
 
 const { Text } = Typography;
 
-/** Width of the bottom-left settings box. Switches sit flush right, the
- *  opacity slider stretches to fill — both react to this single value. */
 const SETTINGS_BOX_WIDTH = 150;
-
 const MOUSE_HINTS = ['L-drag · rotate', 'scroll · zoom', 'R-drag · pan'];
 
 type Vec3 = [number, number, number];
@@ -68,14 +70,12 @@ const SwitchRow: React.FC<{
     </div>
 );
 
-/** Green load bar overlaid at the top of the view: indeterminate slide until
- *  mesh progress is known, then fills left-to-right. */
 const LoadingBar: React.FC<{ progress: number }> = ({ progress }) => {
     const indeterminate = progress <= 0;
     return (
         <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 3,
-            background: UI_BORDER_MUTED, overflow: 'hidden', zIndex: 10,
+            background: UI_BORDER_MUTED, overflow: 'hidden', zIndex: 3,
         }}>
             <div
                 style={{
@@ -130,14 +130,12 @@ const Robot3DViewer: React.FC = () => {
         );
     }
 
-    const isGreenMode = !useOriginalTexture;
-
     return (
-        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative', border: `1px solid ${UI_BORDER_MUTED}` }}>
             {loading && <LoadingBar progress={progress} />}
             <Canvas
                 camera={{ position: initialCamera.position, fov: 50, near: 0.1, far: 500 }}
-                style={{ width: '100%', height: '100%', background: UI_BG_BLACK }}
+                style={{ width: '100%', height: '100%', background: UI_BG_BLACK, flex: 1 }}
             >
                 <ambientLight intensity={0.6} />
                 <directionalLight position={[10, 10, 5]} intensity={1} castShadow shadow-mapSize={[2048, 2048]} />
@@ -191,17 +189,19 @@ const Robot3DViewer: React.FC = () => {
             {/* Settings — bottom-left */}
             <div style={{ ...OVERLAY_BOX, bottom: 45, width: SETTINGS_BOX_WIDTH, gap: 6 }}>
                 {/* Opacity & wireframe only affect the green override */}
-                {isGreenMode && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                        <span style={{ color: UI_ACCENT_GREEN }}>OPACITY {Math.round(opacity * 100)}%</span>
-                        <input
-                            type="range" min="0.1" max="1" step="0.1" value={opacity}
-                            onChange={e => setOpacity(parseFloat(e.target.value))}
-                            style={{ width: '100%', cursor: 'pointer' }}
-                        />
-                    </div>
+                {!useOriginalTexture && (
+                    <>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span style={{ color: UI_ACCENT_GREEN }}>OPACITY {Math.round(opacity * 100)}%</span>
+                            <input
+                                type="range" min="0.1" max="1" step="0.1" value={opacity}
+                                onChange={e => setOpacity(parseFloat(e.target.value))}
+                                style={{ width: '100%', cursor: 'pointer' }}
+                            />
+                        </div>
+                        <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />
+                    </>
                 )}
-                {isGreenMode && <SwitchRow label="WIRE" value={wireframe} onChange={setWireframe} />}
                 <SwitchRow label="TEXTURE" value={useOriginalTexture} onChange={setUseOriginalTexture} />
                 <SwitchRow label="GRID" value={showGrid} onChange={setShowGrid} />
             </div>

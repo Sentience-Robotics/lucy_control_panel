@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { UI_BORDER_MUTED, UI_ERROR, uiErrorRgba } from '../../../Constants/uiTheme.ts';
 import type { OutlineBorderSet } from '../../../Utils/hardwareConfigServerErrors.ts';
 

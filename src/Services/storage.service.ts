@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import type { JointControlState, JointConfiguration } from '../Constants/robotTypes';
 
 export class PoseInUseError extends Error {
@@ -37,6 +42,12 @@ export interface StorageService {
   loadAnimations(): Promise<SavedAnimation[]>;
   deleteAnimation(id: string): Promise<void>;
   loadAnimation(id: string): Promise<SavedAnimation | null>;
+
+  saveCurrentDock(dock: string): Promise<void>;
+  loadCurrentDock(): Promise<string | null>;
+
+  saveData(data: string, key: string, location?: 'local' | 'session'): Promise<void>;
+  loadData(key: string, location?: 'local' | 'session'): Promise<string | null>;
 }
 
 // localStorage-based implementation
@@ -44,6 +55,7 @@ class LocalStorageService implements StorageService {
   private readonly POSES_KEY = 'lucy_poses';
   private readonly ANIMATIONS_KEY = 'lucy_animations';
   private readonly CONFIGS_KEY = 'lucy_joint_configs';
+  private readonly DOCK_KEY = 'lucy_current_dock';
 
   private generateId(): string {
     return Date.now().toString(36) + Math.random().toString(36).slice(2);
@@ -275,6 +287,50 @@ class LocalStorageService implements StorageService {
     async loadAnimation(id: string): Promise<SavedAnimation | null> {
         const animations = this.loadAnimationsFromStorage();
         return animations.find(animation => animation.id === id) || null;
+    }
+
+    async saveCurrentDock(dock: string): Promise<void> {
+      try {
+        localStorage.setItem(this.DOCK_KEY, dock);
+      } catch (error) {
+        console.error('Failed to save current dock to localStorage:', error);
+        throw error;
+      }
+    }
+
+    async loadCurrentDock(): Promise<string | null> {
+      try {
+        return localStorage.getItem(this.DOCK_KEY);
+      } catch (error) {
+        console.warn('Failed to load current dock from localStorage:', error);
+        return null;
+      }
+    }
+
+    async saveData(data: string, key: string, location: 'local' | 'session' = 'local'): Promise<void> {
+      try {
+        if (location === 'local') {
+          localStorage.setItem(key, data);
+        } else {
+          sessionStorage.setItem(key, data);
+        }
+      } catch (error) {
+        console.error(`Failed to save session data to ${location}Storage:`, error);
+        throw error;
+      }
+    }
+
+    async loadData(key: string, location: 'local' | 'session' = 'local'): Promise<string | null> {
+      try {
+        if (location === 'local') {
+          return localStorage.getItem(key);
+        } else {
+          return sessionStorage.getItem(key);
+        }
+      } catch (error) {
+        console.warn(`Failed to load session data from ${location}Storage:`, error);
+        return null;
+      }
     }
 }
 
