@@ -81,6 +81,7 @@ import {
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
 import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCategories.tsx';
 import Robot3DViewer from './Robot3DViewer.tsx';
+import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
 import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
@@ -206,12 +207,21 @@ export const RobotControlPanel: React.FC = () => {
 
     const isVisualizerDocked = currentDock === '3D_VIEW';
     const isStreamDocked = currentDock === 'STREAM';
+    const isTeleoperationDocked = currentDock === 'TELEOPERATION';
 
     useEffect(() => {
         if (!isDockLoaded) { return; }
         if (isVisualizerDocked) { setIsVisualizerVisible(false); }
         if (isStreamDocked) { setIsStreamVisible(false); }
-    }, [isDockLoaded, isVisualizerDocked, isStreamDocked, setIsVisualizerVisible, setIsStreamVisible]);
+        if (isTeleoperationDocked) { setIsWebcamActive(false); }
+    }, [
+        isDockLoaded,
+        isVisualizerDocked,
+        isStreamDocked,
+        isTeleoperationDocked,
+        setIsVisualizerVisible,
+        setIsStreamVisible,
+    ]);
     useCloseOnRosDisconnect(showControlTakenModal, () => {
         retakeCountRef.current = 0;
         setShowControlTakenModal(false);
@@ -654,8 +664,12 @@ export const RobotControlPanel: React.FC = () => {
             childrens={{
                 '3D_VIEW': <Robot3DViewer />,
                 'STREAM': <StreamPlayer />,
-                'TELEOPERATION': null,
-                'SENSOR_DISPLAY': null,
+                'TELEOPERATION': (
+                    <Suspense fallback={<Spin size="large" />}>
+                        <MediapipeHandTracker moveRobotIndex={handleTeleopJoint} />
+                    </Suspense>
+                ),
+                'SENSOR_DISPLAY': <SensorDisplay />,
                 'NONE': null,
             }}
             current={currentDock}
