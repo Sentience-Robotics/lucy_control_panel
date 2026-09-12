@@ -13,7 +13,7 @@ import React, {
     lazy,
     Suspense,
 } from 'react';
-import { Typography, Space, Button, Row, Col, Alert, Spin, Tooltip, message, Dropdown, Grid } from 'antd';
+import { Typography, Space, Button, Alert, Spin, Tooltip, message, Dropdown, Select, Grid } from 'antd';
 import type { MenuProps } from 'antd';
 import {
     ReloadOutlined,
@@ -37,7 +37,7 @@ import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 
-import { useDock } from '../contexts/DockContext.tsx';
+import { availableDock, useDock } from '../contexts/DockContext.tsx';
 
 import type { JointControlState } from '../Constants/robotTypes';
 import {
@@ -60,7 +60,6 @@ import { MovableModal } from '../Components/MovableModal';
 import { isShowDegreesEnabled } from '../Components/SettingsModal';
 import type { ControllerJointConfig } from '../Constants/rosConfig';
 import {
-    UI_ACCENT_BOX_SHADOW_STRONG,
     UI_ACCENT_GREEN,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
@@ -159,7 +158,7 @@ const ControlTakenModal: React.FC<ControlTakenModalProps> = ({
 
 export const RobotControlPanel: React.FC = () => {
     const { isConnected, isConnecting } = useRosConnection();
-    const { currentDock, isDockLoaded } = useDock();
+    const { currentDock, setCurrentDock, isDockLoaded } = useDock();
 
     const {
         controllerConfigsFromActive,
@@ -644,6 +643,10 @@ export const RobotControlPanel: React.FC = () => {
         );
     }
 
+    const showVisualizerWindow = isVisualizerVisible && !isVisualizerDocked;
+    const showStreamWindow = isStreamVisible && !isStreamDocked;
+    const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
+
     const items: MenuProps['items'] = [
         {
             key: 'reset',
@@ -682,6 +685,27 @@ export const RobotControlPanel: React.FC = () => {
             onClick: handleStopAnimation,
         }] : []),
         {
+            type: 'divider' as const,
+        },
+        {
+            key: '3d-view',
+            label: showVisualizerWindow ? 'HIDE 3D VIEW' : 'SHOW 3D VIEW',
+            icon: <CodeSandboxOutlined />,
+            onClick: () => setIsVisualizerVisible(v => !v),
+            disabled: isVisualizerDocked,
+            title: isVisualizerDocked ? '3D view is currently displayed in the dock' : undefined,
+        },
+        {
+            key: 'stream',
+            label: showStreamWindow ? 'HIDE STREAM' : 'SHOW STREAM',
+            icon: <VideoCameraOutlined />,
+            onClick: () => setIsStreamVisible(v => !v),
+            disabled: isStreamDisabled,
+            title: isStreamDocked
+                ? 'Stream is currently displayed in the dock'
+                : 'No camera is publishing',
+        },
+        {
             key: 'webcam',
             label: isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER',
             icon: <EyeOutlined />,
@@ -695,56 +719,6 @@ export const RobotControlPanel: React.FC = () => {
         border: `1px solid ${UI_BORDER_MUTED}`,
         borderRadius: 4,
     };
-
-    const toggleButtonStyle = (isActive: boolean): React.CSSProperties => ({
-        backgroundColor: isActive ? UI_ACCENT_GREEN : UI_COLOR_TRANSPARENT,
-        color: isActive ? UI_TEXT_ON_ACCENT : UI_TEXT_PRIMARY_ON_DARK,
-        borderColor: isActive ? UI_ACCENT_GREEN : UI_BORDER_SOFT,
-        boxShadow: isActive ? UI_ACCENT_BOX_SHADOW_STRONG : 'none',
-    });
-
-    const dockedTooltip = 'Already displayed in the dock — change the dock in Settings';
-
-    const showVisualizerWindow = isVisualizerVisible && !isVisualizerDocked;
-    const showStreamWindow = isStreamVisible && !isStreamDocked;
-
-    const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
-
-    const visualizerButton = (label: string, icon?: React.ReactNode) => (
-        <Tooltip title={isVisualizerDocked ? dockedTooltip : ''}>
-            <span style={{ display: 'inline-flex' }}>
-                <Button
-                    icon={icon}
-                    disabled={isVisualizerDocked}
-                    onClick={() => setIsVisualizerVisible(v => !v)}
-                    style={isVisualizerDocked ? undefined : toggleButtonStyle(showVisualizerWindow)}
-                >
-                    {showVisualizerWindow ? `HIDE ${label}` : `SHOW ${label}`}
-                </Button>
-            </span>
-        </Tooltip>
-    );
-
-    const streamButton = (label: string, icon?: React.ReactNode) => (
-        <Tooltip
-            title={isStreamDocked
-                ? dockedTooltip
-                : isStreamDisabled
-                    ? 'No camera is publishing — start the simulation or connect a camera'
-                    : ''}
-        >
-            <span style={{ display: 'inline-flex' }}>
-                <Button
-                    icon={icon}
-                    disabled={isStreamDisabled}
-                    onClick={() => setIsStreamVisible(v => !v)}
-                    style={isStreamDisabled ? undefined : toggleButtonStyle(showStreamWindow)}
-                >
-                    {showStreamWindow ? `HIDE ${label}` : `SHOW ${label}`}
-                </Button>
-            </span>
-        </Tooltip>
-    );
 
     const switches = () => (
         <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
@@ -807,97 +781,60 @@ export const RobotControlPanel: React.FC = () => {
                             flexShrink: 0,
                         }}
                     >
-                        {isMobile ? (
-                            <Row gutter={[12, 12]} align="middle">
-                                <Col xs={24}>
-                                    <Space wrap>
-                                        <Dropdown menu={{ items }} trigger={['click']} dropdownRender={menu => (
-                                            <div style={dropdownOverlayStyle}>{menu}</div>
-                                        )}>
-                                            <Button
-                                                icon={<MenuOutlined />}
-                                                style={{
-                                                    backgroundColor: UI_COLOR_TRANSPARENT,
-                                                    borderColor: UI_BORDER_SOFT,
-                                                    color: UI_TEXT_PRIMARY_ON_DARK,
-                                                }}
-                                            >
-                                                Control Options
-                                            </Button>
-                                        </Dropdown>
-                                        {visualizerButton('3D VIEW', <CodeSandboxOutlined />)}
-                                        {streamButton('STREAM', <VideoCameraOutlined />)}
-                                    </Space>
-                                </Col>
-                                <Col xs={24} style={{ display: 'flex', justifyContent: 'center' }}>
-                                    {switches()}
-                                </Col>
-                            </Row>
-                        ) : (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: 12,
-                                }}
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                            }}
+                        >
+                            <Dropdown
+                                menu={{ items }}
+                                trigger={['click']}
+                                dropdownRender={menu => (
+                                    <div style={dropdownOverlayStyle}>{menu}</div>
+                                )}
                             >
-                                <Space wrap>
-                                    <Button
-                                        icon={<ReloadOutlined />}
-                                        onClick={handleResetAll}
-                                        style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
-                                        }}
-                                        disabled={!isSending}
-                                    >
-                                        RESET ALL
-                                    </Button>
+                                <Button
+                                    icon={<MenuOutlined />}
+                                    style={{
+                                        backgroundColor: UI_COLOR_TRANSPARENT,
+                                        borderColor: UI_BORDER_SOFT,
+                                        color: UI_TEXT_PRIMARY_ON_DARK,
+                                    }}
+                                >
+                                    Actions
+                                </Button>
+                            </Dropdown>
 
-                                    <Button
-                                        icon={<ExperimentOutlined />}
-                                        onClick={handleRandomPose}
-                                        style={{
-                                            backgroundColor: UI_COLOR_TRANSPARENT,
-                                            borderColor: UI_BORDER_SOFT,
-                                            color: UI_TEXT_PRIMARY_ON_DARK,
-                                        }}
-                                        disabled={!isSending}
-                                    >
-                                        RANDOM POSE
-                                    </Button>
-
-                                    <ManagePosesModal
-                                        joints={joints}
-                                        onLoadPose={handleLoadPose}
-                                        onPlayAnimation={handlePlayAnimation}
-                                        isAnimating={isAnimating}
-                                        onStopAnimation={handleStopAnimation}
-                                    />
-                                    {isAnimating && (
-                                        <Button
-                                            danger
-                                            icon={<StopOutlined />}
-                                            onClick={handleStopAnimation}
-                                        >
-                                            STOP ANIMATION
-                                        </Button>
-                                    )}
-                                    {visualizerButton('3D VIEW')}
-                                    {streamButton('STREAM')}
-                                    <Button
-                                        onClick={() => setIsWebcamActive(v => !v)}
-                                        style={toggleButtonStyle(isWebcamActive)}
-                                    >
-                                        {isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER'}
-                                    </Button>
-                                </Space>
+                            <Space wrap>
+                                Dock: 
+                                <Select
+                                    value={currentDock}
+                                    onChange={setCurrentDock}
+                                    options={availableDock.map((dock) => ({
+                                        label: dock === 'NONE'
+                                            ? 'No dock'
+                                            : dock.replace('_', ' '),
+                                        value: dock,
+                                    }))}
+                                    aria-label="Select dock"
+                                    style={{ minWidth: isMobile ? 150 : 180 }}
+                                    popupMatchSelectWidth={false}
+                                    getPopupContainer={() => document.body}
+                                    styles={{
+                                        popup: {
+                                            root: {
+                                                zIndex: 1100,
+                                            },
+                                        },
+                                    }}
+                                />
                                 {switches()}
-                            </div>
-                        )}
+                            </Space>
+                        </div>
                     </div>
 
                     {isMobile && isWebcamActive && (

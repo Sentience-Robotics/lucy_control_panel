@@ -11,7 +11,6 @@ import {
     Form,
     Typography,
     Space,
-    Select,
 } from 'antd';
 import {
     InfoCircleOutlined,
@@ -20,7 +19,6 @@ import {
 import { useRosConnection } from '../hooks/useRosConnection.hook';
 import { getOriginRosUrl } from '../Services/ros/ros.service';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
-import { useDock, availableDock } from '../contexts/DockContext';
 import {
     UI_ACCENT_BLUE,
     UI_ACCENT_GREEN,
@@ -74,11 +72,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         controllerConfigsFromActive,
     } = useActiveHardwareRos();
 
-    const {
-        currentDock,
-        setCurrentDock
-    } = useDock();
-
     const [rosUrl, setRosUrl] = useState(currentUrl);
     const [autoConnect, setAutoConnect] = useState(
         isAutoConnectEnabled
@@ -125,11 +118,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               0
           )
         : 0;
-
-    const dockOptions = availableDock.map((dock) => ({
-        label: dock,
-        value: dock,
-    }));
 
     return (
         <MovableModal
@@ -290,49 +278,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             }
                         }}
                         style={{ width: '100%' }}
-                    />
-                </Form.Item>
-
-                <Form.Item
-                    label={
-                        <Text
-                            style={{
-                                color: UI_TEXT_PRIMARY_ON_DARK,
-                                fontWeight: 'bold',
-                            }}
-                        >
-                            Choose your dock
-                        </Text>
-                    }
-                    tooltip={{
-                        title: 'Choose which viewer you want to display in the dock.',
-                        icon: (
-                            <InfoCircleOutlined
-                                style={{
-                                    color: UI_ACCENT_BLUE,
-                                }}
-                            />
-                        ),
-                        zIndex: 1100,
-                    }}
-                >
-                    <Select
-                        value={currentDock}
-                        onChange={(value) => {
-                            setCurrentDock(value);
-                            onClose();
-                        }}
-                        options={dockOptions}
-                        style={{ width: '100%' }}
-                        placeholder="Select a dock"
-                        getPopupContainer={() => document.body}
-                        styles={{
-                            popup: {
-                                root: {
-                                    zIndex: 1100,
-                                },
-                            },
-                        }}
                     />
                 </Form.Item>
 
