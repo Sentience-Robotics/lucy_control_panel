@@ -19,6 +19,7 @@ import {
     EyeOutlined,
     CodeSandboxOutlined,
     ExperimentOutlined,
+    SettingOutlined,
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
@@ -192,6 +193,7 @@ export const RobotControlPanel: React.FC = () => {
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
+    const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
 
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
@@ -642,6 +644,34 @@ export const RobotControlPanel: React.FC = () => {
     const showStreamWindow = isStreamVisible && !isStreamDocked;
     const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
 
+    const dockContent = (
+        <Dock
+            childrens={{
+                '3D_VIEW': <Robot3DViewer />,
+                'STREAM': <StreamPlayer />,
+                'TELEOPERATION': null,
+                'SENSOR_DISPLAY': null,
+                'NONE': null,
+            }}
+            current={currentDock}
+        />
+    );
+
+    const switches = () => (
+        <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
+            <span style={{ display: 'inline-flex', cursor: 'help' }}>
+                <ToggleSwitch
+                    isOn={isSending}
+                    onToggle={handleControlRobotToggle}
+                    title="Control Robot"
+                    titlePlacement="inline"
+                    rightIcon={<ThunderboltOutlined />}
+                    width={180}
+                />
+            </span>
+        </Tooltip>
+    );
+
     const items: MenuProps['items'] = [
         {
             key: 'reset',
@@ -661,15 +691,9 @@ export const RobotControlPanel: React.FC = () => {
         },
         {
             key: 'poses',
-            label: (
-                <ManagePosesModal
-                    joints={joints}
-                    onLoadPose={handleLoadPose}
-                    onPlayAnimation={handlePlayAnimation}
-                    isAnimating={isAnimating}
-                    onStopAnimation={handleStopAnimation}
-                />
-            ),
+            label: 'MANAGE POSES',
+            icon: <SettingOutlined />,
+            onClick: () => setIsManagePosesVisible(true),
             style: { color: UI_TEXT_PRIMARY_ON_DARK }
         },
         ...(isAnimating ? [{
@@ -706,7 +730,22 @@ export const RobotControlPanel: React.FC = () => {
             icon: <EyeOutlined />,
             onClick: () => setIsWebcamActive(v => !v),
             style: { color: isWebcamActive ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
-        }
+        },
+        ...(isMobile ? [
+            {
+                key: 'dock',
+                label: `DOCK: ${currentDock === 'NONE' ? 'NONE' : currentDock.replace('_', ' ')}`,
+                children: availableDock.map(dock => ({
+                    key: `dock-${dock}`,
+                    label: dock === 'NONE' ? 'NO DOCK' : dock.replace('_', ' '),
+                    onClick: () => setCurrentDock(dock),
+                })),
+            },
+            {
+                key: 'control-robot',
+                label: switches(),
+            },
+        ] : []),
     ];
 
     const dropdownOverlayStyle = {
@@ -714,21 +753,6 @@ export const RobotControlPanel: React.FC = () => {
         border: `1px solid ${UI_BORDER_MUTED}`,
         borderRadius: 4,
     };
-
-    const switches = () => (
-        <Tooltip title="If another connected client turns Control Robot ON, yours will be automatically turned OFF">
-            <span style={{ display: 'inline-flex', cursor: 'help' }}>
-                <ToggleSwitch
-                    isOn={isSending}
-                    onToggle={handleControlRobotToggle}
-                    title="Control Robot"
-                    titlePlacement="inline"
-                    rightIcon={<ThunderboltOutlined />}
-                    width={180}
-                />
-            </span>
-        </Tooltip>
-    );
 
     return (
         <>
@@ -740,6 +764,17 @@ export const RobotControlPanel: React.FC = () => {
             <StreamPlayerModal
                 isVisible={showStreamWindow}
                 onClose={() => setIsStreamVisible(false)}
+            />
+
+            <ManagePosesModal
+                joints={joints}
+                onLoadPose={handleLoadPose}
+                onPlayAnimation={handlePlayAnimation}
+                isAnimating={isAnimating}
+                onStopAnimation={handleStopAnimation}
+                isVisible={isManagePosesVisible}
+                onVisibleChange={setIsManagePosesVisible}
+                showTrigger={false}
             />
 
             {!isConnected ? (
@@ -760,8 +795,12 @@ export const RobotControlPanel: React.FC = () => {
                         isolation: 'isolate',
                         display: 'flex',
                         flexDirection: 'column',
-                        height: `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
-                        minHeight: 0,
+                        height: isMobile
+                            ? 'auto'
+                            : `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
+                        minHeight: isMobile
+                            ? `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`
+                            : 0,
                     }}
                 >
                     <div
@@ -804,7 +843,7 @@ export const RobotControlPanel: React.FC = () => {
                                 </Button>
                             </Dropdown>
 
-                            <Space wrap>
+                            {!isMobile && <Space wrap>
                                 Dock: 
                                 <Select
                                     value={currentDock}
@@ -828,7 +867,7 @@ export const RobotControlPanel: React.FC = () => {
                                     }}
                                 />
                                 {switches()}
-                            </Space>
+                            </Space>}
                         </div>
                     </div>
 
@@ -871,44 +910,63 @@ export const RobotControlPanel: React.FC = () => {
                         </div>
                     )}
 
-                    <div
-                        style={{
-                            width: "100%",
-                            flex: 1,
-                            minHeight: 0,
-                            overflow: "hidden",
-                        }}
-                    >
-                        <ResizablePanels
-                            direction="horizontal"
-                            proportions={currentDock === "NONE" ? [100] : [30, 70]}
-                            minSize={25}
-                            gap={20}
-                        >
-                            <PaginatedJointCategories
-                                categoryOrder={categoryOrder}
-                                categorizedJoints={categorizedJoints}
-                                onJointValueChange={handleJointValueChange}
-                                onResetCategory={handleResetCategory}
-                                onResetJoint={handleResetJoint}
-                                showDegrees={showDegrees}
-                                disabled={!isSending}
-                            />
-
-                            {currentDock !== "NONE" && (
-                                <Dock
-                                    childrens={{
-                                        '3D_VIEW': <Robot3DViewer />,
-                                        'STREAM': <StreamPlayer />,
-                                        'TELEOPERATION': null,
-                                        'SENSOR_DISPLAY': null,
-                                        'NONE': null,
+                    {isMobile ? (
+                        <>
+                            {currentDock !== 'NONE' && (
+                                <div
+                                    style={{
+                                        width: '100%',
+                                        height: '40vh',
+                                        minHeight: 240,
+                                        marginBottom: 12,
+                                        flexShrink: 0,
+                                        overflow: 'hidden',
                                     }}
-                                    current={currentDock}
-                                />
+                                >
+                                    {dockContent}
+                                </div>
                             )}
-                        </ResizablePanels>
-                    </div>    
+                            <div style={{ width: '100%', minHeight: 0 }}>
+                                <PaginatedJointCategories
+                                    categoryOrder={categoryOrder}
+                                    categorizedJoints={categorizedJoints}
+                                    onJointValueChange={handleJointValueChange}
+                                    onResetCategory={handleResetCategory}
+                                    onResetJoint={handleResetJoint}
+                                    showDegrees={showDegrees}
+                                    disabled={!isSending}
+                                />
+                            </div>
+                        </>
+                    ) : (
+                        <div
+                            style={{
+                                width: '100%',
+                                flex: 1,
+                                minHeight: 0,
+                                overflow: 'hidden',
+                            }}
+                        >
+                            <ResizablePanels
+                                direction="horizontal"
+                                proportions={currentDock === "NONE" ? [100] : [30, 70]}
+                                minSize={25}
+                                gap={20}
+                            >
+                                <PaginatedJointCategories
+                                    categoryOrder={categoryOrder}
+                                    categorizedJoints={categorizedJoints}
+                                    onJointValueChange={handleJointValueChange}
+                                    onResetCategory={handleResetCategory}
+                                    onResetJoint={handleResetJoint}
+                                    showDegrees={showDegrees}
+                                    disabled={!isSending}
+                                />
+
+                                {currentDock !== "NONE" && dockContent}
+                            </ResizablePanels>
+                        </div>
+                    )}
                 </div>
             )}
 

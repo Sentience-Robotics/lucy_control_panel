@@ -73,6 +73,8 @@ const RoutedPage = () => {
 
     if (!page?.component) {
         removeScrollbars = true;
+    } else if (!screens.md) {
+        removeScrollbars = false;
     }
 
     return (
