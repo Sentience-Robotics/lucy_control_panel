@@ -16,6 +16,7 @@ interface FloatingViewerModalProps {
     isVisible: boolean;
     onClose: () => void;
     initialSize?: { w: number; h: number };
+    initialPosition?: { x: number; y: number };
     contentAspectRatio?: number | null;
     children: ReactNode;
 }
@@ -31,6 +32,7 @@ export function FloatingViewerModal({
     isVisible,
     onClose,
     initialSize = { w: 480, h: 320 },
+    initialPosition = { x: 100, y: 100 },
     contentAspectRatio = null,
     children,
 }: FloatingViewerModalProps) {
@@ -59,6 +61,7 @@ export function FloatingViewerModal({
             contentAspectRatio={contentAspectRatio}
             mobileFixedTop
             mobileTopOffset={headerHeight}
+            initialPosition={initialPosition}
         >
             <div ref={ref} style={{ width: '100%', height: '100%', backgroundColor: 'black' }}>
                 {children}

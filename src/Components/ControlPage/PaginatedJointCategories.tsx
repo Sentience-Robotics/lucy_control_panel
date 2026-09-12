@@ -37,7 +37,7 @@ const PaginatedJointCategories = ({
     const anchor: React.CSSProperties = {
         position: 'fixed',
         bottom: 16,
-        left: 16,
+        left: 22,
         zIndex: 1000,
         backgroundColor: UI_NAV_BAR_BG,
         padding: '8px',

@@ -13,7 +13,6 @@ interface Robot3DViewerModalProps {
     initialSize?: { w: number; h: number };
 }
 
-/** Floating window for the URDF viewer — no source picker, no stream metrics. */
 export function Robot3DViewerModal({
     isVisible,
     onClose,

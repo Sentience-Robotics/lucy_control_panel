@@ -322,7 +322,7 @@ export const ManagePosesModal: React.FC<ManagePosesModalProps> = ({
                 isVisible={visible}
                 onClose={() => setVisible(false)}
                 initialPosition={{ x: 120, y: 100 }}
-                initialSize={{ w: 720, h: 700 }}
+                initialSize={{ w: 720, h: 500 }}
                 header={<SettingOutlined style={{ color: UI_ACCENT_GREEN }} />}
                 footer={<Button onClick={() => setVisible(false)}>CLOSE</Button>}
             >
