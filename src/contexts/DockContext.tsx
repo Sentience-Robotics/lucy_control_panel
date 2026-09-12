@@ -19,6 +19,8 @@ export const availableDock = [
     'NONE',
     '3D_VIEW',
     'STREAM',
+    'TELEOPERATION',
+    'SENSOR_DISPLAY',
 ] as const;
 
 export type Dock = (typeof availableDock)[number];

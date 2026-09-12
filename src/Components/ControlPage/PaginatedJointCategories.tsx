@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pagination } from 'antd';
 import { JointCategory } from './JointCategory';
 import type { JointControlState } from '../../Constants/robotTypes';
 import { UI_BORDER_MUTED, UI_NAV_BAR_BG } from '../../Constants/uiTheme';
+import { usePaginatedCategories } from '../../contexts/PaginatedCategoriesContext';
 
 export type CategorizedJoints = Record<string, JointControlState[]>;
 
@@ -19,7 +20,6 @@ export interface PaginatedJointCategoriesProps {
     onResetJoint?: (name: string) => void;
     showDegrees: boolean;
     disabled: boolean;
-    categoriesPerPage?: number;
 }
 
 const PaginatedJointCategories = ({
@@ -30,9 +30,13 @@ const PaginatedJointCategories = ({
     onResetJoint,
     showDegrees,
     disabled,
-    categoriesPerPage = 1,
 }: PaginatedJointCategoriesProps) => {
     const [categoryPage, setCategoryPage] = useState<number>(1);
+    const { categoriesPerPage } = usePaginatedCategories();
+
+    useEffect(() => {
+        setCategoryPage(1);
+    }, [categoriesPerPage]);
 
     const anchor: React.CSSProperties = {
         position: 'fixed',
@@ -97,14 +101,21 @@ const PaginatedJointCategories = ({
                         hideOnSinglePage
                         itemRender={(page, type, originalElement) => {
                             if (type === 'page') {
+                                const pageCategories = validCategories.slice(
+                                    (page - 1) * categoriesPerPage,
+                                    page * categoriesPerPage,
+                                );
+
                                 return (
                                     <span
                                         style={{
-                                            display: 'inline-block',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
                                             padding: '0 12px',
+                                            whiteSpace: 'nowrap',
                                         }}
                                     >
-                                        {validCategories[page - 1]}
+                                        {pageCategories.join(' / ')}
                                     </span>
                                 );
                             }

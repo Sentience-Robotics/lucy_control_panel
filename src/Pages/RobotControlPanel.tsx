@@ -950,7 +950,7 @@ export const RobotControlPanel: React.FC = () => {
                         <ResizablePanels
                             direction="horizontal"
                             proportions={currentDock === "NONE" ? [100] : [30, 70]}
-                            minSize={20}
+                            minSize={25}
                             gap={20}
                         >
                             <PaginatedJointCategories
@@ -966,9 +966,11 @@ export const RobotControlPanel: React.FC = () => {
                             {currentDock !== "NONE" && (
                                 <Dock
                                     childrens={{
-                                        "3D_VIEW": <Robot3DViewer />,
-                                        "STREAM": <StreamPlayer />,
-                                        "NONE": null,
+                                        '3D_VIEW': <Robot3DViewer />,
+                                        'STREAM': <StreamPlayer />,
+                                        'TELEOPERATION': null,
+                                        'SENSOR_DISPLAY': null,
+                                        'NONE': null,
                                     }}
                                     current={currentDock}
                                 />
