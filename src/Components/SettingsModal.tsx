@@ -229,26 +229,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             isOn={autoConnect}
                             onToggle={setAutoConnect}
                             title="Auto-connect"
-                            width={120}
+                            width={180}
+                            centerTitle={false}
+                        />
+
+                        <ToggleSwitch
+                            isOn={showDegrees}
+                            onToggle={setShowDegrees}
+                            title="Angle units"
+                            textOn="DEGREES"
+                            textOff="RADIANS"
+                            width={180}
+                            isOffRed={false}
+                            centerTitle={false}
                         />
                     </Space>
-                </Form.Item>
-
-                <Form.Item
-                    tooltip={{
-                        title: 'Choose whether joint angles are displayed and entered in degrees or radians.',
-                        icon: <InfoCircleOutlined />,
-                        zIndex: 1100,
-                    }}
-                >
-                    <ToggleSwitch
-                        isOn={showDegrees}
-                        onToggle={setShowDegrees}
-                        title="Angle units"
-                        textOn="DEGREES"
-                        textOff="RADIANS"
-                        width={180}
-                    />
                 </Form.Item>
 
                 <Form.Item

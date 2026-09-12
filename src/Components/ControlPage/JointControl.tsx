@@ -195,12 +195,13 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     onReset?.(joint.name);
   }, [onReset, joint.name]);
 
-  const actuatorNative = Boolean(joint.valueInActuatorDegrees && showDegrees);
+  const actuatorValue = Boolean(joint.valueInActuatorDegrees);
 
   const displayValues = useMemo(() => {
     const getDisplayValue = (value: number): number => {
-      if (actuatorNative) {
-        return Math.round(value * 100) / 100;
+      if (actuatorValue) {
+        const displayValue = showDegrees ? value : degreeToRadian(value);
+        return Math.round(displayValue * (showDegrees ? 100 : 1000)) / (showDegrees ? 100 : 1000);
       }
       return showDegrees
         ? Math.round(radianToDegree(value) * 100) / 100
@@ -208,7 +209,13 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     };
 
     const getDisplayRange = (): [number, number] => {
-      if (actuatorNative) {
+      if (actuatorValue) {
+        if (!showDegrees) {
+          return [
+            Math.round(degreeToRadian(joint.minValue) * 1000) / 1000,
+            Math.round(degreeToRadian(joint.maxValue) * 1000) / 1000,
+          ];
+        }
         return [
           Math.round(joint.minValue * 100) / 100,
           Math.round(joint.maxValue * 100) / 100,
@@ -230,46 +237,53 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     const currentDisplay = getDisplayValue(localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, showDegrees, actuatorNative]);
+  }, [joint.minValue, joint.maxValue, localValue, showDegrees, actuatorValue]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
-    if (actuatorNative) {
-      return displayValue;
+    if (actuatorValue) {
+      return showDegrees ? displayValue : radianToDegree(displayValue);
     }
     return showDegrees ? degreeToRadian(displayValue) : displayValue;
-  }, [showDegrees, actuatorNative]);
+  }, [showDegrees, actuatorValue]);
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
 
   const actualBarPercent = useMemo(() => {
     if (joint.actualValue === undefined) return undefined;
-    const actualDisplay = actuatorNative
-      ? Math.round(joint.actualValue * 100) / 100
+    const actualDisplay = actuatorValue
+      ? showDegrees
+        ? Math.round(joint.actualValue * 100) / 100
+        : Math.round(degreeToRadian(joint.actualValue) * 1000) / 1000
       : showDegrees
         ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
         : Math.round(joint.actualValue * 1000) / 1000;
     const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
     return Math.max(0, Math.min(100, pct));
-  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorNative]);
+  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const restBarPercent = useMemo(() => {
     if (joint.restValue === undefined) return undefined;
-    const restDisplay = actuatorNative
-      ? Math.round(joint.restValue * 100) / 100
+    const restDisplay = actuatorValue
+      ? showDegrees
+        ? Math.round(joint.restValue * 100) / 100
+        : Math.round(degreeToRadian(joint.restValue) * 1000) / 1000
       : showDegrees
         ? Math.round(radianToDegree(joint.restValue) * 100) / 100
         : Math.round(joint.restValue * 1000) / 1000;
     const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
     return Math.max(0, Math.min(100, pct));
-  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorNative]);
+  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const formatMarkerValue = useCallback((value: number): string => {
-    if (actuatorNative || showDegrees) {
-      const degrees = actuatorNative ? value : radianToDegree(value);
-      return `${Math.round(degrees * 10) / 10}°`;
+    if (actuatorValue) {
+      const displayValue = showDegrees ? value : degreeToRadian(value);
+      return `${Math.round(displayValue * (showDegrees ? 10 : 1000)) / (showDegrees ? 10 : 1000)}${showDegrees ? '°' : ' rad'}`;
     }
-    return `${Math.round(value * 1000) / 1000}rad`;
-  }, [actuatorNative, showDegrees]);
+    if (showDegrees) {
+      return `${Math.round(radianToDegree(value) * 10) / 10}°`;
+    }
+    return `${Math.round(value * 1000) / 1000} rad`;
+  }, [actuatorValue, showDegrees]);
 
   const getJointTypeColor = (type: string): string => {
     switch (type) {
@@ -350,7 +364,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             disabled={disabled}
             size="small"
             style={{
-              width: 80,
+              width: 100,
               backgroundColor: UI_INPUT_SURFACE,
               borderColor: UI_BORDER_SOFT
             }}
