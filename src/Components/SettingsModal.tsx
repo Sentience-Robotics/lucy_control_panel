@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
     Input,
+    InputNumber,
     Button,
     Form,
     Typography,
@@ -29,6 +30,7 @@ import {
     REDO_GETTING_STARTED_EVENT,
 } from './GettingStartedModal';
 import { MovableModal } from './MovableModal';
+import { usePaginatedCategories } from '../contexts/PaginatedCategoriesContext';
 
 const { Text } = Typography;
 
@@ -79,6 +81,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     const [showDegrees, setShowDegrees] = useState(
         isShowDegreesEnabled
     );
+    const { categoriesPerPage, setCategoriesPerPage } = usePaginatedCategories();
 
     useEffect(() => {
         setRosUrl(currentUrl);
@@ -99,15 +102,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         );
         window.dispatchEvent(new Event('showDegreesChanged'));
     }, [showDegrees]);
-
-    const handleSave = async () => {
-        try {
-            await connect(rosUrl);
-            onClose();
-        } catch {
-            // Error is already logged in the hook
-        }
-    };
 
     const handleConnectionChange = () => {
         if (isConnected) {
@@ -183,7 +177,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <Button
                         key="submit"
                         type="primary"
-                        onClick={handleSave}
+                        onClick={() => {onClose();}}
                         loading={
                             connectionStatus === 'connecting'
                         }
@@ -193,7 +187,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             color: UI_TEXT_ON_ACCENT,
                         }}
                     >
-                        Save & Connect
+                        Close
                     </Button>
                 </>
             }
@@ -261,6 +255,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         textOn="DEGREES"
                         textOff="RADIANS"
                         width={180}
+                    />
+                </Form.Item>
+
+                <Form.Item
+                    label={
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                fontWeight: 'bold',
+                            }}
+                        >
+                            Categories per page
+                        </Text>
+                    }
+                    tooltip={{
+                        title: 'Choose how many joint categories are displayed on each page of the control panel.',
+                        icon: <InfoCircleOutlined />,
+                        zIndex: 1100,
+                    }}
+                >
+                    <InputNumber
+                        min={1}
+                        precision={0}
+                        value={categoriesPerPage}
+                        onChange={(value) => {
+                            if (value !== null) {
+                                setCategoriesPerPage(value);
+                            }
+                        }}
+                        style={{ width: '100%' }}
                     />
                 </Form.Item>
 

@@ -13,6 +13,7 @@ import { NotFound } from './Pages/NotFound';
 
 /* Contexts */
 import { ActiveHardwareRosProvider } from './contexts/ActiveHardwareRosContext';
+import { PaginatedCategoriesProvider } from './contexts/PaginatedCategoriesContext';
 
 /* Components */
 import { AuthForm } from './Components/AuthForm';
@@ -186,13 +187,15 @@ function App() {
             }}
         >
             <Router>
-                <ActiveHardwareRosProvider>
-                    <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
-                        <RoutedPage />
-                        <Navigation />
-                        <GettingStartedModal />
-                    </Layout>
-                </ActiveHardwareRosProvider>
+                <PaginatedCategoriesProvider>
+                    <ActiveHardwareRosProvider>
+                        <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }}>
+                            <RoutedPage />
+                            <Navigation />
+                            <GettingStartedModal />
+                        </Layout>
+                    </ActiveHardwareRosProvider>
+                </PaginatedCategoriesProvider>
             </Router>
         </ConfigProvider>
     );
