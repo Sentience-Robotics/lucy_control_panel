@@ -33,6 +33,7 @@ import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
+import { useUrdfJointLimits, type UrdfJointLimitRad } from '../hooks/useUrdfJointLimits.ts';
 
 /* Contexts */
 import { useCanva } from '../contexts/CanvaContext.tsx';
@@ -41,6 +42,8 @@ import { useCanva } from '../contexts/CanvaContext.tsx';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     DEFAULT_ACTUATOR_MAPPING,
+    clampActuatorDeg,
+    intersectActuatorSliderBounds,
     jointRadToActuatorDeg,
     type ActuatorMapping,
 } from '../Utils/actuatorJointMapping';
@@ -168,6 +171,8 @@ export const RobotControlPanel: React.FC = () => {
         refetchActiveHardware,
     } = useActiveHardwareRos();
 
+    const urdfJointLimits = useUrdfJointLimits(isConnected);
+
     const actuatorMappingByJointRef = useRef<Map<string, ActuatorMapping>>(new Map());
 
     const [joints, setJoints] = useState<JointControlState[]>([]);
@@ -237,6 +242,7 @@ export const RobotControlPanel: React.FC = () => {
     /** Build initial joint list from controller config (slider values in actuator degrees). */
     const buildJointsFromControllerConfig = useCallback((
         configs: ControllerJointConfig[],
+        urdfLimits: Map<string, UrdfJointLimitRad>,
     ): JointControlState[] => {
         const joints: JointControlState[] = [];
         for (const c of configs) {
@@ -249,6 +255,23 @@ export const RobotControlPanel: React.FC = () => {
                     minValue = lim.minDeg;
                     maxValue = lim.maxDeg;
                     restValue = lim.defaultDeg;
+                }
+                const urdf = urdfLimits.get(name);
+                if (urdf) {
+                    const bounds = intersectActuatorSliderBounds(
+                        minValue,
+                        maxValue,
+                        restValue ?? DEFAULT_JOINT_SLIDER_VALUE_DEG,
+                        urdf.lowerRad,
+                        urdf.upperRad,
+                        lim?.mapping ?? DEFAULT_ACTUATOR_MAPPING,
+                    );
+                    // Disjoint ranges mean a misconfigured joint: keep the servo range rather than an empty slider.
+                    if (bounds.minDeg < bounds.maxDeg) {
+                        minValue = bounds.minDeg;
+                        maxValue = bounds.maxDeg;
+                        if (restValue !== undefined) { restValue = bounds.defaultDeg; }
+                    }
                 }
                 joints.push({
                     name,
@@ -311,12 +334,18 @@ export const RobotControlPanel: React.FC = () => {
         actuatorMappingByJointRef.current = mapByJoint;
         setJoints((prev) => {
             const byName = new Map(prev.map((j) => [j.name, j]));
-            const next = buildJointsFromControllerConfig(ctrls);
+            const next = buildJointsFromControllerConfig(ctrls, urdfJointLimits);
             return next.map((j) => {
                 const existing = byName.get(j.name);
-                return existing
-                    ? { ...j, currentValue: existing.currentValue, targetValue: existing.targetValue }
-                    : j;
+                if (!existing) { return j; }
+                // URDF limits can arrive after the config and narrow the range.
+                const clamp = (v: number) => clampActuatorDeg(v, j.minValue, j.maxValue);
+                return {
+                    ...j,
+                    currentValue: clamp(existing.currentValue),
+                    targetValue: clamp(existing.targetValue),
+                    ...(existing.actualValue !== undefined && { actualValue: existing.actualValue }),
+                };
             });
         });
         setCategoryOrder((prevOrder) => {
@@ -330,6 +359,7 @@ export const RobotControlPanel: React.FC = () => {
         activeHardwareLoading,
         activeHardwareError,
         controllerConfigsFromActive,
+        urdfJointLimits,
         buildJointsFromControllerConfig,
     ]);
 
@@ -542,12 +572,14 @@ export const RobotControlPanel: React.FC = () => {
 
     const handleLoadPose = useCallback(
         (poseJoints: Record<string, number>, categoryOrder?: string[]) => {
+            // Poses saved before a limit change may fall outside the current slider range.
             setJoints((prevJoints) =>
-                prevJoints.map((joint) => ({
-                    ...joint,
-                    currentValue: poseJoints[joint.name] ?? joint.currentValue,
-                    targetValue: poseJoints[joint.name] ?? joint.targetValue,
-                }))
+                prevJoints.map((joint) => {
+                    const saved = poseJoints[joint.name];
+                    if (saved === undefined) { return joint; }
+                    const value = clampActuatorDeg(saved, joint.minValue, joint.maxValue);
+                    return { ...joint, currentValue: value, targetValue: value };
+                })
             );
 
             if (categoryOrder) {
