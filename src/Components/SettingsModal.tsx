@@ -150,19 +150,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </Button>
 
                     <Button
-                        key="back"
-                        onClick={onClose}
-                        style={{
-                            backgroundColor:
-                                UI_COLOR_TRANSPARENT,
-                            borderColor: UI_BORDER_SOFT,
-                            color: UI_TEXT_PRIMARY_ON_DARK,
-                        }}
-                    >
-                        Cancel
-                    </Button>
-
-                    <Button
                         key="submit"
                         type="primary"
                         onClick={() => {onClose();}}

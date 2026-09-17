@@ -29,6 +29,7 @@ import type { SavedAnimation, SavedPose } from '../Services/storage.service';
 
 import { useRosConnection } from "../hooks/useRosConnection.hook";
 import { useLiveCameraSources } from '../hooks/useLiveCameraSources.ts';
+import { useSensorSources } from '../hooks/useSensorSources.ts';
 import { usePersistentBoolean } from '../hooks/usePersistentBoolean.ts';
 import { useCloseOnRosDisconnect } from '../hooks/useCloseOnRosDisconnect.ts';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
@@ -191,6 +192,7 @@ export const RobotControlPanel: React.FC = () => {
     const [isVisualizerVisible, setIsVisualizerVisible] = usePersistentBoolean('lucy_visualizer_visible');
 
     const { hasLiveCamera } = useLiveCameraSources();
+    const sensorSources = useSensorSources();
 
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
@@ -653,6 +655,7 @@ export const RobotControlPanel: React.FC = () => {
     const showVisualizerWindow = isVisualizerVisible && !isVisualizerDocked;
     const showStreamWindow = isStreamVisible && !isStreamDocked;
     const isStreamDisabled = isStreamDocked || (!hasLiveCamera && !isStreamVisible);
+    const hasSensors = sensorSources.length > 0;
 
     const dockContent = (
         <Dock
@@ -847,8 +850,14 @@ export const RobotControlPanel: React.FC = () => {
                                     options={availableDock.map((dock) => ({
                                         label: dock === 'NONE'
                                             ? 'No dock'
-                                            : dock.replace('_', ' '),
+                                            : dock === 'SENSOR_DISPLAY'
+                                                ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
+                                                : dock === 'STREAM'
+                                                    ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
+                                                    : dock.replace('_', ' '),
                                         value: dock,
+                                        disabled: (dock === 'STREAM' && !hasLiveCamera)
+                                            || (dock === 'SENSOR_DISPLAY' && !hasSensors),
                                     }))}
                                     aria-label="Select dock"
                                     style={{ minWidth: isMobile ? 150 : 180 }}
@@ -870,8 +879,16 @@ export const RobotControlPanel: React.FC = () => {
                                         value={currentDock}
                                         onChange={setCurrentDock}
                                         options={availableDock.map((dock) => ({
-                                            label: dock === 'NONE' ? 'No dock' : dock.replace('_', ' '),
+                                            label: dock === 'NONE'
+                                                ? 'No dock'
+                                                : dock === 'SENSOR_DISPLAY'
+                                                    ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
+                                                    : dock === 'STREAM'
+                                                        ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
+                                                        : dock.replace('_', ' '),
                                             value: dock,
+                                            disabled: (dock === 'STREAM' && !hasLiveCamera)
+                                                || (dock === 'SENSOR_DISPLAY' && !hasSensors),
                                         }))}
                                         aria-label="Select dock"
                                         style={{ flex: '1 1 150px', minWidth: 150 }}
