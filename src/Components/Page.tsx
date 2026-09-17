@@ -406,7 +406,7 @@ export const Page: React.FC<PageProps> = ({
               padding: isMobile ? '8px 12px' : '8px 24px',
               height: 'auto',
               lineHeight: 'normal',
-              minHeight: isMobile ? 80 : 48,
+              minHeight: isMobile ? 0 : 48,
               boxSizing: 'border-box',
               flexShrink: 0,
               position: 'sticky',
@@ -418,10 +418,10 @@ export const Page: React.FC<PageProps> = ({
               display: 'flex',
               flexDirection: isMobile ? 'column' : 'row',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: isMobile ? 'stretch' : 'center',
               gap: isMobile ? 8 : 12,
               width: '100%',
-              minHeight: isMobile ? 64 : 32,
+              minHeight: isMobile ? 0 : 32,
             }}>
               {title && (
                 <Title
@@ -432,13 +432,14 @@ export const Page: React.FC<PageProps> = ({
                     fontFamily: 'monospace',
                     textShadow: UI_ACCENT_TEXT_SHADOW,
                     fontSize: isMobile ? '16px' : '18px',
-                    whiteSpace: 'nowrap',
+                    whiteSpace: isMobile ? 'normal' : 'nowrap',
+                    textAlign: isMobile ? 'center' : 'left',
                   }}
                 >
                   ▲ LUCY CONTROL PANEL
                 </Title>
               )}
-              <div style={{ width: '100%' }}><AppHeader /></div>
+              <div style={{ width: '100%', minWidth: 0 }}><AppHeader /></div>
             </div>
           </Header>
         )}

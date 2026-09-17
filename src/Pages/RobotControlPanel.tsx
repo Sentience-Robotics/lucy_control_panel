@@ -688,39 +688,6 @@ export const RobotControlPanel: React.FC = () => {
 
     const items: MenuProps['items'] = [
         {
-            key: 'reset',
-            label: 'RESET ALL',
-            icon: <ReloadOutlined />,
-            onClick: handleResetAll,
-            disabled: !isSending,
-            style: { color: UI_TEXT_PRIMARY_ON_DARK }
-        },
-        {
-            key: 'random-pose',
-            label: 'RANDOM POSE',
-            icon: <ExperimentOutlined />,
-            onClick: handleRandomPose,
-            disabled: !isSending,
-            style: { color: UI_TEXT_PRIMARY_ON_DARK }
-        },
-        {
-            key: 'poses',
-            label: 'MANAGE POSES',
-            icon: <SettingOutlined />,
-            onClick: () => setIsManagePosesVisible(true),
-            style: { color: UI_TEXT_PRIMARY_ON_DARK }
-        },
-        ...(isAnimating ? [{
-            key: 'stop-animation',
-            label: 'STOP ANIMATION',
-            icon: <StopOutlined />,
-            danger: true,
-            onClick: handleStopAnimation,
-        }] : []),
-        {
-            type: 'divider' as const,
-        },
-        {
             key: '3d-view',
             label: showVisualizerWindow ? 'HIDE 3D VIEW' : 'SHOW 3D VIEW',
             icon: <CodeSandboxOutlined />,
@@ -740,26 +707,11 @@ export const RobotControlPanel: React.FC = () => {
         },
         {
             key: 'webcam',
-            label: isWebcamActive ? 'HIDE HAND TRACKER' : 'SHOW HAND TRACKER',
+            label: 'TELEOPERATION',
             icon: <EyeOutlined />,
             onClick: () => setIsWebcamActive(v => !v),
             style: { color: isWebcamActive ? UI_ACCENT_GREEN : UI_TEXT_PRIMARY_ON_DARK }
         },
-        ...(isMobile ? [
-            {
-                key: 'dock',
-                label: `DOCK: ${currentDock === 'NONE' ? 'NONE' : currentDock.replace('_', ' ')}`,
-                children: availableDock.map(dock => ({
-                    key: `dock-${dock}`,
-                    label: dock === 'NONE' ? 'NO DOCK' : dock.replace('_', ' '),
-                    onClick: () => setCurrentDock(dock),
-                })),
-            },
-            {
-                key: 'control-robot',
-                label: switches(),
-            },
-        ] : []),
     ];
 
     const dropdownOverlayStyle = {
@@ -838,27 +790,57 @@ export const RobotControlPanel: React.FC = () => {
                                 gap: 12,
                             }}
                         >
-                            <Dropdown
-                                menu={{ items }}
-                                trigger={['click']}
-                                dropdownRender={menu => (
-                                    <div style={dropdownOverlayStyle}>{menu}</div>
-                                )}
-                            >
+                            <Space wrap size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
                                 <Button
-                                    icon={<MenuOutlined />}
-                                    style={{
-                                        backgroundColor: UI_COLOR_TRANSPARENT,
-                                        borderColor: UI_BORDER_SOFT,
-                                        color: UI_TEXT_PRIMARY_ON_DARK,
-                                    }}
+                                    icon={<ReloadOutlined />}
+                                    onClick={handleResetAll}
+                                    disabled={!isSending}
+                                    style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
                                 >
-                                    Actions
+                                    RESET ALL
                                 </Button>
-                            </Dropdown>
+                                <Button
+                                    icon={<ExperimentOutlined />}
+                                    onClick={handleRandomPose}
+                                    disabled={!isSending}
+                                    style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
+                                >
+                                    RANDOM POSE
+                                </Button>
+                                <Button
+                                    icon={<SettingOutlined />}
+                                    onClick={() => setIsManagePosesVisible(true)}
+                                    style={{ color: UI_TEXT_PRIMARY_ON_DARK }}
+                                >
+                                    MANAGE POSES
+                                </Button>
+                                {isAnimating && (
+                                    <Button danger icon={<StopOutlined />} onClick={handleStopAnimation}>
+                                        STOP
+                                    </Button>
+                                )}
+                                <Dropdown
+                                    menu={{ items }}
+                                    trigger={['click']}
+                                    dropdownRender={menu => (
+                                        <div style={dropdownOverlayStyle}>{menu}</div>
+                                    )}
+                                >
+                                    <Button
+                                        icon={<MenuOutlined />}
+                                        style={{
+                                            backgroundColor: UI_COLOR_TRANSPARENT,
+                                            borderColor: UI_BORDER_SOFT,
+                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                        }}
+                                    >
+                                        VIEWS
+                                    </Button>
+                                </Dropdown>
+                            </Space>
 
                             {!isMobile && <Space wrap>
-                                Dock: 
+                                Dock:
                                 <Select
                                     value={currentDock}
                                     onChange={setCurrentDock}
@@ -882,6 +864,23 @@ export const RobotControlPanel: React.FC = () => {
                                 />
                                 {switches()}
                             </Space>}
+                            {isMobile && (
+                                <Space wrap size="small" style={{ width: '100%' }}>
+                                    <Select
+                                        value={currentDock}
+                                        onChange={setCurrentDock}
+                                        options={availableDock.map((dock) => ({
+                                            label: dock === 'NONE' ? 'No dock' : dock.replace('_', ' '),
+                                            value: dock,
+                                        }))}
+                                        aria-label="Select dock"
+                                        style={{ flex: '1 1 150px', minWidth: 150 }}
+                                        popupMatchSelectWidth={false}
+                                        getPopupContainer={() => document.body}
+                                    />
+                                    {switches()}
+                                </Space>
+                            )}
                         </div>
                     </div>
 

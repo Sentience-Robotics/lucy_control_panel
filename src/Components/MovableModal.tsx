@@ -261,11 +261,11 @@ export function MovableModal({
             style={{
 
                 position: centered ? 'relative' : isLocked ? 'sticky' : 'fixed',
-                left: isPinned ? undefined : x,
+                left: isPinned ? undefined : isMobile ? VIEWPORT_MARGIN : x,
                 top: centered ? undefined : isLocked ? mobileTopOffset : y,
-                width: isLocked ? '100%' : w,
+                width: isLocked ? '100%' : isMobile ? `calc(100vw - ${VIEWPORT_MARGIN * 2}px)` : w,
                 maxWidth: centered ? '100%' : undefined,
-                minWidth: isLocked ? undefined : minWidth,
+                minWidth: isLocked || isMobile ? undefined : minWidth,
                 height: centered ? 'auto' : isLocked ? '33.333vh' : h,
                 maxHeight: centered ? '100%' : undefined,
                 marginBottom: isLocked ? 12 : undefined,

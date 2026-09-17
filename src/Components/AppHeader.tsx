@@ -121,10 +121,11 @@ export const AppHeader: React.FC = () => {
         display: 'inline-flex',
         alignItems: 'center',
         gap: 8,
-        padding: '4px 10px',
+        padding: isMobile ? '3px 8px' : '4px 10px',
         borderRadius: 16,
         backgroundColor: UI_CHROME_SURFACE,
         border: `1px solid ${UI_BORDER_MUTED}`,
+        minWidth: 0,
     };
 
     const dotStyle: React.CSSProperties = {
@@ -133,8 +134,8 @@ export const AppHeader: React.FC = () => {
         borderRadius: '50%',
     };
 
-    return (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', width: '100%', gap: isMobile ? 8 : 12 }}>
+    const statusIndicators = (
+        <>
             <Tooltip title={`Number of connected clients to the ROS Bridge.`}>
                 <div style={statusStyle}>
                     <span
@@ -175,6 +176,11 @@ export const AppHeader: React.FC = () => {
                     </Text>
                 </div>
             </Tooltip>
+        </>
+    );
+
+    const headerActions = (
+        <>
             <Tooltip title="Documentation">
                 <Button
                     icon={isMobile ? <ReadOutlined /> : undefined}
@@ -204,6 +210,42 @@ export const AppHeader: React.FC = () => {
                 isVisible={isCommandDebugVisible}
                 onClose={() => setIsCommandDebugVisible(false)}
             />
+        </>
+    );
+
+    return (
+        <div
+            style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'flex-end',
+                alignItems: isMobile ? 'stretch' : 'center',
+                width: '100%',
+                gap: isMobile ? 8 : 12,
+            }}
+        >
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: isMobile ? 'space-between' : 'flex-end',
+                    alignItems: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                }}
+            >
+                {statusIndicators}
+            </div>
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: isMobile ? 'flex-end' : 'initial',
+                    alignItems: 'center',
+                    gap: isMobile ? 6 : 12,
+                    flexWrap: 'wrap',
+                }}
+            >
+                {headerActions}
+            </div>
         </div>
     );
 };
