@@ -767,12 +767,8 @@ export const RobotControlPanel: React.FC = () => {
                         isolation: 'isolate',
                         display: 'flex',
                         flexDirection: 'column',
-                        height: isMobile
-                            ? 'auto'
-                            : `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
-                        minHeight: isMobile
-                            ? `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`
-                            : 0,
+                        height: `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
+                        minHeight: 0,
                     }}
                 >
                     <div
@@ -962,8 +958,8 @@ export const RobotControlPanel: React.FC = () => {
                                 <div
                                     style={{
                                         width: '100%',
-                                        height: '40vh',
-                                        minHeight: 240,
+                                        height: '34vh',
+                                        minHeight: 204,
                                         marginBottom: 12,
                                         flexShrink: 0,
                                         overflow: 'hidden',
@@ -972,7 +968,7 @@ export const RobotControlPanel: React.FC = () => {
                                     {dockContent}
                                 </div>
                             )}
-                            <div style={{ width: '100%', minHeight: 0 }}>
+                            <div style={{ width: '100%', flex: 1, minHeight: 0 }}>
                                 <PaginatedJointCategories
                                     categoryOrder={categoryOrder}
                                     categorizedJoints={categorizedJoints}
