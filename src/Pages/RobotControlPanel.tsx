@@ -20,6 +20,8 @@ import {
     CodeSandboxOutlined,
     ExperimentOutlined,
     SettingOutlined,
+    DownOutlined,
+    UpOutlined,
 } from '@ant-design/icons';
 
 import { JointStateHandler } from "../Services/ros/handlers/JointState.handler";
@@ -197,6 +199,7 @@ export const RobotControlPanel: React.FC = () => {
     const [isWebcamActive, setIsWebcamActive] = useState<boolean>(false);
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
+    const [showHeaderActions, setShowHeaderActions] = useState(false);
 
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
@@ -793,6 +796,7 @@ export const RobotControlPanel: React.FC = () => {
                                 gap: 12,
                             }}
                         >
+                            {(!isMobile || showHeaderActions) && (
                             <Space wrap size="small" style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
                                 <Button
                                     icon={<ReloadOutlined />}
@@ -841,6 +845,7 @@ export const RobotControlPanel: React.FC = () => {
                                     </Button>
                                 </Dropdown>
                             </Space>
+                            )}
 
                             {!isMobile && <Space wrap>
                                 Dock:
@@ -891,11 +896,22 @@ export const RobotControlPanel: React.FC = () => {
                                                 || (dock === 'SENSOR_DISPLAY' && !hasSensors),
                                         }))}
                                         aria-label="Select dock"
-                                        style={{ flex: '1 1 150px', minWidth: 150 }}
+                                        style={{ flex: '1 1 120px', minWidth: 120 }}
                                         popupMatchSelectWidth={false}
                                         getPopupContainer={() => document.body}
                                     />
                                     {switches()}
+                                    <Button
+                                        icon={showHeaderActions ? <UpOutlined /> : <DownOutlined />}
+                                        onClick={() => setShowHeaderActions(v => !v)}
+                                        aria-expanded={showHeaderActions}
+                                        aria-label={showHeaderActions ? 'Hide actions' : 'Show actions'}
+                                        style={{
+                                            backgroundColor: UI_COLOR_TRANSPARENT,
+                                            borderColor: UI_BORDER_SOFT,
+                                            color: UI_TEXT_PRIMARY_ON_DARK,
+                                        }}
+                                    />
                                 </Space>
                             )}
                         </div>
