@@ -28,6 +28,13 @@ import {
     appendPassiveUrdfJointIfUnassigned,
     removePassiveUrdfJoint,
 } from '../model/passiveUrdf.ts';
+import { degreeToRadian, radianToDegree } from '../../../Utils/math.utils.ts';
+
+/** Display helper: YAML stores radians; editor columns show degrees. */
+function degFromRadField(raw: unknown): number | undefined {
+    const rad = Number(raw);
+    return Number.isFinite(rad) ? radianToDegree(rad) : undefined;
+}
 
 export type ActuatorColumnsArgs = {
     yamlDoc: Record<string, unknown> | null;
@@ -339,18 +346,18 @@ export function buildActuatorColumns({
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'servo_min_deg');
+                const ao = actOpts(id, 'servo_min_rad');
                 return (
                     <InputNumber
                         size="small"
                         style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={Number(row.servo_min_deg)}
+                        value={degFromRadField(row.servo_min_rad)}
                         title={cellTooltipText(serverFieldErrors, ao)}
                         onChange={(val) => {
                             if (!yamlDoc || val == null) return;
                             const next = structuredClone(yamlDoc);
                             const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], servo_min_deg: val };
+                            list[index] = { ...list[index], servo_min_rad: degreeToRadian(val) };
                             patchDoc(next);
                         }}
                     />
@@ -364,18 +371,18 @@ export function buildActuatorColumns({
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'servo_default_deg');
+                const ao = actOpts(id, 'servo_default_rad');
                 return (
                     <InputNumber
                         size="small"
                         style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={Number(row.servo_default_deg)}
+                        value={degFromRadField(row.servo_default_rad)}
                         title={cellTooltipText(serverFieldErrors, ao)}
                         onChange={(val) => {
                             if (!yamlDoc || val == null) return;
                             const next = structuredClone(yamlDoc);
                             const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], servo_default_deg: val };
+                            list[index] = { ...list[index], servo_default_rad: degreeToRadian(val) };
                             patchDoc(next);
                         }}
                     />
@@ -389,18 +396,18 @@ export function buildActuatorColumns({
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'servo_max_deg');
+                const ao = actOpts(id, 'servo_max_rad');
                 return (
                     <InputNumber
                         size="small"
                         style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={Number(row.servo_max_deg)}
+                        value={degFromRadField(row.servo_max_rad)}
                         title={cellTooltipText(serverFieldErrors, ao)}
                         onChange={(val) => {
                             if (!yamlDoc || val == null) return;
                             const next = structuredClone(yamlDoc);
                             const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], servo_max_deg: val };
+                            list[index] = { ...list[index], servo_max_rad: degreeToRadian(val) };
                             patchDoc(next);
                         }}
                     />
@@ -408,25 +415,25 @@ export function buildActuatorColumns({
             },
         },
         {
-            title: 'OFFSET_DEG',
-            key: 'offset_deg',
+            title: 'OFFSET°',
+            key: 'offset_rad',
             width: 110,
             render: (_: unknown, record: ActuatorTableRecord) => {
                 const { row, index } = record;
                 const id = String(row.id ?? index);
-                const ao = actOpts(id, 'offset_deg');
+                const ao = actOpts(id, 'offset_rad');
                 return (
                     <InputNumber
                         size="small"
                         step={0.1}
                         style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={Number(row.offset_deg)}
+                        value={degFromRadField(row.offset_rad)}
                         title={cellTooltipText(serverFieldErrors, ao)}
                         onChange={(val) => {
                             if (!yamlDoc || val == null) return;
                             const next = structuredClone(yamlDoc);
                             const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], offset_deg: val };
+                            list[index] = { ...list[index], offset_rad: degreeToRadian(val) };
                             patchDoc(next);
                         }}
                     />

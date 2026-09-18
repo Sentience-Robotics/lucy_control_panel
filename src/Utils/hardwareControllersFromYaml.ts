@@ -1,17 +1,12 @@
-/*
- * Copyright 2025-2026 Sentience Robotics Team
- * SPDX-License-Identifier: GPL-3.0-or-later
- */
-
-import type { ControllerJointConfig, JointLimitDeg, JointMapping } from '../Constants/rosConfig';
+import type { ControllerJointConfig, JointLimitRad, JointMapping } from '../Constants/rosConfig';
 import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping';
 
 function readMapping(row: Record<string, unknown>): JointMapping {
-    const offsetDeg = Number(row.offset_deg);
+    const offsetRad = Number(row.offset_rad);
     const direction = Number(row.direction);
     const scale = Number(row.scale);
     return {
-        offsetDeg: Number.isFinite(offsetDeg) ? offsetDeg : DEFAULT_ACTUATOR_MAPPING.offsetDeg,
+        offsetRad: Number.isFinite(offsetRad) ? offsetRad : DEFAULT_ACTUATOR_MAPPING.offsetRad,
         direction: Number.isFinite(direction) && direction !== 0
             ? direction
             : DEFAULT_ACTUATOR_MAPPING.direction,
@@ -59,7 +54,7 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
             );
 
         const joints: string[] = [];
-        const jointLimits: Record<string, JointLimitDeg> = {};
+        const jointLimits: Record<string, JointLimitRad> = {};
         const jointDisplayNames: Record<string, string> = {};
 
         for (const row of rows) {
@@ -73,14 +68,14 @@ export function controllerJointConfigsFromHardwareYaml(doc: Record<string, unkno
                 jointDisplayNames[joint] = actuatorId;
             }
 
-            const minDeg = Number(r.servo_min_deg);
-            const maxDeg = Number(r.servo_max_deg);
-            const defaultDeg = Number(r.servo_default_deg);
-            if (Number.isFinite(minDeg) && Number.isFinite(maxDeg) && minDeg < maxDeg) {
+            const minRad = Number(r.servo_min_rad);
+            const maxRad = Number(r.servo_max_rad);
+            const defaultRad = Number(r.servo_default_rad);
+            if (Number.isFinite(minRad) && Number.isFinite(maxRad) && minRad < maxRad) {
                 jointLimits[joint] = {
-                    minDeg,
-                    maxDeg,
-                    defaultDeg: Number.isFinite(defaultDeg) ? defaultDeg : (minDeg + maxDeg) / 2,
+                    minRad,
+                    maxRad,
+                    defaultRad: Number.isFinite(defaultRad) ? defaultRad : (minRad + maxRad) / 2,
                     mapping: readMapping(r),
                 };
             }
