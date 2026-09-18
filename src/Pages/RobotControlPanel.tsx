@@ -848,11 +848,32 @@ export const RobotControlPanel: React.FC = () => {
                                         VIEWS
                                     </Button>
                                 </Dropdown>
+                                {isMobile && (
+                                    <Select
+                                        value={currentDock}
+                                        onChange={setCurrentDock}
+                                        options={availableDock.map((dock) => ({
+                                            label: dock === 'NONE'
+                                                ? 'No dock'
+                                                : dock === 'SENSOR_DISPLAY'
+                                                    ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
+                                                    : dock === 'STREAM'
+                                                        ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
+                                                        : dock.replace('_', ' '),
+                                            value: dock,
+                                            disabled: (dock === 'STREAM' && !hasLiveCamera)
+                                                || (dock === 'SENSOR_DISPLAY' && !hasSensors),
+                                        }))}
+                                        aria-label="Select dock"
+                                        style={{ minWidth: 150 }}
+                                        popupMatchSelectWidth={false}
+                                        getPopupContainer={() => document.body}
+                                    />
+                                )}
                             </Space>
                             )}
 
                             {!isMobile && <Space wrap>
-                                Dock:
                                 <Select
                                     value={currentDock}
                                     onChange={setCurrentDock}
@@ -884,26 +905,6 @@ export const RobotControlPanel: React.FC = () => {
                             </Space>}
                             {isMobile && (
                                 <Space wrap size="small" style={{ width: '100%' }}>
-                                    <Select
-                                        value={currentDock}
-                                        onChange={setCurrentDock}
-                                        options={availableDock.map((dock) => ({
-                                            label: dock === 'NONE'
-                                                ? 'No dock'
-                                                : dock === 'SENSOR_DISPLAY'
-                                                    ? `Sensors${hasSensors ? '' : ' (unavailable)'}`
-                                                    : dock === 'STREAM'
-                                                        ? `Stream${hasLiveCamera ? '' : ' (unavailable)'}`
-                                                        : dock.replace('_', ' '),
-                                            value: dock,
-                                            disabled: (dock === 'STREAM' && !hasLiveCamera)
-                                                || (dock === 'SENSOR_DISPLAY' && !hasSensors),
-                                        }))}
-                                        aria-label="Select dock"
-                                        style={{ flex: '1 1 120px', minWidth: 120 }}
-                                        popupMatchSelectWidth={false}
-                                        getPopupContainer={() => document.body}
-                                    />
                                     {switches()}
                                     <Button
                                         icon={showHeaderActions ? <UpOutlined /> : <DownOutlined />}
