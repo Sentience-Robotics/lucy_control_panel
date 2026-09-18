@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Tag, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';

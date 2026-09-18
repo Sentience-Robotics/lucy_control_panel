@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { useCallback, useRef, useState } from 'react';
 
 /** Tracks an element's rendered height through a callback ref. */

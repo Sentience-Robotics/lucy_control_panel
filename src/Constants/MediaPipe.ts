@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import type { Options } from "@mediapipe/hands";
 
 export const MEDIAPIPE_HANDS_URL: string = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/';

@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from 'antd';
 import { UI_ACCENT_GREEN, UI_BG_BLACK, UI_BORDER_SOFT } from '../../Constants/uiTheme';

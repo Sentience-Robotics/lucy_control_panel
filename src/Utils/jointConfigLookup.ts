@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import type { ControllerJointConfig, JointLimitDeg } from '../Constants/rosConfig';
 import type { ActuatorMapping } from './actuatorJointMapping';
 import { DEFAULT_ACTUATOR_MAPPING } from './actuatorJointMapping';

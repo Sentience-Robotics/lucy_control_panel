@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { useMemo } from 'react';
 import { useActiveHardwareRos } from '../contexts/ActiveHardwareRosContext';
 import { sensorSourcesFromHardwareYaml } from '../Utils/sensorSourcesFromHardwareYaml';

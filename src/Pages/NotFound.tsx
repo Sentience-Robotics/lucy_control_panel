@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useContext } from 'react';
 import { Button, Card, Space, Typography } from 'antd';
 import { ArrowLeftOutlined, HomeOutlined, ReloadOutlined } from '@ant-design/icons';

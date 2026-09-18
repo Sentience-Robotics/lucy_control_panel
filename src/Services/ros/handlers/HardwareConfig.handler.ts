@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * ROS transport only: hardware YAML validation and URDF cross-checks run on the
  * `lucy_config_services` node (`config/get`, `config/save`). The frontend displays

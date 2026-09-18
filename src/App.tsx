@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /* Layout */
 import { ConfigProvider, theme, Layout, Grid } from 'antd';
 import { BrowserRouter as Router, useLocation } from 'react-router-dom';

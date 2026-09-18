@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useState, useMemo } from 'react';
 import { Alert, Button, Input } from 'antd';
 import { useRosConnection } from '../hooks/useRosConnection.hook';
