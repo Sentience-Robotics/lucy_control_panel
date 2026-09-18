@@ -46,13 +46,13 @@ import { availableDock, useDock } from '../contexts/DockContext.tsx';
 import type { JointControlState } from '../Constants/robotTypes';
 import {
     DEFAULT_ACTUATOR_MAPPING,
-    jointRadToActuatorDeg,
+    jointRadToServoRad,
     type ActuatorMapping,
 } from '../Utils/actuatorJointMapping';
 import { describeClient } from '../Utils/clientIdentity';
 import {
-    DEFAULT_JOINT_SLIDER_BOUNDS_DEG,
-    DEFAULT_JOINT_SLIDER_VALUE_DEG,
+    DEFAULT_JOINT_SLIDER_BOUNDS_RAD,
+    DEFAULT_JOINT_SLIDER_VALUE_RAD,
 } from '../Constants/hardwareConfigDefaults';
 
 import { LucyLoader } from '../Components/LucyLoader';
@@ -252,24 +252,23 @@ export const RobotControlPanel: React.FC = () => {
         for (const c of configs) {
             for (const name of c.joints) {
                 const lim = c.jointLimits?.[name];
-                let minValue = DEFAULT_JOINT_SLIDER_BOUNDS_DEG.min;
-                let maxValue = DEFAULT_JOINT_SLIDER_BOUNDS_DEG.max;
+                let minValue = DEFAULT_JOINT_SLIDER_BOUNDS_RAD.min;
+                let maxValue = DEFAULT_JOINT_SLIDER_BOUNDS_RAD.max;
                 let restValue: number | undefined;
                 if (lim) {
-                    minValue = lim.minDeg;
-                    maxValue = lim.maxDeg;
-                    restValue = lim.defaultDeg;
+                    minValue = lim.minRad;
+                    maxValue = lim.maxRad;
+                    restValue = lim.defaultRad;
                 }
                 joints.push({
                     name,
                     displayName: c.jointDisplayNames?.[name] ?? name,
-                    currentValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_DEG,
-                    targetValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_DEG,
+                    currentValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_RAD,
+                    targetValue: restValue ?? DEFAULT_JOINT_SLIDER_VALUE_RAD,
                     minValue,
                     maxValue,
                     type: 'revolute',
                     category: c.defaultCategory,
-                    valueInActuatorDegrees: true,
                     ...(restValue !== undefined && { restValue }),
                 });
             }
@@ -373,8 +372,8 @@ export const RobotControlPanel: React.FC = () => {
                     const u = updates.find((x) => x.name === j.name);
                     if (!u) return j;
                     const mapping = actuatorMappingByJointRef.current.get(j.name) ?? DEFAULT_ACTUATOR_MAPPING;
-                    const actuatorDeg = jointRadToActuatorDeg(u.value, mapping);
-                    return { ...j, currentValue: actuatorDeg, targetValue: actuatorDeg };
+                    const servoRad = jointRadToServoRad(u.value, mapping);
+                    return { ...j, currentValue: servoRad, targetValue: servoRad };
                 })
             );
         });
@@ -388,7 +387,7 @@ export const RobotControlPanel: React.FC = () => {
                 const mapping = actuatorMappingByJointRef.current.get(name);
                 actualPositionsRef.current.set(
                     name,
-                    mapping ? jointRadToActuatorDeg(value, mapping) : value,
+                    mapping ? jointRadToServoRad(value, mapping) : value,
                 );
             }
         });

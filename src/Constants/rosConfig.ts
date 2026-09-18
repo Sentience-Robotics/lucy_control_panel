@@ -5,20 +5,20 @@
 
 /** URDF command ↔ actuator calibration (matches ros2_control hardware params). */
 export interface JointMapping {
-  offsetDeg: number;
+  offsetRad: number;
   direction: number;
   scale: number;
 }
 
-/** Per-joint position limits read from the hardware YAML (actuator degrees). */
-export interface JointLimitDeg {
-  /** Minimum actuator angle for this joint (degrees). */
-  minDeg: number;
-  /** Maximum actuator angle for this joint (degrees). */
-  maxDeg: number;
-  /** Default / rest actuator angle for this joint (degrees). */
-  defaultDeg: number;
-  /** Calibration used to convert slider (actuator deg) ↔ trajectory (URDF rad). */
+/** Per-joint position limits read from the hardware YAML (servo radians). */
+export interface JointLimitRad {
+  /** Minimum servo angle for this joint (radians). */
+  minRad: number;
+  /** Maximum servo angle for this joint (radians). */
+  maxRad: number;
+  /** Default / rest servo angle for this joint (radians). */
+  defaultRad: number;
+  /** Calibration used to convert slider (servo rad) ↔ trajectory (URDF rad). */
   mapping: JointMapping;
 }
 
@@ -29,8 +29,8 @@ export interface ControllerJointConfig {
   joints: string[];
   /** Default category label for these joints in the panel */
   defaultCategory: string;
-  /** Per-joint actuator limits extracted from the hardware YAML. Keyed by URDF joint name. */
-  jointLimits?: Record<string, JointLimitDeg>;
+  /** Per-joint servo limits extracted from the hardware YAML. Keyed by URDF joint name. */
+  jointLimits?: Record<string, JointLimitRad>;
   /** Per-joint slider label (actuator id). Keyed by URDF joint name. */
   jointDisplayNames?: Record<string, string>;
 }

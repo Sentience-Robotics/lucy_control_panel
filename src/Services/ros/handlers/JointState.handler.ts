@@ -10,7 +10,7 @@ import {
   jointConfigMetaFromControllers,
   type JointConfigMeta,
 } from '../../../Utils/jointConfigLookup.ts';
-import { actuatorDegToJointRad } from '../../../Utils/actuatorJointMapping.ts';
+import { servoRadToJointRad } from '../../../Utils/actuatorJointMapping.ts';
 import { RosBridgeService } from '../ros.service.ts';
 import { Diagnostics } from '../../diagnostics.service.ts';
 
@@ -130,8 +130,8 @@ export class JointStateHandler {
   /**
    * Subscribe to /joint_states (sensor_msgs/msg/JointState) to get actual motor positions.
    * Values are URDF radians (single source of truth for FK / 3D viewer / RViz).
-   * Slider consumers convert to actuator deg at the call site via
-   * `jointRadToActuatorDeg`. Returns a cleanup function.
+   * Slider consumers convert to servo rad at the call site via
+   * `jointRadToServoRad`. Returns a cleanup function.
    */
   subscribeToJointStates(
     callback: (positions: { name: string; value: number }[]) => void
@@ -225,7 +225,7 @@ export class JointStateHandler {
         names.push(name);
         const meta = this.jointMetaByName.get(name);
         const jointRad = meta
-          ? actuatorDegToJointRad(j.currentValue, meta.mapping)
+          ? servoRadToJointRad(j.currentValue, meta.mapping)
           : j.currentValue;
         positions.push(jointRad);
       }
@@ -233,7 +233,7 @@ export class JointStateHandler {
       const topic = this.topicByTopicName.get(cfg.topic);
       if (!topic) continue;
       Diagnostics.record('command', 'slider', 'ok', `${names.length} joint(s) on ${cfg.defaultCategory}`);
-      Diagnostics.record('command', 'converted', 'ok', 'actuator deg -> URDF rad');
+      Diagnostics.record('command', 'converted', 'ok', 'servo rad -> URDF rad');
       const stamp = getRosTimeNow(this.lastClock);
       const message = new ROSLIB.Message({
         header: { stamp, frame_id: '' },
