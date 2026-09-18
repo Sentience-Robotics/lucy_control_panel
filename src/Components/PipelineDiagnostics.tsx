@@ -65,13 +65,6 @@ function useDiagnosticsTick(): number {
     return tick;
 }
 
-/**
- * One stage, compressed to a glyph and a short label.
- *
- * Everything the old modal row showed inline - full name, hint, latest
- * observation, message count, age - moves into the tooltip. It opens on tap as
- * well as hover so the detail is reachable without a mouse.
- */
 function StageChip({ stage }: { stage: Stage }) {
     const color = STATUS_COLOR[stage.status];
     return (
@@ -131,13 +124,7 @@ function StageChip({ stage }: { stage: Stage }) {
     );
 }
 
-/**
- * A pipeline as a fixed 3x2 grid, reading left to right.
- *
- * The columns are fixed rather than wrapped so the six stages stay two lines at
- * every width instead of stacking into six on a phone; the labels ellipsise and
- * the tooltip carries the rest.
- */
+/** Fixed 3x2 grid so the six stages stay two lines at every width. */
 export function PipelineDiagnostics({ pipeline, title }: { pipeline: PipelineId; title: string }) {
     useDiagnosticsTick();
     const [busy, setBusy] = useState(false);

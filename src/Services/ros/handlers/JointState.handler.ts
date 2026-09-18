@@ -139,9 +139,6 @@ export class JointStateHandler {
       name: '/joint_states',
       messageType: 'sensor_msgs/msg/JointState',
     });
-    // /joint_states arrives continuously, so the diagnostics work here has to
-    // stay off the critical path: the detail strings are rebuilt only when the
-    // joint count actually changes, otherwise the stages are just touched.
     let lastJointCount = -1;
     sub.subscribe((msg: ROSLIB.Message) => {
       const js = msg as unknown as { name: string[]; position: number[] };

@@ -82,8 +82,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setRosUrl(currentUrl);
     }, [currentUrl]);
 
-    // The pipelines are the first thing a stuck user should see, so they are
-    // live on open rather than behind a button.
     useEffect(() => {
         if (visible) refreshAllPipelines();
     }, [visible]);

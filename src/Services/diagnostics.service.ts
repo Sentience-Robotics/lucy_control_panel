@@ -10,7 +10,6 @@
 
 export type StageStatus = 'pending' | 'ok' | 'warn' | 'error';
 
-/** How long repeated updates are batched before subscribers hear about them. */
 const EMIT_COALESCE_MS = 250;
 export type PipelineId = 'connection' | 'command';
 
@@ -78,12 +77,6 @@ class DiagnosticsService {
         this.listeners.forEach((l) => l());
     }
 
-    /**
-     * Coalesce bursts into one notification.
-     *
-     * Streaming stages update far faster than anything can usefully be read, so
-     * repeats are batched instead of driving a render each.
-     */
     private scheduleEmit() {
         if (this.emitScheduled) return;
         this.emitScheduled = true;
@@ -93,12 +86,6 @@ class DiagnosticsService {
         }, EMIT_COALESCE_MS);
     }
 
-    /**
-     * Update one stage.
-     *
-     * A real transition notifies at once; a repeat of what is already on screen
-     * is batched, so a stage that merely keeps saying "still ok" is cheap.
-     */
     record(
         pipeline: PipelineId,
         id: string,
@@ -116,12 +103,7 @@ class DiagnosticsService {
         else this.scheduleEmit();
     }
 
-    /**
-     * "Still alive, nothing new."
-     *
-     * For per-message hot paths: refreshes the age without building a detail
-     * string or notifying anyone. Subscribers re-read it on their own tick.
-     */
+    /** Refreshes a stage's age without notifying subscribers. */
     touch(pipeline: PipelineId, id: string): void {
         const stage = this.stages[pipeline].get(id);
         if (stage) stage.at = Date.now();

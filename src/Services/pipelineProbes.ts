@@ -1,11 +1,3 @@
-/**
- * On-demand probes behind the two diagnostics pipelines.
- *
- * Everything else that feeds Diagnostics is passive: services report what they
- * already do. These two actively ask the ROS graph a question, so they live
- * apart from the passive recorder and are called when someone is looking.
- */
-
 import { RosBridgeService } from './ros/ros.service';
 import { Diagnostics, type StageStatus } from './diagnostics.service';
 
@@ -45,12 +37,7 @@ async function probeController(): Promise<{ status: StageStatus; detail: string 
     };
 }
 
-/**
- * Ask rosapi who publishes /joint_states.
- *
- * This is what separates "rosbridge is up" from "rosbridge is attached to a
- * live robot", so it costs one service call and is worth running unprompted.
- */
+/** Asks rosapi who publishes /joint_states: is rosbridge attached to a live robot? */
 export async function probeConnection(): Promise<void> {
     Diagnostics.record('connection', 'rosapi', 'pending', 'asking rosapi...');
     try {

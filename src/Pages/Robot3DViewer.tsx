@@ -181,7 +181,7 @@ const Robot3DViewer: React.FC = () => {
                 </div>
             </div>
 
-            {/* Settings — top-right, mirroring the controls hint */}
+            {/* Settings */}
             <div style={{ ...OVERLAY_BOX, top: 10, left: 'auto', right: 10, width: SETTINGS_BOX_WIDTH, gap: 6 }}>
                 {/* Opacity & wireframe only affect the green override */}
                 {!useOriginalTexture && (
