@@ -139,12 +139,22 @@ export class JointStateHandler {
       name: '/joint_states',
       messageType: 'sensor_msgs/msg/JointState',
     });
+    // /joint_states arrives continuously, so the diagnostics work here has to
+    // stay off the critical path: the detail strings are rebuilt only when the
+    // joint count actually changes, otherwise the stages are just touched.
+    let lastJointCount = -1;
     sub.subscribe((msg: ROSLIB.Message) => {
       const js = msg as unknown as { name: string[]; position: number[] };
       if (!js.name?.length || !js.position?.length) return;
       const positions = js.name.map((name, i) => ({ name, value: js.position[i] }));
-      Diagnostics.record('connection', 'jointstates', 'ok', `${positions.length} joints`, true);
-      Diagnostics.record('command', 'echoed', 'ok', `${positions.length} joints reported`, true);
+      if (positions.length !== lastJointCount) {
+        lastJointCount = positions.length;
+        Diagnostics.record('connection', 'jointstates', 'ok', `${positions.length} joints`);
+        Diagnostics.record('command', 'echoed', 'ok', `${positions.length} joints reported`);
+      } else {
+        Diagnostics.touch('connection', 'jointstates');
+        Diagnostics.touch('command', 'echoed');
+      }
       callback(positions);
     });
     return () => sub.unsubscribe();
@@ -229,7 +239,7 @@ export class JointStateHandler {
         points: [{ positions, time_from_start: { sec: 0, nanosec: 0.8e9 } }],
       });
       topic.publish(message);
-      Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`, true);
+      Diagnostics.record('command', 'published', 'ok', `${names.length} joint(s) -> ${cfg.topic}`);
     }
   }
 }

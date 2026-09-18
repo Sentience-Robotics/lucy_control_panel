@@ -15,6 +15,7 @@ export function useThrottledJointAngles(isConnected: boolean, hz = 10): Map<stri
     const latestRef = useRef<Map<string, number>>(new Map());
     const dirtyRef = useRef(false);
     const loggedOnceRef = useRef(false);
+    const renderedCountRef = useRef(-1);
 
     // Write into ref at full ROS rate — no React re-renders here.
     useEffect(() => {
@@ -49,7 +50,17 @@ export function useThrottledJointAngles(isConnected: boolean, hz = 10): Map<stri
             if (!dirtyRef.current) return;
             dirtyRef.current = false;
             setJointAngles(new Map(latestRef.current));
-            Diagnostics.record('command', 'rendered', 'ok', `${latestRef.current.size} joints at ${hz} Hz`, true);
+            if (latestRef.current.size !== renderedCountRef.current) {
+                renderedCountRef.current = latestRef.current.size;
+                Diagnostics.record(
+                    'command',
+                    'rendered',
+                    'ok',
+                    `${latestRef.current.size} joints at ${hz} Hz`,
+                );
+            } else {
+                Diagnostics.touch('command', 'rendered');
+            }
         }, 1000 / hz);
         return () => clearInterval(interval);
     }, [isConnected, hz]);

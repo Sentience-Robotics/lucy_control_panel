@@ -9,6 +9,9 @@
  */
 
 export type StageStatus = 'pending' | 'ok' | 'warn' | 'error';
+
+/** How long repeated updates are batched before subscribers hear about them. */
+const EMIT_COALESCE_MS = 250;
 export type PipelineId = 'connection' | 'command';
 
 export interface Stage {
@@ -23,8 +26,6 @@ export interface Stage {
     detail?: string;
     /** epoch ms of the last update */
     at?: number;
-    /** messages seen, for streaming stages */
-    count?: number;
 }
 
 type StageDef = Pick<Stage, 'id' | 'label' | 'short' | 'hint'>;
@@ -59,6 +60,7 @@ class DiagnosticsService {
         command: seed(COMMAND_STAGES),
     };
     private listeners = new Set<() => void>();
+    private emitScheduled = false;
 
     static getInstance(): DiagnosticsService {
         if (!DiagnosticsService._instance) {
@@ -76,21 +78,53 @@ class DiagnosticsService {
         this.listeners.forEach((l) => l());
     }
 
-    /** Update one stage. `count` accumulates when passed as true. */
+    /**
+     * Coalesce bursts into one notification.
+     *
+     * Streaming stages update far faster than anything can usefully be read, so
+     * repeats are batched instead of driving a render each.
+     */
+    private scheduleEmit() {
+        if (this.emitScheduled) return;
+        this.emitScheduled = true;
+        setTimeout(() => {
+            this.emitScheduled = false;
+            this.emit();
+        }, EMIT_COALESCE_MS);
+    }
+
+    /**
+     * Update one stage.
+     *
+     * A real transition notifies at once; a repeat of what is already on screen
+     * is batched, so a stage that merely keeps saying "still ok" is cheap.
+     */
     record(
         pipeline: PipelineId,
         id: string,
         status: StageStatus,
         detail?: string,
-        countUp = false,
     ): void {
         const stage = this.stages[pipeline].get(id);
         if (!stage) return;
+        const changed =
+            stage.status !== status || (detail !== undefined && stage.detail !== detail);
         stage.status = status;
         stage.at = Date.now();
         if (detail !== undefined) stage.detail = detail;
-        if (countUp) stage.count = (stage.count ?? 0) + 1;
-        this.emit();
+        if (changed) this.emit();
+        else this.scheduleEmit();
+    }
+
+    /**
+     * "Still alive, nothing new."
+     *
+     * For per-message hot paths: refreshes the age without building a detail
+     * string or notifying anyone. Subscribers re-read it on their own tick.
+     */
+    touch(pipeline: PipelineId, id: string): void {
+        const stage = this.stages[pipeline].get(id);
+        if (stage) stage.at = Date.now();
     }
 
     /** Drop everything downstream of a lost connection. */
@@ -100,7 +134,6 @@ class DiagnosticsService {
             if (stage) {
                 stage.status = 'pending';
                 stage.detail = undefined;
-                stage.count = undefined;
             }
         }
         this.emit();

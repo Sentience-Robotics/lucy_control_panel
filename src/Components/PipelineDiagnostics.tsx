@@ -94,7 +94,6 @@ function StageChip({ stage }: { stage: Stage }) {
                         </div>
                     )}
                     <div style={{ opacity: 0.7, marginTop: 4 }}>
-                        {stage.count != null ? `${stage.count} msg · ` : ''}
                         {ago(stage.at) || 'nothing recorded yet'}
                     </div>
                 </div>
