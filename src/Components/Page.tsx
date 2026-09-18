@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Layout, Typography, Grid } from 'antd';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import {
   UI_ACCENT_GREEN,
   UI_ACCENT_TEXT_SHADOW,
@@ -45,18 +46,7 @@ export const Page: React.FC<PageProps> = ({
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
 
-  const headerRef = useRef<HTMLElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  useEffect(() => {
-    const el = headerRef.current;
-    if (!el) { return; }
-    const update = () => setHeaderHeight(el.getBoundingClientRect().height);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [showHeader]);
+  const [headerRef, headerHeight] = useMeasuredHeight<HTMLElement>();
 
   const defaultContentStyle: React.CSSProperties = {
     backgroundColor: UI_BG_BLACK,

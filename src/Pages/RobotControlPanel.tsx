@@ -81,6 +81,7 @@ import PaginatedJointCategories from '../Components/ControlPage/PaginatedJointCa
 import Robot3DViewer from './Robot3DViewer.tsx';
 import SensorDisplay from './SensorDisplay.tsx';
 import ResizablePanels from '../Components/ControlPage/ResizablePanels.tsx';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import { Dock } from '../Components/ControlPage/Dock.tsx';
 import { StreamPlayer } from '../Components/StreamPlayer.tsx';
 
@@ -200,6 +201,8 @@ export const RobotControlPanel: React.FC = () => {
     const [webcamAspectRatio, setWebcamAspectRatio] = useState<number | null>(null);
     const [isManagePosesVisible, setIsManagePosesVisible] = useState(false);
     const [showHeaderActions, setShowHeaderActions] = useState(false);
+
+    const [subHeaderRef, subHeaderHeight] = useMeasuredHeight<HTMLDivElement>();
 
     useCloseOnRosDisconnect(isVisualizerVisible, () => setIsVisualizerVisible(false));
     useCloseOnRosDisconnect(isStreamVisible, () => setIsStreamVisible(false));
@@ -767,11 +770,16 @@ export const RobotControlPanel: React.FC = () => {
                         isolation: 'isolate',
                         display: 'flex',
                         flexDirection: 'column',
-                        height: `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
-                        minHeight: 0,
+                        height: isMobile
+                            ? 'auto'
+                            : `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`,
+                        minHeight: isMobile
+                            ? `calc(100dvh - ${headerHeight}px - ${PAGE_CONTENT_STYLE.padding * 2}px)`
+                            : 0,
                     }}
                 >
                     <div
+                        ref={subHeaderRef}
                         style={{
                             position: 'sticky',
                             top: headerHeight,
@@ -958,6 +966,10 @@ export const RobotControlPanel: React.FC = () => {
                                 <div
                                     style={{
                                         width: '100%',
+                                        position: 'sticky',
+                                        top: headerHeight + subHeaderHeight,
+                                        zIndex: 4,
+                                        backgroundColor: UI_BG_BLACK,
                                         height: '34vh',
                                         minHeight: 204,
                                         marginBottom: 12,
@@ -968,7 +980,7 @@ export const RobotControlPanel: React.FC = () => {
                                     {dockContent}
                                 </div>
                             )}
-                            <div style={{ width: '100%', flex: 1, minHeight: 0 }}>
+                            <div style={{ width: '100%', minHeight: 0 }}>
                                 <PaginatedJointCategories
                                     categoryOrder={categoryOrder}
                                     categorizedJoints={categorizedJoints}
