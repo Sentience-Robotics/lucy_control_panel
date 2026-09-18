@@ -217,35 +217,14 @@ export const AppHeader: React.FC = () => {
         <div
             style={{
                 display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: 'flex-end',
-                alignItems: isMobile ? 'stretch' : 'center',
+                alignItems: 'center',
                 width: '100%',
                 gap: isMobile ? 8 : 12,
             }}
         >
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: isMobile ? 'space-between' : 'flex-end',
-                    alignItems: 'center',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                }}
-            >
-                {statusIndicators}
-            </div>
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: isMobile ? 'flex-end' : 'initial',
-                    alignItems: 'center',
-                    gap: isMobile ? 6 : 12,
-                    flexWrap: 'wrap',
-                }}
-            >
-                {headerActions}
-            </div>
+            {statusIndicators}
+            {headerActions}
         </div>
     );
 };
