@@ -28,6 +28,8 @@ import {
     REDO_GETTING_STARTED_EVENT,
 } from './GettingStartedModal';
 import { MovableModal } from './MovableModal';
+import { PipelineDiagnostics } from './PipelineDiagnostics';
+import { refreshAllPipelines } from '../Services/pipelineProbes';
 import { usePaginatedCategories } from '../contexts/PaginatedCategoriesContext';
 
 const { Text } = Typography;
@@ -80,6 +82,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setRosUrl(currentUrl);
     }, [currentUrl]);
 
+    // The pipelines are the first thing a stuck user should see, so they are
+    // live on open rather than behind a button.
+    useEffect(() => {
+        if (visible) refreshAllPipelines();
+    }, [visible]);
+
     useEffect(() => {
         localStorage.setItem(
             AUTO_CONNECT_KEY,
@@ -120,7 +128,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             isVisible={visible}
             onClose={onClose}
             centered
-            initialSize={{ w: 480, h: 550 }}
+            initialSize={{ w: 480, h: 640 }}
             minWidth={480}
             footerWrap={false}
             header={
@@ -314,6 +322,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     >
                         Redo getting started
                     </Button>
+                </Form.Item>
+
+                <Form.Item
+                    label={
+                        <Text
+                            style={{
+                                color: UI_TEXT_PRIMARY_ON_DARK,
+                                fontWeight: 'bold',
+                            }}
+                        >
+                            Diagnostics
+                        </Text>
+                    }
+                    tooltip={{
+                        title: 'Each step of the two pipelines, in order. Green is healthy, amber is degraded, grey has not run yet. Tap a step for what it checks and what it last saw.',
+                        icon: <InfoCircleOutlined />,
+                        zIndex: 1100,
+                    }}
+                    style={{ marginBottom: 0 }}
+                >
+                    <PipelineDiagnostics pipeline="connection" title="Connection" />
+                    <PipelineDiagnostics pipeline="command" title="Command" />
                 </Form.Item>
             </Form>
         </MovableModal>

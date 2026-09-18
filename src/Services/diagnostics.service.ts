@@ -14,6 +14,8 @@ export type PipelineId = 'connection' | 'command';
 export interface Stage {
     id: string;
     label: string;
+    /** Condensed label for the compact grid; the full label lives in the tooltip. */
+    short: string;
     /** What this step does, shown under the label. */
     hint: string;
     status: StageStatus;
@@ -25,25 +27,27 @@ export interface Stage {
     count?: number;
 }
 
-const CONNECTION_STAGES: Array<Pick<Stage, 'id' | 'label' | 'hint'>> = [
-    { id: 'url', label: 'Endpoint resolved', hint: 'Which rosbridge URL the panel will dial' },
-    { id: 'socket', label: 'WebSocket open', hint: 'TCP + upgrade to the rosbridge server' },
-    { id: 'rosapi', label: 'Attached to a live robot', hint: 'Which nodes publish /joint_states, via rosapi' },
-    { id: 'description', label: 'Robot description', hint: '/robot_description from robot_state_publisher (the URDF)' },
-    { id: 'hardware', label: 'Robot configuration', hint: 'Hardware YAML: joints, limits, calibration' },
-    { id: 'jointstates', label: 'Joint states streaming', hint: '/joint_states — drives the blue dots' },
+type StageDef = Pick<Stage, 'id' | 'label' | 'short' | 'hint'>;
+
+const CONNECTION_STAGES: StageDef[] = [
+    { id: 'url', label: 'Endpoint resolved', short: 'Endpoint', hint: 'Which rosbridge URL the panel will dial' },
+    { id: 'socket', label: 'WebSocket open', short: 'WebSocket', hint: 'TCP + upgrade to the rosbridge server' },
+    { id: 'rosapi', label: 'Attached to a live robot', short: 'Live robot', hint: 'Which nodes publish /joint_states, via rosapi' },
+    { id: 'description', label: 'Robot description', short: 'URDF', hint: '/robot_description from robot_state_publisher (the URDF)' },
+    { id: 'hardware', label: 'Robot configuration', short: 'Hardware', hint: 'Hardware YAML: joints, limits, calibration' },
+    { id: 'jointstates', label: 'Joint states streaming', short: 'Streaming', hint: '/joint_states — drives the blue dots' },
 ];
 
-const COMMAND_STAGES: Array<Pick<Stage, 'id' | 'label' | 'hint'>> = [
-    { id: 'slider', label: 'Slider moved', hint: 'Panel control changed, in actuator degrees' },
-    { id: 'converted', label: 'Converted to radians', hint: 'Actuator degrees mapped to URDF radians' },
-    { id: 'published', label: 'JointTrajectory published', hint: 'Sent to the controller command topic' },
-    { id: 'controller', label: 'Executed by a controller', hint: 'A ros2_control controller_manager is driving the joints' },
-    { id: 'echoed', label: 'Echoed on /joint_states', hint: 'Something reported the joint actually moved' },
-    { id: 'rendered', label: 'Pose rendered', hint: 'Forward kinematics ran and the model redrew' },
+const COMMAND_STAGES: StageDef[] = [
+    { id: 'slider', label: 'Slider moved', short: 'Slider', hint: 'Panel control changed, in actuator degrees' },
+    { id: 'converted', label: 'Converted to radians', short: 'Radians', hint: 'Actuator degrees mapped to URDF radians' },
+    { id: 'published', label: 'JointTrajectory published', short: 'Published', hint: 'Sent to the controller command topic' },
+    { id: 'controller', label: 'Executed by a controller', short: 'Controller', hint: 'A ros2_control controller_manager is driving the joints' },
+    { id: 'echoed', label: 'Echoed on /joint_states', short: 'Echoed', hint: 'Something reported the joint actually moved' },
+    { id: 'rendered', label: 'Pose rendered', short: 'Rendered', hint: 'Forward kinematics ran and the model redrew' },
 ];
 
-function seed(defs: Array<Pick<Stage, 'id' | 'label' | 'hint'>>): Map<string, Stage> {
+function seed(defs: StageDef[]): Map<string, Stage> {
     return new Map(defs.map((d) => [d.id, { ...d, status: 'pending' as StageStatus }]));
 }
 
