@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { useEffect, useState } from 'react';
 import { Button, Tooltip, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';

@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * Bridges browser microphone to /mic_audio and /audio playback to browser speakers.
  * Mic and speakers can be activated independently.

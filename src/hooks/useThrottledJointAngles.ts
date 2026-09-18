@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * Subscribes to /joint_states at full ROS rate (writes to a ref),
  * then drains into React state at a fixed rate (default 10 Hz).

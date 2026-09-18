@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import axios from "axios";
 import type { AxiosInstance, AxiosResponse } from "axios";
 

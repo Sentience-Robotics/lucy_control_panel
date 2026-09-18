@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import React, { useMemo, useState } from 'react';
 import { Alert, Col, Row, Select } from 'antd';
 import { FloatGraph } from '../Components/Sensors';

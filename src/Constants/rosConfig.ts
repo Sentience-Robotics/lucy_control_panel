@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /** URDF command ↔ actuator calibration (matches ros2_control hardware params). */
 export interface JointMapping {
   offsetDeg: number;

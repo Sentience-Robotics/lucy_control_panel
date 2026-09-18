@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { HAND_CONNECTIONS, Hands, type Results, type NormalizedLandmark, type Handedness } from "@mediapipe/hands";
 import React, { useEffect, useMemo, useRef } from "react";
 import Webcam from "react-webcam";

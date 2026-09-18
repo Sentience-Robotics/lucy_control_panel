@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { useRosConnection } from '../../../hooks/useRosConnection.hook.ts';
 import type { HardwareConfigEditorParams } from './hardwareConfigEditorParams.ts';
 import { useHardwareConfigEditorColumns } from './useHardwareConfigEditorColumns.tsx';

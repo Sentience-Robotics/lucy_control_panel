@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /** ROS `lucy_config_services` — `/config/*` hardware preset lifecycle. */
 
 export type HardwareConfigServiceSuffix = 'get' | 'save' | 'list' | 'activate' | 'delete';

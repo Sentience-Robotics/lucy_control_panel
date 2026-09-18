@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { asMapping } from './documentHelpers.ts';
 
 /** Mirrors `lucy_config_generator.schema` URDF_*_LIST_KEYS for delete-actuator UX. */

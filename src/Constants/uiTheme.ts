@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 /**
  * Single palette for the Lucy control panel — prefer importing from here instead of raw hex/rgb.
  * CSS files that cannot import TS use `var(--ui-*)` values applied via {@link mountUiThemeCssVars}.

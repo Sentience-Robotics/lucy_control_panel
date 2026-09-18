@@ -1,3 +1,8 @@
+/*
+ * Copyright 2025-2026 Sentience Robotics Team
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
 import { useEffect, useState } from 'react';
 import { GazeboStatusHandler } from '../Services/ros/handlers/GazeboStatus.handler.ts';
 
