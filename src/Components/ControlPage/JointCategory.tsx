@@ -1,16 +1,17 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { Card, Typography, Space, Button, Badge } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import type { JointControlState } from '../Constants/robotTypes';
-import { JointControl } from './JointControl';
+import type { JointControlState } from '../../Constants/robotTypes.ts';
+import { JointControl } from './JointControl.tsx';
 import {
+    UI_ACCENT_GREEN,
     UI_BORDER_MUTED,
     UI_BORDER_SOFT,
     UI_COLOR_TRANSPARENT,
     UI_PANEL_BG,
     UI_TEXT_ON_ACCENT,
     UI_TEXT_PRIMARY_ON_DARK,
-} from '../Constants/uiTheme.ts';
+} from '../../Constants/uiTheme.ts';
 
 const { Title } = Typography;
 
@@ -33,10 +34,6 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     showDegrees,
     disabled = false,
 }) => {
-    const categoryColor = useMemo(() => {
-        return '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-    }, []);
-
     const handleResetCategory = useCallback(() => {
         onResetCategory(category);
     }, [onResetCategory, category]);
@@ -48,10 +45,9 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
     return (
         <Card
             style={{
-                marginBottom: 16,
                 backgroundColor: UI_PANEL_BG,
                 borderColor: UI_BORDER_MUTED,
-                borderLeft: `2px solid ${categoryColor}`,
+                borderLeft: `2px solid ${UI_ACCENT_GREEN}`,
                 height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
@@ -60,12 +56,13 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
             bodyStyle={{
                 padding: 16,
                 flex: 1,
+                minHeight: 0,
+                overflow: 'hidden',
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative'
             }}
         >
-            {/* ASCII Fill background for all categories - always visible */}
             <div
                 style={{
                     display: 'flex',
@@ -81,7 +78,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                     level={5}
                     style={{
                         margin: 0,
-                        color: categoryColor,
+                        color: UI_ACCENT_GREEN,
                         textTransform: 'uppercase',
                         letterSpacing: '1px',
                         fontSize: '14px',
@@ -93,7 +90,7 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
                 <Badge
                     count={joints.length}
                     style={{
-                        backgroundColor: categoryColor,
+                        backgroundColor: UI_ACCENT_GREEN,
                         color: UI_TEXT_ON_ACCENT,
                         fontWeight: 'bold'
                     }}
@@ -121,11 +118,10 @@ export const JointCategory: React.FC<JointCategoryProps> = React.memo(({
 
             <div style={{
                 flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'flex-start',
+                minHeight: 0,
+                overflowY: 'auto',
+                overflowX: 'hidden',
                 position: 'relative',
-                minHeight: '200px',
                 zIndex: 2
             }}>
                 <Space direction="vertical" style={{ width: '100%', position: 'relative' }} size="small">

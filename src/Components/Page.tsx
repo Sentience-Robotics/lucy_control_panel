@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import type { ReactNode } from 'react';
 import { Layout, Typography, Grid } from 'antd';
+import { useMeasuredHeight } from '../hooks/useMeasuredHeight';
 import {
   UI_ACCENT_GREEN,
   UI_ACCENT_TEXT_SHADOW,
@@ -19,6 +20,7 @@ import {
 } from '../Constants/uiTheme.ts';
 import { AppHeader } from './AppHeader.tsx';
 import { HeaderHeightContext } from '../contexts/HeaderHeightContext.ts';
+import { DockProvider } from '../contexts/DockContext.tsx';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -44,18 +46,7 @@ export const Page: React.FC<PageProps> = ({
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
 
-  const headerRef = useRef<HTMLElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
-
-  useEffect(() => {
-    const el = headerRef.current;
-    if (!el) { return; }
-    const update = () => setHeaderHeight(el.getBoundingClientRect().height);
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [showHeader]);
+  const [headerRef, headerHeight] = useMeasuredHeight<HTMLElement>();
 
   const defaultContentStyle: React.CSSProperties = {
     backgroundColor: UI_BG_BLACK,
@@ -394,58 +385,61 @@ export const Page: React.FC<PageProps> = ({
 
   return (
     <Layout style={{ minHeight: '100vh', backgroundColor: UI_BG_BLACK }} className={className}>
-      {showHeader && (
-        <Header
-          ref={headerRef}
-          className="lucy-page-header"
-          style={{
-            backgroundColor: UI_PANEL_BG,
-            borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
-            padding: isMobile ? '8px 12px' : '8px 24px',
-            height: 'auto',
-            lineHeight: 'normal',
-            minHeight: isMobile ? 80 : 48,
-            boxSizing: 'border-box',
-            flexShrink: 0,
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-          }}
-        >
-          <div style={{
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: isMobile ? 8 : 12,
-            width: '100%',
-            minHeight: isMobile ? 64 : 32,
-          }}>
-            {title && (
-              <Title
-                level={2}
-                style={{
-                  margin: 0,
-                  color: UI_ACCENT_GREEN,
-                  fontFamily: 'monospace',
-                  textShadow: UI_ACCENT_TEXT_SHADOW,
-                  fontSize: isMobile ? '16px' : '18px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ▲ LUCY CONTROL PANEL
-              </Title>
-            )}
-            <div style={{ width: '100%' }}><AppHeader /></div>
-          </div>
-        </Header>
-      )}
+      <DockProvider>
+        {showHeader && (
+          <Header
+            ref={headerRef}
+            className="lucy-page-header"
+            style={{
+              backgroundColor: UI_PANEL_BG,
+              borderBottom: UI_PAGE_HEADER_BORDER_BOTTOM,
+              padding: isMobile ? '8px 12px' : '8px 24px',
+              height: 'auto',
+              lineHeight: 'normal',
+              minHeight: isMobile ? 0 : 48,
+              boxSizing: 'border-box',
+              flexShrink: 0,
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+            }}
+          >
+            <div style={{
+              display: 'flex',
+              flexDirection: isMobile ? 'column' : 'row',
+              justifyContent: 'space-between',
+              alignItems: isMobile ? 'stretch' : 'center',
+              gap: isMobile ? 8 : 12,
+              width: '100%',
+              minHeight: isMobile ? 0 : 32,
+            }}>
+              {title && (
+                <Title
+                  level={2}
+                  style={{
+                    margin: 0,
+                    color: UI_ACCENT_GREEN,
+                    fontFamily: 'monospace',
+                    textShadow: UI_ACCENT_TEXT_SHADOW,
+                    fontSize: isMobile ? '16px' : '18px',
+                    whiteSpace: isMobile ? 'normal' : 'nowrap',
+                    textAlign: isMobile ? 'center' : 'left',
+                  }}
+                >
+                  ▲ LUCY CONTROL PANEL
+                </Title>
+              )}
+              <div style={{ width: '100%', minWidth: 0 }}><AppHeader /></div>
+            </div>
+          </Header>
+        )}
 
-      <Content style={defaultContentStyle}>
-        <HeaderHeightContext.Provider value={headerHeight}>
-          {children}
-        </HeaderHeightContext.Provider>
-      </Content>
+        <Content style={defaultContentStyle}>
+          <HeaderHeightContext.Provider value={headerHeight}>
+            {children}
+          </HeaderHeightContext.Provider>
+        </Content>
+      </DockProvider>
 
       <style>{tuiGlobalCss}</style>
     </Layout>

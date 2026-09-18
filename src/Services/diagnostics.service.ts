@@ -9,11 +9,15 @@
  */
 
 export type StageStatus = 'pending' | 'ok' | 'warn' | 'error';
+
+const EMIT_COALESCE_MS = 250;
 export type PipelineId = 'connection' | 'command';
 
 export interface Stage {
     id: string;
     label: string;
+    /** Condensed label for the compact grid; the full label lives in the tooltip. */
+    short: string;
     /** What this step does, shown under the label. */
     hint: string;
     status: StageStatus;
@@ -21,29 +25,29 @@ export interface Stage {
     detail?: string;
     /** epoch ms of the last update */
     at?: number;
-    /** messages seen, for streaming stages */
-    count?: number;
 }
 
-const CONNECTION_STAGES: Array<Pick<Stage, 'id' | 'label' | 'hint'>> = [
-    { id: 'url', label: 'Endpoint resolved', hint: 'Which rosbridge URL the panel will dial' },
-    { id: 'socket', label: 'WebSocket open', hint: 'TCP + upgrade to the rosbridge server' },
-    { id: 'rosapi', label: 'Attached to a live robot', hint: 'Which nodes publish /joint_states, via rosapi' },
-    { id: 'description', label: 'Robot description', hint: '/robot_description from robot_state_publisher (the URDF)' },
-    { id: 'hardware', label: 'Robot configuration', hint: 'Hardware YAML: joints, limits, calibration' },
-    { id: 'jointstates', label: 'Joint states streaming', hint: '/joint_states — drives the blue dots' },
+type StageDef = Pick<Stage, 'id' | 'label' | 'short' | 'hint'>;
+
+const CONNECTION_STAGES: StageDef[] = [
+    { id: 'url', label: 'Endpoint resolved', short: 'Endpoint', hint: 'Which rosbridge URL the panel will dial' },
+    { id: 'socket', label: 'WebSocket open', short: 'WebSocket', hint: 'TCP + upgrade to the rosbridge server' },
+    { id: 'rosapi', label: 'Attached to a live robot', short: 'Live robot', hint: 'Which nodes publish /joint_states, via rosapi' },
+    { id: 'description', label: 'Robot description', short: 'URDF', hint: '/robot_description from robot_state_publisher (the URDF)' },
+    { id: 'hardware', label: 'Robot configuration', short: 'Hardware', hint: 'Hardware YAML: joints, limits, calibration' },
+    { id: 'jointstates', label: 'Joint states streaming', short: 'Streaming', hint: '/joint_states — drives the blue dots' },
 ];
 
-const COMMAND_STAGES: Array<Pick<Stage, 'id' | 'label' | 'hint'>> = [
-    { id: 'slider', label: 'Slider moved', hint: 'Panel control changed, in actuator degrees' },
-    { id: 'converted', label: 'Converted to radians', hint: 'Actuator degrees mapped to URDF radians' },
-    { id: 'published', label: 'JointTrajectory published', hint: 'Sent to the controller command topic' },
-    { id: 'controller', label: 'Executed by a controller', hint: 'A ros2_control controller_manager is driving the joints' },
-    { id: 'echoed', label: 'Echoed on /joint_states', hint: 'Something reported the joint actually moved' },
-    { id: 'rendered', label: 'Pose rendered', hint: 'Forward kinematics ran and the model redrew' },
+const COMMAND_STAGES: StageDef[] = [
+    { id: 'slider', label: 'Slider moved', short: 'Slider', hint: 'Panel control changed, in actuator degrees' },
+    { id: 'converted', label: 'Converted to radians', short: 'Radians', hint: 'Actuator degrees mapped to URDF radians' },
+    { id: 'published', label: 'JointTrajectory published', short: 'Published', hint: 'Sent to the controller command topic' },
+    { id: 'controller', label: 'Executed by a controller', short: 'Controller', hint: 'A ros2_control controller_manager is driving the joints' },
+    { id: 'echoed', label: 'Echoed on /joint_states', short: 'Echoed', hint: 'Something reported the joint actually moved' },
+    { id: 'rendered', label: 'Pose rendered', short: 'Rendered', hint: 'Forward kinematics ran and the model redrew' },
 ];
 
-function seed(defs: Array<Pick<Stage, 'id' | 'label' | 'hint'>>): Map<string, Stage> {
+function seed(defs: StageDef[]): Map<string, Stage> {
     return new Map(defs.map((d) => [d.id, { ...d, status: 'pending' as StageStatus }]));
 }
 
@@ -55,6 +59,7 @@ class DiagnosticsService {
         command: seed(COMMAND_STAGES),
     };
     private listeners = new Set<() => void>();
+    private emitScheduled = false;
 
     static getInstance(): DiagnosticsService {
         if (!DiagnosticsService._instance) {
@@ -72,21 +77,36 @@ class DiagnosticsService {
         this.listeners.forEach((l) => l());
     }
 
-    /** Update one stage. `count` accumulates when passed as true. */
+    private scheduleEmit() {
+        if (this.emitScheduled) return;
+        this.emitScheduled = true;
+        setTimeout(() => {
+            this.emitScheduled = false;
+            this.emit();
+        }, EMIT_COALESCE_MS);
+    }
+
     record(
         pipeline: PipelineId,
         id: string,
         status: StageStatus,
         detail?: string,
-        countUp = false,
     ): void {
         const stage = this.stages[pipeline].get(id);
         if (!stage) return;
+        const changed =
+            stage.status !== status || (detail !== undefined && stage.detail !== detail);
         stage.status = status;
         stage.at = Date.now();
         if (detail !== undefined) stage.detail = detail;
-        if (countUp) stage.count = (stage.count ?? 0) + 1;
-        this.emit();
+        if (changed) this.emit();
+        else this.scheduleEmit();
+    }
+
+    /** Refreshes a stage's age without notifying subscribers. */
+    touch(pipeline: PipelineId, id: string): void {
+        const stage = this.stages[pipeline].get(id);
+        if (stage) stage.at = Date.now();
     }
 
     /** Drop everything downstream of a lost connection. */
@@ -96,7 +116,6 @@ class DiagnosticsService {
             if (stage) {
                 stage.status = 'pending';
                 stage.detail = undefined;
-                stage.count = undefined;
             }
         }
         this.emit();

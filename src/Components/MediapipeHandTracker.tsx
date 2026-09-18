@@ -134,18 +134,17 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
         ctx.restore();
     };
 
-    
     function processHands(hands: NormalizedLandmark[][], handedness: Handedness[]) {
         hands.forEach((hand, handIndex) => {
             for (let i = 0; i < 5; i++) {
-                
+
                 const label: string =
                 handedness[handIndex].label === "Left"
                 ? "leftHand"
                 : "rightHand";
-                
+
                 if (controlModeRef.current === ControlMode.Claw) {
-                    processClaw(hand, label);
+                    processClaw(hand);
                     return;
                 }
 
@@ -160,8 +159,8 @@ const MediapipeHandTracker: React.FC<MediapipeHandTrackerProps> = ({
             }
         });
     };
-    
-    function processClaw(hand: NormalizedLandmark[], handLabel: string) {
+
+    function processClaw(hand: NormalizedLandmark[]) {
         const thumbTip = hand[4];
         const fingerTips = [hand[8], hand[12], hand[16], hand[20]]; // index, middle, ring, pinky
 

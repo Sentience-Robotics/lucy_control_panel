@@ -1,9 +1,10 @@
-import React, { useMemo, useCallback, useState, useEffect } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { Card, Slider, InputNumber, Typography, Space, Tag, Button, Tooltip } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
-import type { JointControlState } from '../Constants/robotTypes';
+import type { JointControlState } from '../../Constants/robotTypes.ts';
+import { storageService } from '../../Services/storage.service.ts';
 
-import { radianToDegree, degreeToRadian } from "../Utils/math.utils.ts";
+import { radianToDegree, degreeToRadian } from "../../Utils/math.utils.ts";
 import {
     UI_ACCENT_BLUE,
     UI_ACCENT_GREEN,
@@ -14,7 +15,7 @@ import {
     UI_LIST_ROW_BG,
     UI_TEXT_PRIMARY_ON_DARK,
     UI_TEXT_SECONDARY_MUTED,
-} from '../Constants/uiTheme.ts';
+} from '../../Constants/uiTheme.ts';
 
 const { Text } = Typography;
 
@@ -38,6 +39,7 @@ interface TrackMarkerProps {
 }
 
 const MARKER_HIT_SIZE = 12;
+const JOINT_POSITION_KEY_PREFIX = 'lucy_joint_position_';
 
 // Track marker (actual feedback / rest). Uses transform, not `left: %`, so updates skip layout.
 // Memoized to avoid re-rendering on every slider drag.
@@ -94,6 +96,74 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
   disabled = false,
 }) => {
   const [localValue, setLocalValue] = useState(joint.currentValue);
+  const [positionStorageLoaded, setPositionStorageLoaded] = useState(false);
+  const currentValueRef = useRef(joint.currentValue);
+  const loadedPositionKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    currentValueRef.current = joint.currentValue;
+  }, [joint.currentValue]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
+    loadedPositionKeyRef.current = null;
+    setPositionStorageLoaded(false);
+
+    const loadStoredPosition = async () => {
+      try {
+        const storedValue = await storageService.loadData(
+          storageKey,
+          'session'
+        );
+        const parsedValue = storedValue === null ? NaN : Number(storedValue);
+
+        if (!cancelled && Number.isFinite(parsedValue)) {
+          const clampedValue = Math.max(
+            joint.minValue,
+            Math.min(joint.maxValue, parsedValue)
+          );
+          if (clampedValue !== currentValueRef.current) {
+            onValueChange(joint.name, clampedValue);
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to load position for joint ${joint.name}:`, error);
+      } finally {
+        if (!cancelled) {
+          loadedPositionKeyRef.current = storageKey;
+          setPositionStorageLoaded(true);
+        }
+      }
+    };
+
+    void loadStoredPosition();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [joint.name, joint.minValue, joint.maxValue, onValueChange]);
+
+  useEffect(() => {
+    const storageKey = `${JOINT_POSITION_KEY_PREFIX}${joint.name}`;
+    if (
+      !positionStorageLoaded ||
+      loadedPositionKeyRef.current !== storageKey ||
+      !Number.isFinite(joint.currentValue)
+    ) {
+      return;
+    }
+
+    void storageService
+      .saveData(
+        String(joint.currentValue),
+        storageKey,
+        'session'
+      )
+      .catch((error) => {
+        console.warn(`Failed to save position for joint ${joint.name}:`, error);
+      });
+  }, [joint.name, joint.currentValue, positionStorageLoaded]);
 
   useEffect(() => {
     setLocalValue(joint.currentValue);
@@ -120,12 +190,13 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     onReset?.(joint.name);
   }, [onReset, joint.name]);
 
-  const actuatorNative = Boolean(joint.valueInActuatorDegrees && showDegrees);
+  const actuatorValue = Boolean(joint.valueInActuatorDegrees);
 
   const displayValues = useMemo(() => {
     const getDisplayValue = (value: number): number => {
-      if (actuatorNative) {
-        return Math.round(value * 100) / 100;
+      if (actuatorValue) {
+        const displayValue = showDegrees ? value : degreeToRadian(value);
+        return Math.round(displayValue * (showDegrees ? 100 : 1000)) / (showDegrees ? 100 : 1000);
       }
       return showDegrees
         ? Math.round(radianToDegree(value) * 100) / 100
@@ -133,7 +204,13 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     };
 
     const getDisplayRange = (): [number, number] => {
-      if (actuatorNative) {
+      if (actuatorValue) {
+        if (!showDegrees) {
+          return [
+            Math.round(degreeToRadian(joint.minValue) * 1000) / 1000,
+            Math.round(degreeToRadian(joint.maxValue) * 1000) / 1000,
+          ];
+        }
         return [
           Math.round(joint.minValue * 100) / 100,
           Math.round(joint.maxValue * 100) / 100,
@@ -155,46 +232,53 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
     const currentDisplay = getDisplayValue(localValue);
 
     return { minDisplay, maxDisplay, currentDisplay };
-  }, [joint.minValue, joint.maxValue, localValue, showDegrees, actuatorNative]);
+  }, [joint.minValue, joint.maxValue, localValue, showDegrees, actuatorValue]);
 
   const convertInputValue = useCallback((displayValue: number): number => {
-    if (actuatorNative) {
-      return displayValue;
+    if (actuatorValue) {
+      return showDegrees ? displayValue : radianToDegree(displayValue);
     }
     return showDegrees ? degreeToRadian(displayValue) : displayValue;
-  }, [showDegrees, actuatorNative]);
+  }, [showDegrees, actuatorValue]);
 
   const { minDisplay, maxDisplay, currentDisplay } = displayValues;
 
   const actualBarPercent = useMemo(() => {
     if (joint.actualValue === undefined) return undefined;
-    const actualDisplay = actuatorNative
-      ? Math.round(joint.actualValue * 100) / 100
+    const actualDisplay = actuatorValue
+      ? showDegrees
+        ? Math.round(joint.actualValue * 100) / 100
+        : Math.round(degreeToRadian(joint.actualValue) * 1000) / 1000
       : showDegrees
         ? Math.round(radianToDegree(joint.actualValue) * 100) / 100
         : Math.round(joint.actualValue * 1000) / 1000;
     const pct = ((actualDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
     return Math.max(0, Math.min(100, pct));
-  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorNative]);
+  }, [joint.actualValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const restBarPercent = useMemo(() => {
     if (joint.restValue === undefined) return undefined;
-    const restDisplay = actuatorNative
-      ? Math.round(joint.restValue * 100) / 100
+    const restDisplay = actuatorValue
+      ? showDegrees
+        ? Math.round(joint.restValue * 100) / 100
+        : Math.round(degreeToRadian(joint.restValue) * 1000) / 1000
       : showDegrees
         ? Math.round(radianToDegree(joint.restValue) * 100) / 100
         : Math.round(joint.restValue * 1000) / 1000;
     const pct = ((restDisplay - minDisplay) / (maxDisplay - minDisplay)) * 100;
     return Math.max(0, Math.min(100, pct));
-  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorNative]);
+  }, [joint.restValue, minDisplay, maxDisplay, showDegrees, actuatorValue]);
 
   const formatMarkerValue = useCallback((value: number): string => {
-    if (actuatorNative || showDegrees) {
-      const degrees = actuatorNative ? value : radianToDegree(value);
-      return `${Math.round(degrees * 10) / 10}°`;
+    if (actuatorValue) {
+      const displayValue = showDegrees ? value : degreeToRadian(value);
+      return `${Math.round(displayValue * (showDegrees ? 10 : 1000)) / (showDegrees ? 10 : 1000)}${showDegrees ? '°' : ' rad'}`;
     }
-    return `${Math.round(value * 1000) / 1000}rad`;
-  }, [actuatorNative, showDegrees]);
+    if (showDegrees) {
+      return `${Math.round(radianToDegree(value) * 10) / 10}°`;
+    }
+    return `${Math.round(value * 1000) / 1000} rad`;
+  }, [actuatorValue, showDegrees]);
 
   const getJointTypeColor = (type: string): string => {
     switch (type) {
@@ -275,7 +359,7 @@ export const JointControl: React.FC<JointControlProps> = React.memo(({
             disabled={disabled}
             size="small"
             style={{
-              width: 80,
+              width: 100,
               backgroundColor: UI_INPUT_SURFACE,
               borderColor: UI_BORDER_SOFT
             }}

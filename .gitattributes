@@ -1,0 +1,15 @@
+# Normalize every text file to LF, in the repository and in the working tree.
+# Keeps diffs free of line-ending noise regardless of contributor platform.
+* text=auto eol=lf
+
+# Binary assets: never normalize.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
