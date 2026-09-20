@@ -352,6 +352,8 @@ export function buildActuatorColumns({
                     <DegAngleInputNumber
                         radValue={row.servo_min_rad}
                         onCommitRad={commit}
+                        minDeg={0}
+                        maxDeg={360}
                         style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}
                     />
@@ -377,6 +379,8 @@ export function buildActuatorColumns({
                     <DegAngleInputNumber
                         radValue={row.servo_default_rad}
                         onCommitRad={commit}
+                        minDeg={0}
+                        maxDeg={360}
                         style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}
                     />
@@ -402,6 +406,8 @@ export function buildActuatorColumns({
                     <DegAngleInputNumber
                         radValue={row.servo_max_rad}
                         onCommitRad={commit}
+                        minDeg={0}
+                        maxDeg={360}
                         style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}
                     />

@@ -14,13 +14,24 @@ type Props = {
     style?: CSSProperties;
     title?: string;
     step?: number;
+    /** Optional UI clamp in degrees (e.g. 0–360 for servo limits). */
+    minDeg?: number;
+    maxDeg?: number;
 };
 
 /**
  * Degrees in the UI, radians in YAML. Draft freely while focused; round to an
  * integer degree and write rad only on blur (avoids deg↔rad jitter mid-typing).
  */
-export function DegAngleInputNumber({ radValue, onCommitRad, style, title, step = 1 }: Props) {
+export function DegAngleInputNumber({
+    radValue,
+    onCommitRad,
+    style,
+    title,
+    step = 1,
+    minDeg,
+    maxDeg,
+}: Props) {
     const [focused, setFocused] = useState(false);
     const [draft, setDraft] = useState<number | null>(null);
 
@@ -42,6 +53,8 @@ export function DegAngleInputNumber({ radValue, onCommitRad, style, title, step 
         <InputNumber
             size="small"
             step={step}
+            min={minDeg}
+            max={maxDeg}
             precision={focused ? undefined : 0}
             style={{ width: '100%', ...style }}
             title={title}
@@ -59,7 +72,9 @@ export function DegAngleInputNumber({ radValue, onCommitRad, style, title, step 
                     setDraft(null);
                     return;
                 }
-                const deg = Math.round(draft);
+                let deg = Math.round(draft);
+                if (typeof minDeg === 'number') deg = Math.max(minDeg, deg);
+                if (typeof maxDeg === 'number') deg = Math.min(maxDeg, deg);
                 onCommitRad(degreeToRadian(deg));
                 setDraft(null);
             }}
