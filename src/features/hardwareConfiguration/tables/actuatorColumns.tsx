@@ -28,13 +28,7 @@ import {
     appendPassiveUrdfJointIfUnassigned,
     removePassiveUrdfJoint,
 } from '../model/passiveUrdf.ts';
-import { degreeToRadian, radianToDegree } from '../../../Utils/math.utils.ts';
-
-/** Display helper: YAML stores radians; editor columns show degrees. */
-function degFromRadField(raw: unknown): number | undefined {
-    const rad = Number(raw);
-    return Number.isFinite(rad) ? radianToDegree(rad) : undefined;
-}
+import { DegAngleInputNumber } from './DegAngleInputNumber.tsx';
 
 export type ActuatorColumnsArgs = {
     yamlDoc: Record<string, unknown> | null;
@@ -347,19 +341,19 @@ export function buildActuatorColumns({
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const ao = actOpts(id, 'servo_min_rad');
+                const commit = (rad: number) => {
+                    if (!yamlDoc) return;
+                    const next = structuredClone(yamlDoc);
+                    const list = next.actuators as Record<string, unknown>[];
+                    list[index] = { ...list[index], servo_min_rad: rad };
+                    patchDoc(next);
+                };
                 return (
-                    <InputNumber
-                        size="small"
-                        style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={degFromRadField(row.servo_min_rad)}
+                    <DegAngleInputNumber
+                        radValue={row.servo_min_rad}
+                        onCommitRad={commit}
+                        style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}
-                        onChange={(val) => {
-                            if (!yamlDoc || val == null) return;
-                            const next = structuredClone(yamlDoc);
-                            const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], servo_min_rad: degreeToRadian(val) };
-                            patchDoc(next);
-                        }}
                     />
                 );
             },
@@ -372,19 +366,19 @@ export function buildActuatorColumns({
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const ao = actOpts(id, 'servo_default_rad');
+                const commit = (rad: number) => {
+                    if (!yamlDoc) return;
+                    const next = structuredClone(yamlDoc);
+                    const list = next.actuators as Record<string, unknown>[];
+                    list[index] = { ...list[index], servo_default_rad: rad };
+                    patchDoc(next);
+                };
                 return (
-                    <InputNumber
-                        size="small"
-                        style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={degFromRadField(row.servo_default_rad)}
+                    <DegAngleInputNumber
+                        radValue={row.servo_default_rad}
+                        onCommitRad={commit}
+                        style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}
-                        onChange={(val) => {
-                            if (!yamlDoc || val == null) return;
-                            const next = structuredClone(yamlDoc);
-                            const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], servo_default_rad: degreeToRadian(val) };
-                            patchDoc(next);
-                        }}
                     />
                 );
             },
@@ -397,19 +391,19 @@ export function buildActuatorColumns({
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const ao = actOpts(id, 'servo_max_rad');
+                const commit = (rad: number) => {
+                    if (!yamlDoc) return;
+                    const next = structuredClone(yamlDoc);
+                    const list = next.actuators as Record<string, unknown>[];
+                    list[index] = { ...list[index], servo_max_rad: rad };
+                    patchDoc(next);
+                };
                 return (
-                    <InputNumber
-                        size="small"
-                        style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={degFromRadField(row.servo_max_rad)}
+                    <DegAngleInputNumber
+                        radValue={row.servo_max_rad}
+                        onCommitRad={commit}
+                        style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}
-                        onChange={(val) => {
-                            if (!yamlDoc || val == null) return;
-                            const next = structuredClone(yamlDoc);
-                            const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], servo_max_rad: degreeToRadian(val) };
-                            patchDoc(next);
-                        }}
                     />
                 );
             },
@@ -422,20 +416,19 @@ export function buildActuatorColumns({
                 const { row, index } = record;
                 const id = String(row.id ?? index);
                 const ao = actOpts(id, 'offset_rad');
+                const commit = (rad: number) => {
+                    if (!yamlDoc) return;
+                    const next = structuredClone(yamlDoc);
+                    const list = next.actuators as Record<string, unknown>[];
+                    list[index] = { ...list[index], offset_rad: rad };
+                    patchDoc(next);
+                };
                 return (
-                    <InputNumber
-                        size="small"
-                        step={0.1}
-                        style={{ width: '100%', ...cellOutlineStyle(serverFieldErrors, ao, outlineBorders) }}
-                        value={degFromRadField(row.offset_rad)}
+                    <DegAngleInputNumber
+                        radValue={row.offset_rad}
+                        onCommitRad={commit}
+                        style={cellOutlineStyle(serverFieldErrors, ao, outlineBorders)}
                         title={cellTooltipText(serverFieldErrors, ao)}
-                        onChange={(val) => {
-                            if (!yamlDoc || val == null) return;
-                            const next = structuredClone(yamlDoc);
-                            const list = next.actuators as Record<string, unknown>[];
-                            list[index] = { ...list[index], offset_rad: degreeToRadian(val) };
-                            patchDoc(next);
-                        }}
                     />
                 );
             },

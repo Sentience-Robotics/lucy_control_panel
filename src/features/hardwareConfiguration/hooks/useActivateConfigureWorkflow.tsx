@@ -154,7 +154,6 @@ export function useActivateConfigureWorkflow({
 }: UseActivateConfigureWorkflowParams) {
     const [workflowRunning, setWorkflowRunning] = useState(false);
     const [steps, setSteps] = useState<WorkflowStepSlice[]>(() => initialSteps(false, false, false));
-    const [detailLine, setDetailLine] = useState('');
     const [lastRunSucceeded, setLastRunSucceeded] = useState(false);
     const [lastRunDiff, setLastRunDiff] = useState<HardwareConfigDiff | null>(null);
     const abortRef = useRef<(() => void) | null>(null);
@@ -174,7 +173,6 @@ export function useActivateConfigureWorkflow({
     const resetWorkflowPresentation = useCallback(
         (simulationOnly: boolean, buildOnly: boolean, activateOnly: boolean) => {
             setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
-            setDetailLine('');
             setLastRunSucceeded(false);
             setLastRunDiff(null);
             preRunActiveDocRef.current = null;
@@ -233,7 +231,6 @@ export function useActivateConfigureWorkflow({
             setLastRunSucceeded(false);
             setLastRunDiff(null);
             setSteps(initialSteps(simulationOnly, buildOnly, activateOnly));
-            setDetailLine('');
 
             // Snapshot the active doc the running system loaded so we can later
             // diff it against the target preset. Failing to capture either side
@@ -254,13 +251,43 @@ export function useActivateConfigureWorkflow({
             const failStep = (id: WorkflowStepId, msg: string) => {
                 if (!shouldContinue()) return;
                 patchStep(id, { status: 'error', fraction: 1, detail: msg });
-                setDetailLine(msg);
-                messageApi.error(msg);
+                // Toast keeps a short headline; full text is on the step card.
+                const toast = msg.split('\n')[0]?.slice(0, 180) || msg;
+                messageApi.error(toast);
+            };
+
+            const formatPipelineFailure = (res: {
+                message?: string;
+                errors?: string[];
+            }): string => {
+                const bits: string[] = [];
+                const push = (raw: string) => {
+                    const t = raw.trim();
+                    if (!t) return;
+                    if (t.startsWith('{')) {
+                        try {
+                            const j = JSON.parse(t) as { message?: string };
+                            if (typeof j.message === 'string' && j.message.trim()) {
+                                bits.push(j.message.trim());
+                                return;
+                            }
+                        } catch {
+                            /* keep raw */
+                        }
+                    }
+                    bits.push(t);
+                };
+                if (res.message) push(res.message);
+                for (const e of res.errors ?? []) push(e);
+                const unique: string[] = [];
+                for (const b of bits) {
+                    if (!unique.includes(b)) unique.push(b);
+                }
+                return unique.join('\n') || 'Configure pipeline failed';
             };
 
             try {
                 patchStep('validate', { status: 'running', fraction: 0, detail: 'Dry run…' });
-                setDetailLine('VALIDATE — dry run against TARGET mapping…');
 
                 const dry = startConfigurePipeline(
                     {
@@ -274,7 +301,6 @@ export function useActivateConfigureWorkflow({
                     {
                         onFeedback: (f) => {
                             if (!shouldContinue()) return;
-                            setDetailLine(f.detail || `VALIDATE — ${f.phase}`);
                             patchStep('validate', {
                                 status: 'running',
                                 fraction: fractionForValidateDryRun(f),
@@ -290,13 +316,12 @@ export function useActivateConfigureWorkflow({
                 if (!shouldContinue()) return;
 
                 if (!dryRes.success) {
-                    failStep('validate', dryRes.message || 'Validation failed');
+                    failStep('validate', formatPipelineFailure(dryRes));
                     return;
                 }
                 patchStep('validate', { status: 'done', fraction: 1, detail: 'OK' });
 
                 patchStep('activate', { status: 'running', fraction: 0.5, detail: '/config/activate…' });
-                setDetailLine('ACTIVATE — promoting preset to active…');
 
                 const act = await HardwareConfigHandler.activateConfig(targetConfigName.trim(), rp);
                 if (!shouldContinue()) return;
@@ -334,7 +359,6 @@ export function useActivateConfigureWorkflow({
                         fraction: 0,
                         detail: 'Skipped (activate only)',
                     });
-                    setDetailLine('Activated — generate, build, flash, and reload skipped.');
                     await refetchActiveHardware();
                     messageApi.success('Configuration activated (generate, build, flash, and reload skipped).');
                     computeAndStoreDiff();
@@ -350,11 +374,6 @@ export function useActivateConfigureWorkflow({
                     }
                 }
                 patchStep('reload', { status: 'pending', fraction: 0, detail: '' });
-                setDetailLine(
-                    simulationOnly
-                        ? 'GENERATE — ros2_control + controllers, then reload…'
-                        : 'GENERATE — ros2_control + controllers, then firmware build / flash…',
-                );
 
                 let sawGenerate = false;
                 let sawBuild = false;
@@ -373,7 +392,6 @@ export function useActivateConfigureWorkflow({
                         onFeedback: (f: ConfigurePipelineFeedbackNormalized) => {
                             if (!shouldContinue()) return;
                             const phase = (f.phase || '').toLowerCase();
-                            setDetailLine(f.detail || `${phase.toUpperCase()}…`);
 
                             if (phase === 'reload') {
                                 sawReload = true;
@@ -430,7 +448,7 @@ export function useActivateConfigureWorkflow({
                 if (!shouldContinue()) return;
 
                 if (!wetRes.success) {
-                    const msg = wetRes.message || 'Configure pipeline failed';
+                    const msg = formatPipelineFailure(wetRes);
                     if (simulationOnly) {
                         if (sawReload) failStep('reload', msg);
                         else failStep('generate', msg);
@@ -462,7 +480,6 @@ export function useActivateConfigureWorkflow({
                     }
                 }
                 patchStep('reload', { status: 'done', fraction: 1, detail: 'OK' });
-                setDetailLine(wetRes.message || 'Complete');
                 await refetchActiveHardware();
                 messageApi.success(`Workflow finished: ${wetRes.message || 'OK'}`);
                 computeAndStoreDiff();
@@ -470,7 +487,6 @@ export function useActivateConfigureWorkflow({
             } catch (e) {
                 if (!shouldContinue()) return;
                 const msg = e instanceof Error ? e.message : 'Workflow failed';
-                setDetailLine(msg);
                 messageApi.error(msg);
                 setSteps((prev) =>
                     prev.map((s) =>
@@ -497,7 +513,6 @@ export function useActivateConfigureWorkflow({
         workflowRunning,
         workflowSteps: steps,
         workflowOverallPercent,
-        workflowDetailLine: detailLine,
         workflowLastRunSucceeded: lastRunSucceeded,
         workflowLastRunDiff: lastRunDiff,
         runActivateWorkflow,

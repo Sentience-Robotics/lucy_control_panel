@@ -364,6 +364,8 @@ export const HardwareYamlConfigManager: React.FC<HardwareYamlConfigManagerProps>
                                                       cancelText="CANCEL"
                                                       okButtonProps={{ danger: true }}
                                                       onConfirm={() => void deleteConfigByName(name)}
+                                                      getPopupContainer={() => document.body}
+                                                      zIndex={1200}
                                                   >
                                                       <Button
                                                           type="text"
