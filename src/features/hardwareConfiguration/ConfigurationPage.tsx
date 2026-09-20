@@ -236,11 +236,15 @@ const ConfigurationPage = () => {
                 workflowRunning={hw.workflowRunning}
                 workflowSteps={hw.workflowSteps}
                 workflowOverallPercent={hw.workflowOverallPercent}
-                workflowDetailLine={hw.workflowDetailLine}
                 workflowLastRunSucceeded={hw.workflowLastRunSucceeded}
                 workflowLastRunDiff={hw.workflowLastRunDiff}
                 gazeboRunning={hw.gazeboRunning}
                 canRun={hw.modalCanRun && hw.isConnected}
+                runBlockedReason={hw.modalRunBlockedReason}
+                pendingEnableConfirm={hw.pendingEnableConfirm}
+                runPreparing={hw.runPreparing}
+                onConfirmPendingEnable={hw.confirmPendingEnableAndRun}
+                onCancelPendingEnable={hw.cancelPendingEnableConfirm}
                 generatedFileNames={hw.generatedFileNames}
             />
 

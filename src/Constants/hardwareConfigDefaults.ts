@@ -11,21 +11,23 @@
  * defaults inline — `documentHelpers.ts` and any future row builder import them.
  */
 
+import { degreeToRadian } from '../Utils/math.utils.ts';
+
 /**
  * Servo type used when an actuator row has a missing/blank `servo_type`
  * (display normalization fallback — see `normalizeActuatorType`).
  */
 export const DEFAULT_ACTUATOR_TYPE_FALLBACK = '270';
 
-/** Field defaults applied to a freshly-added actuator row in the editor. */
+/** Field defaults applied to a freshly-added actuator row in the editor (YAML radian keys). */
 export const DEFAULT_NEW_ACTUATOR_VALUES = {
     servo_type: '180',
-    offset_deg: 0,
+    offset_rad: 0,
     direction: 1,
     scale: 1,
-    servo_min_deg: 0,
-    servo_max_deg: 180,
-    servo_default_deg: 90,
+    servo_min_rad: 0,
+    servo_max_rad: degreeToRadian(180),
+    servo_default_rad: degreeToRadian(90),
     enabled: false,
 } as const;
 
@@ -38,17 +40,17 @@ export const DEFAULT_NEW_PRESSURE_SENSOR_VALUES = {
 } as const;
 
 /**
- * Fallback slider bounds (actuator degrees) for a control-panel joint that has
+ * Fallback slider bounds (servo radians) for a control-panel joint that has
  * no servo limits in the controller config. Mirrors the 0–180° default servo
  * travel used elsewhere in the editor.
  */
-export const DEFAULT_JOINT_SLIDER_BOUNDS_DEG: { min: number; max: number } = {
+export const DEFAULT_JOINT_SLIDER_BOUNDS_RAD: { min: number; max: number } = {
     min: 0,
-    max: 180,
+    max: degreeToRadian(180),
 };
 
 /**
- * Fallback slider position (actuator degrees) when a joint exposes no default
+ * Fallback slider position (servo radians) when a joint exposes no default
  * (rest) angle — the slider and command both start here.
  */
-export const DEFAULT_JOINT_SLIDER_VALUE_DEG = 0;
+export const DEFAULT_JOINT_SLIDER_VALUE_RAD = 0;

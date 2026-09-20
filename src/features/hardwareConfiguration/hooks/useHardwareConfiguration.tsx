@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-import { Modal, message } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { message } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useActiveHardwareRos } from '../../../contexts/ActiveHardwareRosContext.tsx';
 import { useGazeboRunning } from '../../../hooks/useGazeboRunning.hook.ts';
@@ -18,42 +17,7 @@ import { useActivateConfigureWorkflow } from './useActivateConfigureWorkflow.tsx
 import { useHardwareConfigEditor } from './useHardwareConfigEditor.tsx';
 import { useHardwareConfigLists } from './useHardwareConfigLists.ts';
 
-/**
- * Show a blocking confirm dialog listing actuators that will switch from
- * disabled to enabled by the activation. Resolves to `true` if the user
- * accepts driving real hardware, `false` otherwise.
- */
-function confirmNewlyEnabled(
-    newlyEnabled: { actuatorId: string; label: string }[],
-): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-        Modal.confirm({
-            title: 'ENABLE ACTUATORS ON REAL HARDWARE?',
-            icon: <ExclamationCircleOutlined />,
-            content: (
-                <div>
-                    <p style={{ marginTop: 0 }}>
-                        Activating this configuration will start driving the following
-                        actuator{newlyEnabled.length === 1 ? '' : 's'} on the real robot.
-                        Make sure the hardware is powered, clear of obstacles, and that
-                        joint limits / calibration are correct.
-                    </p>
-                    <ul style={{ maxHeight: 220, overflow: 'auto', paddingLeft: 18 }}>
-                        {newlyEnabled.map((a) => (
-                            <li key={a.actuatorId}>{a.label}</li>
-                        ))}
-                    </ul>
-                </div>
-            ),
-            okText: 'ENABLE & RUN',
-            okType: 'danger',
-            cancelText: 'CANCEL',
-            centered: true,
-            onOk: () => resolve(true),
-            onCancel: () => resolve(false),
-        });
-    });
-}
+export type NewlyEnabledActuator = { actuatorId: string; label: string };
 
 export function useHardwareConfiguration() {
     const { isConnected } = useRosConnection();
@@ -75,6 +39,11 @@ export function useHardwareConfiguration() {
     const [activateModalBuildOnly, setActivateModalBuildOnlyInner] = useState(false);
     const [activateModalActivateOnly, setActivateModalActivateOnlyInner] = useState(false);
     const [activateModalSimulationOnly, setActivateModalSimulationOnlyInner] = useState(false);
+    /** In-modal confirm when RUN would newly enable real actuators (avoids Ant Modal under overlay). */
+    const [pendingEnableConfirm, setPendingEnableConfirm] = useState<NewlyEnabledActuator[] | null>(
+        null,
+    );
+    const [runPreparing, setRunPreparing] = useState(false);
 
     const setActivateModalBuildOnly = useCallback((v: boolean) => {
         setActivateModalBuildOnlyInner(v);
@@ -149,7 +118,6 @@ export function useHardwareConfiguration() {
         workflowRunning,
         workflowSteps,
         workflowOverallPercent,
-        workflowDetailLine,
         workflowLastRunSucceeded,
         workflowLastRunDiff,
         runActivateWorkflow,
@@ -203,14 +171,17 @@ export function useHardwareConfiguration() {
         setActivateModalBoards([]);
         setActivateModalBuildOnlyInner(false);
         setActivateModalActivateOnlyInner(false);
+        setPendingEnableConfirm(null);
+        setRunPreparing(false);
         resetWorkflowPresentation(true, false, false);
         setActivateModalOpen(true);
     }, [resetWorkflowPresentation]);
 
     const closeActivateModal = useCallback(() => {
-        if (workflowRunning) return;
+        if (workflowRunning || runPreparing) return;
+        setPendingEnableConfirm(null);
         setActivateModalOpen(false);
-    }, [workflowRunning]);
+    }, [workflowRunning, runPreparing]);
 
     const onActivateModalBoardsChange = useCallback(
         (ids: string[]) => {
@@ -219,6 +190,8 @@ export function useHardwareConfiguration() {
                 setActivateModalSimulationOnlyInner(true);
             } else {
                 setActivateModalSimulationOnlyInner(false);
+                // Selecting boards implies a hardware flash path, not activate-only.
+                setActivateModalActivateOnlyInner(false);
             }
         },
         [],
@@ -233,9 +206,7 @@ export function useHardwareConfiguration() {
      * proceed without prompting.
      */
     const detectNewlyEnabledActuators = useCallback(
-        async (
-            targetConfigName: string,
-        ): Promise<{ actuatorId: string; label: string }[] | null> => {
+        async (targetConfigName: string): Promise<NewlyEnabledActuator[] | null> => {
             const active = activeHardwareDocRef.current;
             if (!active) return null;
             try {
@@ -251,29 +222,18 @@ export function useHardwareConfiguration() {
         [],
     );
 
-    const runWorkflowFromModal = useCallback(async () => {
+    const startWorkflowWithCurrentModalOptions = useCallback(async () => {
         const name = editor.loadConfigName.trim();
-        if (!name) return;
+        if (!name) {
+            messageApi.warning('Pick a TARGET configuration.');
+            return;
+        }
         const simulationOnly = activateModalSimulationOnly || pipelineBoardIds.length === 0;
         const flashBoards = simulationOnly ? [] : boardsToFlashGoal(activateModalBoards, pipelineBoardIds);
-        const noBoardsSelected = !simulationOnly && pipelineBoardIds.length > 0 && activateModalBoards.length === 0;
+        const noBoardsSelected =
+            !simulationOnly && pipelineBoardIds.length > 0 && activateModalBoards.length === 0;
 
-        // Hardware-mode safety: if this run will newly enable actuators
-        // (disabled→enabled transition, or net-new row already enabled) and
-        // the flow is not simulation-only, surface a confirmation before any
-        // pipeline call so the user explicitly opts in to driving real motors.
-        if (!simulationOnly) {
-            const newlyEnabled = await detectNewlyEnabledActuators(name);
-            if (newlyEnabled === null) {
-                // Could not compute diff (target fetch failed, parse error, no
-                // active doc); fall through and let validate/activate surface
-                // any real problem rather than blocking on a soft check.
-            } else if (newlyEnabled.length > 0) {
-                const confirmed = await confirmNewlyEnabled(newlyEnabled);
-                if (!confirmed) return;
-            }
-        }
-
+        setPendingEnableConfirm(null);
         await runActivateWorkflow({
             targetConfigName: name,
             boardsToFlash: flashBoards,
@@ -287,12 +247,54 @@ export function useHardwareConfiguration() {
         activateModalActivateOnly,
         activateModalBuildOnly,
         activateModalSimulationOnly,
-        detectNewlyEnabledActuators,
         editor.loadConfigName,
         editor.refreshConfigListForModal,
+        messageApi,
         pipelineBoardIds,
         runActivateWorkflow,
     ]);
+
+    const runWorkflowFromModal = useCallback(async () => {
+        const name = editor.loadConfigName.trim();
+        if (!name) {
+            messageApi.warning('Pick a TARGET configuration.');
+            return;
+        }
+        const simulationOnly = activateModalSimulationOnly || pipelineBoardIds.length === 0;
+
+        // Hardware-mode safety: confirm inside this modal (not Ant Modal.confirm,
+        // which stacks under the activate overlay and looks like a no-op).
+        if (!simulationOnly) {
+            setRunPreparing(true);
+            try {
+                const newlyEnabled = await detectNewlyEnabledActuators(name);
+                if (newlyEnabled && newlyEnabled.length > 0) {
+                    setPendingEnableConfirm(newlyEnabled);
+                    return;
+                }
+            } finally {
+                setRunPreparing(false);
+            }
+        }
+
+        await startWorkflowWithCurrentModalOptions();
+    }, [
+        activateModalSimulationOnly,
+        detectNewlyEnabledActuators,
+        editor.loadConfigName,
+        messageApi,
+        pipelineBoardIds.length,
+        startWorkflowWithCurrentModalOptions,
+    ]);
+
+    const confirmPendingEnableAndRun = useCallback(async () => {
+        await startWorkflowWithCurrentModalOptions();
+    }, [startWorkflowWithCurrentModalOptions]);
+
+    const cancelPendingEnableConfirm = useCallback(() => {
+        setPendingEnableConfirm(null);
+        messageApi.info('Activation cancelled.');
+    }, [messageApi]);
 
     // Names the pipeline will write for this preset (active doc is the source of
     // truth); used only to keep the activate-workflow copy accurate.
@@ -308,6 +310,21 @@ export function useHardwareConfiguration() {
             pipelineBoardIds.length === 0 ||
             activateModalBoards.length > 0 ||
             activateModalActivateOnly);
+
+    const modalRunBlockedReason = !isConnected
+        ? 'Connect to ROS bridge first.'
+        : !editor.selectedTargetConfigName.trim()
+          ? 'Pick a TARGET configuration (LOAD a preset first).'
+          : !serverRobotPackage.trim()
+            ? 'Robot package unknown — core must be launched with robot_package:=… (header shows ROBOT PACKAGE).'
+            : !(
+                  activateModalSimulationOnly ||
+                  pipelineBoardIds.length === 0 ||
+                  activateModalBoards.length > 0 ||
+                  activateModalActivateOnly
+              )
+              ? 'Select at least one board, or enable SIMULATION ONLY / ACTIVATE ONLY.'
+              : '';
 
     const editorLocked = workflowRunning;
 
@@ -329,15 +346,19 @@ export function useHardwareConfiguration() {
         openActivateModal,
         closeActivateModal,
         runWorkflowFromModal,
+        confirmPendingEnableAndRun,
+        cancelPendingEnableConfirm,
+        pendingEnableConfirm,
+        runPreparing,
         abortWorkflow,
         workflowRunning,
         workflowSteps,
         workflowOverallPercent,
-        workflowDetailLine,
         workflowLastRunSucceeded,
         workflowLastRunDiff,
         gazeboRunning,
         modalCanRun,
+        modalRunBlockedReason,
         generatedFileNames,
         pipelineBoardOptions,
         editorLocked,
