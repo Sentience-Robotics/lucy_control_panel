@@ -75,22 +75,22 @@ export const Page: React.FC<PageProps> = ({
         }
         ` : ''}
 
-        .ant-btn,
-        .ant-btn-primary,
-        .ant-btn-default,
-        .ant-switch,
-        .ant-slider,
-        .ant-slider-rail,
-        .ant-slider-track,
-        .ant-slider-handle,
-        .ant-input-number,
-        .ant-card,
-        .ant-alert,
-        .ant-spin-container,
-        .ant-layout-header,
-        .ant-layout-content,
-        .ant-col,
-        .ant-row {
+        [data-theme='dark'] .ant-btn,
+        [data-theme='dark'] .ant-btn-primary,
+        [data-theme='dark'] .ant-btn-default,
+        [data-theme='dark'] .ant-switch,
+        [data-theme='dark'] .ant-slider,
+        [data-theme='dark'] .ant-slider-rail,
+        [data-theme='dark'] .ant-slider-track,
+        [data-theme='dark'] .ant-slider-handle,
+        [data-theme='dark'] .ant-input-number,
+        [data-theme='dark'] .ant-card,
+        [data-theme='dark'] .ant-alert,
+        [data-theme='dark'] .ant-spin-container,
+        [data-theme='dark'] .ant-layout-header,
+        [data-theme='dark'] .ant-layout-content,
+        [data-theme='dark'] .ant-col,
+        [data-theme='dark'] .ant-row {
           border-radius: 0 !important;
         }
 
@@ -192,7 +192,7 @@ export const Page: React.FC<PageProps> = ({
           appearance: none;
           background: ${UI_BORDER_MUTED};
           cursor: pointer;
-          border-radius: 0;
+          border-radius: var(--ui-border-radius, 0);
         }
 
         input[type="range"]::-webkit-slider-thumb {
@@ -203,7 +203,7 @@ export const Page: React.FC<PageProps> = ({
           background: ${UI_ACCENT_GREEN};
           cursor: pointer;
           border: none;
-          border-radius: 0;
+          border-radius: var(--ui-border-radius, 0);
         }
 
         input[type="range"]::-moz-range-thumb {
@@ -212,6 +212,12 @@ export const Page: React.FC<PageProps> = ({
           background: ${UI_ACCENT_GREEN};
           cursor: pointer;
           border: none;
+          border-radius: var(--ui-border-radius, 0);
+        }
+
+        [data-theme='dark'] input[type="range"],
+        [data-theme='dark'] input[type="range"]::-webkit-slider-thumb,
+        [data-theme='dark'] input[type="range"]::-moz-range-thumb {
           border-radius: 0;
         }
 

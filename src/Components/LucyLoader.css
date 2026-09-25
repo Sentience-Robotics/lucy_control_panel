@@ -16,12 +16,14 @@
 .lucy-loader-spinner {
     width: 48px;
     height: 48px;
-    border: 3px solid rgba(255, 255, 255, 0.1);
+    border: 3px solid var(--ui-border-subtle);
     border-top-color: var(--ui-accent-green);
     border-radius: 50%;
     animation: lucy-loader-spin 1s linear infinite;
-    /* optional: add a shadow matching the design language if we want to stylize it more */
-    box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+[data-theme='dark'] .lucy-loader-spinner {
+    box-shadow: 0 0 10px color-mix(in srgb, var(--ui-accent-green) 20%, transparent);
 }
 
 .lucy-loader-text {

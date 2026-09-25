@@ -36,6 +36,7 @@ import { MovableModal } from './MovableModal';
 import { PipelineDiagnostics } from './PipelineDiagnostics';
 import { refreshAllPipelines } from '../Services/pipelineProbes';
 import { usePaginatedCategories } from '../contexts/PaginatedCategoriesContext';
+import { useUiTheme } from '../contexts/UiThemeContext';
 
 const { Text } = Typography;
 
@@ -82,6 +83,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         isShowDegreesEnabled
     );
     const { categoriesPerPage, setCategoriesPerPage } = usePaginatedCategories();
+    const { mode, setMode } = useUiTheme();
 
     useEffect(() => {
         setRosUrl(currentUrl);
@@ -232,6 +234,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                             title="Angle units"
                             textOn="DEGREES"
                             textOff="RADIANS"
+                            width={180}
+                            isOffRed={false}
+                            centerTitle={false}
+                        />
+
+                        <ToggleSwitch
+                            isOn={mode === 'light'}
+                            onToggle={(checked) => setMode(checked ? 'light' : 'dark')}
+                            title="Light theme"
                             width={180}
                             isOffRed={false}
                             centerTitle={false}

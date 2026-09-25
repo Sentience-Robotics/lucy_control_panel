@@ -19,20 +19,20 @@
     opacity: 1 !important;
 }
 
-/* Hardware config tables: sharp rectangular track + square white thumb. */
-.ant-switch.hardware-config-ant-switch {
+/* Hardware config tables: sharp rectangular track + square white thumb (dark only). */
+[data-theme='dark'] .ant-switch.hardware-config-ant-switch {
     border-radius: 0 !important;
 }
 
-.ant-switch.hardware-config-ant-switch .ant-switch-inner {
+[data-theme='dark'] .ant-switch.hardware-config-ant-switch .ant-switch-inner {
     border-radius: 0 !important;
 }
 
-.ant-switch.hardware-config-ant-switch .ant-switch-handle::before {
+[data-theme='dark'] .ant-switch.hardware-config-ant-switch .ant-switch-handle::before {
     border-radius: 0 !important;
 }
 
-/* Activate modal board picker — square checkbox boxes */
-.hardware-config-ant-checkbox-group.ant-checkbox-group .ant-checkbox .ant-checkbox-inner {
+/* Activate modal board picker — square checkbox boxes (dark only) */
+[data-theme='dark'] .hardware-config-ant-checkbox-group.ant-checkbox-group .ant-checkbox .ant-checkbox-inner {
     border-radius: 0 !important;
 }

@@ -46,7 +46,7 @@ const PaginatedJointCategories = ({
         backgroundColor: UI_NAV_BAR_BG,
         padding: '8px',
         border: `1px solid ${UI_BORDER_MUTED}`,
-        borderRadius: '0'
+        borderRadius: 'var(--ui-border-radius)',
     };
 
     const validCategories = useMemo<string[]>(

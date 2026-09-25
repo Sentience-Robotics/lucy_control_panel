@@ -277,7 +277,7 @@ export function MovableModal({
                 zIndex: centered ? undefined : isLocked ? 1 : 1000,
                 backgroundColor: UI_MODAL_SURFACE,
                 border: `1px solid ${UI_BORDER_MUTED}`,
-                borderRadius: 0,
+                borderRadius: 'var(--ui-border-radius)',
                 boxShadow: UI_SHADOW_ELEVATED,
                 overflow: 'hidden',
                 overscrollBehavior: 'contain',
